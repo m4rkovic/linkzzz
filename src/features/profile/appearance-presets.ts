@@ -1,0 +1,252 @@
+import { defaultAppearance } from "@/config/profile-defaults";
+import type { ProfileAppearance } from "@/types/profile";
+
+export type AppearancePreset = {
+  id: string;
+  mode: "classic" | "visual";
+  name: string;
+  description: string;
+  swatches: [string, string, string];
+  apply: () => Partial<ProfileAppearance>;
+};
+
+export const APPEARANCE_FONTS = [
+  "Inter, Arial, sans-serif",
+  "Arial, sans-serif",
+  "Georgia, serif",
+  "Verdana, sans-serif",
+  "Trebuchet MS, sans-serif",
+  "Courier New, monospace",
+];
+
+export const APPEARANCE_PRESETS: AppearancePreset[] = [
+  {
+    id: "classic-dark",
+    mode: "classic",
+    name: "Classic Dark",
+    description: "Clean dark Linkzzz buttons.",
+    swatches: ["#111214", "#18181b", "#ffffff"],
+    apply: () => ({
+      ...defaultAppearance,
+      layoutMode: "classic",
+      backgroundType: "solid",
+      backgroundColor: "#111214",
+      primaryTextColor: "#ffffff",
+      secondaryTextColor: "#a1a1aa",
+      buttonStyle: "glass",
+      buttonBackgroundColor: "#18181b",
+      buttonTextColor: "#ffffff",
+      buttonBorderColor: "#ffffff",
+    }),
+  },
+  {
+    id: "classic-light",
+    mode: "classic",
+    name: "Classic Light",
+    description: "Minimal white profile.",
+    swatches: ["#fafafa", "#ffffff", "#09090b"],
+    apply: () => ({
+      ...defaultAppearance,
+      layoutMode: "classic",
+      backgroundType: "solid",
+      backgroundColor: "#fafafa",
+      primaryTextColor: "#09090b",
+      secondaryTextColor: "#71717a",
+      buttonStyle: "outline",
+      buttonBackgroundColor: "#ffffff",
+      buttonTextColor: "#09090b",
+      buttonBorderColor: "#d4d4d8",
+    }),
+  },
+  {
+    id: "visual-night",
+    mode: "visual",
+    name: "Visual Night",
+    description: "Dark creator-style image cards.",
+    swatches: ["#050505", "#27272a", "#ffffff"],
+    apply: () => ({
+      ...defaultAppearance,
+      layoutMode: "visual",
+      backgroundType: "solid",
+      backgroundColor: "#050505",
+      primaryTextColor: "#ffffff",
+      secondaryTextColor: "#a1a1aa",
+      hero: {
+        ...defaultAppearance.hero!,
+        enabled: true,
+        height: 350,
+        overlayEnabled: true,
+        overlayColor: "#000000",
+        overlayOpacity: 0.32,
+        profilePosition: "over-hero",
+        contentPosition: "bottom-center",
+        imageFit: "cover",
+        imagePosition: "center",
+        fullBleed: true,
+      },
+      identity: {
+        ...defaultAppearance.identity!,
+        alignment: "center",
+        avatarSize: 96,
+        avatarShape: "circle",
+        socialIconStyle: "plain",
+      },
+      cards: {
+        ...defaultAppearance.cards!,
+        defaultLayout: "half",
+        borderRadius: 24,
+        cardHeight: 230,
+        featuredHeight: 370,
+        overlayOpacity: 0.38,
+        titlePosition: "bottom-center",
+        titleSize: 22,
+        borderWidth: 0,
+        shadow: 2,
+        hoverEffect: "lift",
+      },
+    }),
+  },
+  {
+    id: "visual-editorial",
+    mode: "visual",
+    name: "Editorial",
+    description: "Large type and structured cards.",
+    swatches: ["#f4f1ea", "#d6d0c4", "#111111"],
+    apply: () => ({
+      ...defaultAppearance,
+      layoutMode: "visual",
+      backgroundType: "solid",
+      backgroundColor: "#f4f1ea",
+      primaryTextColor: "#111111",
+      secondaryTextColor: "#5f5b53",
+      fontFamily: "Georgia, serif",
+      hero: {
+        ...defaultAppearance.hero!,
+        enabled: true,
+        height: 290,
+        overlayOpacity: 0.18,
+        profilePosition: "below-hero",
+        contentPosition: "below",
+        imageFit: "cover",
+        imagePosition: "center",
+        fullBleed: false,
+      },
+      identity: {
+        ...defaultAppearance.identity!,
+        alignment: "left",
+        avatarShape: "rounded",
+        avatarSize: 92,
+        nameSize: 34,
+        socialIconStyle: "square",
+      },
+      cards: {
+        ...defaultAppearance.cards!,
+        defaultLayout: "full",
+        borderRadius: 8,
+        spacing: 14,
+        cardHeight: 250,
+        featuredHeight: 400,
+        titlePosition: "bottom-left",
+        titleSize: 24,
+        borderWidth: 0,
+        shadow: 1,
+        hoverEffect: "none",
+      },
+    }),
+  },
+  {
+    id: "visual-neon",
+    mode: "visual",
+    name: "Neon",
+    description: "Gradient background with bold cards.",
+    swatches: ["#09090b", "#6d28d9", "#ffffff"],
+    apply: () => ({
+      ...defaultAppearance,
+      layoutMode: "visual",
+      backgroundType: "gradient",
+      gradientFrom: "#09090b",
+      gradientTo: "#21113c",
+      primaryTextColor: "#ffffff",
+      secondaryTextColor: "#d4d4d8",
+      hero: {
+        ...defaultAppearance.hero!,
+        enabled: true,
+        height: 330,
+        overlayOpacity: 0.25,
+        profilePosition: "over-hero",
+        contentPosition: "bottom-center",
+        imageFit: "cover",
+        imagePosition: "center",
+        fullBleed: true,
+      },
+      identity: {
+        ...defaultAppearance.identity!,
+        alignment: "center",
+        socialIconStyle: "circle",
+      },
+      cards: {
+        ...defaultAppearance.cards!,
+        defaultLayout: "half",
+        borderRadius: 22,
+        borderWidth: 1,
+        shadow: 4,
+        hoverEffect: "glow",
+      },
+    }),
+  },
+  {
+    id: "classic-ocean",
+    mode: "classic",
+    name: "Ocean Glass",
+    description: "Cool blue gradient with translucent buttons.",
+    swatches: ["#082f49", "#0e7490", "#ecfeff"],
+    apply: () => ({ ...defaultAppearance, layoutMode: "classic", backgroundType: "gradient", gradientFrom: "#082f49", gradientTo: "#155e75", primaryTextColor: "#ecfeff", secondaryTextColor: "#a5f3fc", buttonStyle: "glass", buttonBackgroundColor: "#0e7490", buttonTextColor: "#ecfeff", buttonBorderColor: "#67e8f9", borderRadius: 18, shadow: 3 }),
+  },
+  {
+    id: "classic-warm",
+    mode: "classic",
+    name: "Warm Paper",
+    description: "Soft editorial colors with rounded filled buttons.",
+    swatches: ["#f7f1e8", "#9a3412", "#2b2118"],
+    apply: () => ({ ...defaultAppearance, layoutMode: "classic", backgroundType: "solid", backgroundColor: "#f7f1e8", primaryTextColor: "#2b2118", secondaryTextColor: "#786b5e", fontFamily: "Georgia, serif", buttonStyle: "filled", buttonBackgroundColor: "#9a3412", buttonTextColor: "#fff7ed", buttonBorderColor: "#9a3412", borderRadius: 999, shadow: 1 }),
+  },
+  {
+    id: "classic-mono",
+    mode: "classic",
+    name: "Mono Blocks",
+    description: "Sharp monochrome buttons with compact spacing.",
+    swatches: ["#ffffff", "#111111", "#737373"],
+    apply: () => ({ ...defaultAppearance, layoutMode: "classic", backgroundType: "solid", backgroundColor: "#ffffff", primaryTextColor: "#111111", secondaryTextColor: "#737373", fontFamily: "Courier New, monospace", buttonStyle: "filled", buttonBackgroundColor: "#111111", buttonTextColor: "#ffffff", buttonBorderColor: "#111111", borderRadius: 4, buttonSpacing: 9, shadow: 0 }),
+  },
+  {
+    id: "visual-studio",
+    mode: "visual",
+    name: "Soft Studio",
+    description: "Pastel canvas with spacious rounded feature cards.",
+    swatches: ["#fdf2f8", "#f9a8d4", "#831843"],
+    apply: () => ({ ...defaultAppearance, layoutMode: "visual", backgroundType: "gradient", gradientFrom: "#fdf2f8", gradientTo: "#ede9fe", primaryTextColor: "#3b1834", secondaryTextColor: "#7e5b75", hero: { ...defaultAppearance.hero!, enabled: true, height: 300, contentPosition: "below", profilePosition: "below-hero", fullBleed: false }, identity: { ...defaultAppearance.identity!, alignment: "center", avatarShape: "rounded", avatarSize: 96 }, cards: { ...defaultAppearance.cards!, defaultLayout: "featured", borderRadius: 30, spacing: 18, cardHeight: 250, featuredHeight: 390, titlePosition: "bottom-left", titleSize: 23, borderWidth: 0, shadow: 2, hoverEffect: "scale" } }),
+  },
+  {
+    id: "visual-grid",
+    mode: "visual",
+    name: "Bold Grid",
+    description: "Compact split cards with crisp corners and strong type.",
+    swatches: ["#facc15", "#18181b", "#ffffff"],
+    apply: () => ({ ...defaultAppearance, layoutMode: "visual", backgroundType: "solid", backgroundColor: "#facc15", primaryTextColor: "#18181b", secondaryTextColor: "#3f3f46", hero: { ...defaultAppearance.hero!, enabled: false }, identity: { ...defaultAppearance.identity!, alignment: "left", avatarShape: "square", nameSize: 36, socialIconStyle: "square" }, cards: { ...defaultAppearance.cards!, defaultLayout: "half", borderRadius: 2, spacing: 10, cardHeight: 200, featuredHeight: 330, titlePosition: "bottom-left", titleSize: 21, borderWidth: 2, shadow: 0, hoverEffect: "lift" } }),
+  },
+  {
+    id: "visual-cinema",
+    mode: "visual",
+    name: "Cinema",
+    description: "Wide cinematic tiles on a deep black canvas.",
+    swatches: ["#000000", "#b91c1c", "#f5f5f5"],
+    apply: () => ({ ...defaultAppearance, layoutMode: "visual", backgroundType: "solid", backgroundColor: "#000000", primaryTextColor: "#f5f5f5", secondaryTextColor: "#a3a3a3", hero: { ...defaultAppearance.hero!, enabled: true, height: 420, fullBleed: true, contentPosition: "bottom-left", profilePosition: "over-hero", overlayOpacity: 0.5 }, identity: { ...defaultAppearance.identity!, alignment: "left", avatarSize: 80, socialIconStyle: "plain" }, cards: { ...defaultAppearance.cards!, defaultLayout: "full", borderRadius: 10, spacing: 16, cardHeight: 280, featuredHeight: 430, titlePosition: "bottom-left", titleSize: 26, borderWidth: 0, shadow: 4, hoverEffect: "scale" } }),
+  },
+];
+
+export const CLASSIC_APPEARANCE_PRESETS = APPEARANCE_PRESETS.filter((preset) => preset.mode === "classic");
+export const VISUAL_APPEARANCE_PRESETS = APPEARANCE_PRESETS.filter((preset) => preset.mode === "visual");
+
+export function getFontName(value: string) {
+  return value.split(",")[0] ?? value;
+}

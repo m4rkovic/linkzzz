@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sub_skyhook_001",
+    "userId": "usr_skyhook_001",
+    "plan": "PREMIUM_PLUS",
+    "status": "ACTIVE",
+    "startedAt": "2026-09-01T00:00:00.000Z",
+    "expiresAt": "2027-09-01T00:00:00.000Z",
+    "autoRenew": false,
+    "createdAt": "2026-09-01T00:00:00.000Z",
+    "updatedAt": "2026-09-01T00:00:00.000Z"
+  }
+]
