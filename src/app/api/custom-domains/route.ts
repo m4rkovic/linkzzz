@@ -3,14 +3,13 @@ import { resolveSessionToken } from "@/server/auth/auth-service";
 import { addCustomDomain, customDomainDnsInstructions, listCustomDomains, removeCustomDomain, setCustomDomainActive, verifyCustomDomain } from "@/server/domains/custom-domain-service";
 import { getRequestIp, hasValidRequestOrigin } from "@/server/security/request";
 import { getSessionCookieName } from "@/server/security/session-cookie";
-import { CUSTOM_DOMAIN_RATE_LIMIT, InMemoryRateLimiter } from "@/server/security/rate-limit";
-
-const domainLimiter = new InMemoryRateLimiter();
+import { checkRateLimit, CUSTOM_DOMAIN_RATE_LIMIT } from "@/server/security/rate-limit";
 
 export async function GET(request: NextRequest) {
   const session = await customerSession(request);
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const rateLimit = domainLimiter.check(`${getRequestIp(request)}:${session.user.id}`, CUSTOM_DOMAIN_RATE_LIMIT);
+  const rateLimit = await checkRateLimit(`${getRequestIp(request)}:${session.user.id}`, CUSTOM_DOMAIN_RATE_LIMIT);
+  if (!rateLimit.available) return NextResponse.json({ error: "Request protection is temporarily unavailable." }, { status: 503 });
   if (!rateLimit.allowed) return NextResponse.json({ error: "Too many domain operations. Try again later.", retryAfterMs: rateLimit.retryAfterMs }, { status: 429 });
   const domains = await listCustomDomains(session.user.id);
   return NextResponse.json({ domains: domains.map((domain) => ({ ...domain, dns: customDomainDnsInstructions(domain) })) });
@@ -46,7 +45,8 @@ async function prepareWrite(request: NextRequest) {
   if (!hasValidRequestOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   const session = await customerSession(request);
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const rateLimit = domainLimiter.check(`${getRequestIp(request)}:${session.user.id}`, CUSTOM_DOMAIN_RATE_LIMIT);
+  const rateLimit = await checkRateLimit(`${getRequestIp(request)}:${session.user.id}`, CUSTOM_DOMAIN_RATE_LIMIT);
+  if (!rateLimit.available) return NextResponse.json({ error: "Request protection is temporarily unavailable." }, { status: 503 });
   if (!rateLimit.allowed) return NextResponse.json({ error: "Too many domain operations. Try again later.", retryAfterMs: rateLimit.retryAfterMs }, { status: 429 });
   const body = await request.json().catch(() => null) as { domain?: unknown; action?: unknown } | null;
   if (typeof body?.domain !== "string") return NextResponse.json({ error: "Domain is required." }, { status: 400 });

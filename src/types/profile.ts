@@ -204,6 +204,8 @@ export type PublicProfileLink = {
      */
     imageUrl?: string;
 
+    imageAssetId?: string;
+
     imageAlt?: string;
 
     imageFit?: LinkImageFit;
@@ -505,7 +507,11 @@ export type PublicProfileData = {
 
     avatarUrl?: string;
 
+    avatarAssetId?: string;
+
     coverImageUrl?: string;
+
+    coverAssetId?: string;
 
     locationLabel?: string;
 

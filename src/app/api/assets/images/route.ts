@@ -5,18 +5,18 @@ import type { StoredAsset } from "@/server/assets/asset-storage";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import { getRequestIp, hasValidRequestOrigin } from "@/server/security/request";
 import { getSessionCookieName } from "@/server/security/session-cookie";
-import { IMAGE_UPLOAD_RATE_LIMIT, InMemoryRateLimiter } from "@/server/security/rate-limit";
+import { checkRateLimit, IMAGE_UPLOAD_RATE_LIMIT } from "@/server/security/rate-limit";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const TYPES = new Set(["AVATAR", "COVER", "LINK_IMAGE"]);
-const uploadLimiter = new InMemoryRateLimiter();
 
 export async function POST(request: NextRequest) {
   if (!hasValidRequestOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   const session = await resolveSessionToken(request.cookies.get(getSessionCookieName())?.value);
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   if (session.user.role !== "CUSTOMER") return NextResponse.json({ error: "Customer account required." }, { status: 403 });
-  const rateLimit = uploadLimiter.check(`${getRequestIp(request)}:${session.user.id}`, IMAGE_UPLOAD_RATE_LIMIT);
+  const rateLimit = await checkRateLimit(`${getRequestIp(request)}:${session.user.id}`, IMAGE_UPLOAD_RATE_LIMIT);
+  if (!rateLimit.available) return NextResponse.json({ error: "Upload protection is temporarily unavailable." }, { status: 503 });
   if (!rateLimit.allowed) return NextResponse.json({ error: "Too many uploads. Try again later.", retryAfterMs: rateLimit.retryAfterMs }, { status: 429 });
 
   const form = await request.formData().catch(() => null);
@@ -51,4 +51,46 @@ export async function POST(request: NextRequest) {
     await storage.remove(stored.storageKey);
     return NextResponse.json({ error: "Could not save uploaded image." }, { status: 500 });
   }
+}
+
+export async function DELETE(request: NextRequest) {
+  if (!hasValidRequestOrigin(request)) {
+    return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+  }
+  const session = await resolveSessionToken(
+    request.cookies.get(getSessionCookieName())?.value,
+  );
+  if (!session) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+  if (session.user.role !== "CUSTOMER") {
+    return NextResponse.json({ error: "Customer account required." }, { status: 403 });
+  }
+
+  const body = await request.json().catch(() => null) as {
+    assetIds?: unknown;
+  } | null;
+  if (
+    !Array.isArray(body?.assetIds) ||
+    body.assetIds.length > 120 ||
+    body.assetIds.some(
+      (id) => typeof id !== "string" || id.length < 1 || id.length > 100,
+    )
+  ) {
+    return NextResponse.json({ error: "Invalid asset cleanup request." }, { status: 400 });
+  }
+
+  const repositories = await getServerDependencies();
+  if (!repositories.assets) {
+    return NextResponse.json({ error: "Asset persistence is unavailable." }, { status: 503 });
+  }
+  const removed = await repositories.assets.deleteUnusedForUser(
+    session.user.id,
+    [...new Set(body.assetIds as string[])],
+  );
+  const storage = await getAssetStorage();
+  await Promise.allSettled(
+    removed.map((asset) => storage.remove(asset.storageKey)),
+  );
+  return new NextResponse(null, { status: 204 });
 }

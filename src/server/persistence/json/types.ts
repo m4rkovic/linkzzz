@@ -56,6 +56,7 @@ export type StoredAuditEvent = {
 export type StoredProfile = {
   userId: string;
   profile: PersistedProfileData;
+  revision?: number;
   createdAt: string;
   updatedAt: string;
 };

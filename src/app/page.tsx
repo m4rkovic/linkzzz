@@ -4,6 +4,10 @@ import { isIP } from "node:net";
 import Dashboard from "../app/dashboard/page";
 import PublicProfile from "@/components/public/public-profile";
 import { resolveActiveCustomDomain } from "@/server/domains/custom-domain-service";
+import {
+  getVisitorCountryCode,
+  resolvePublicProfileGeoRouting,
+} from "@/server/geo/geo-routing";
 import { getPublicProfileBySlug } from "@/server/profile/profile-service";
 
 export default async function Home() {
@@ -14,7 +18,12 @@ export default async function Home() {
     if (!slug) notFound();
     const profile = await getPublicProfileBySlug(slug);
     if (!profile) notFound();
-    return <PublicProfile initialProfile={profile} />;
+    const countryCode = getVisitorCountryCode(requestHeaders);
+    return (
+      <PublicProfile
+        initialProfile={resolvePublicProfileGeoRouting(profile, countryCode)}
+      />
+    );
   }
 
   return (

@@ -10,14 +10,20 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error("DATABASE_URL is required when PERSISTENCE_ADAPTER=prisma.");
+    throw new Error("DATABASE_URL is required for Prisma/PostgreSQL persistence.");
   }
 
   return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 }
 
-export const prisma = globalForPrisma.linkzzzPrisma ?? createPrismaClient();
+export function getPrismaClient() {
+  if (globalForPrisma.linkzzzPrisma) {
+    return globalForPrisma.linkzzzPrisma;
+  }
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.linkzzzPrisma = prisma;
+  const prisma = createPrismaClient();
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.linkzzzPrisma = prisma;
+  }
+  return prisma;
 }

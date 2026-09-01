@@ -45,9 +45,24 @@ export interface SubscriptionRepository {
 
 export interface ProfileRepository {
   findByUserId(userId: string): Promise<PersistedProfileData | null>;
+  findVersionedByUserId(userId: string): Promise<VersionedProfileRecord | null>;
   findBySlug(slug: string): Promise<{ userId: string; profile: PersistedProfileData } | null>;
   upsert(userId: string, profile: PersistedProfileData): Promise<PersistedProfileData>;
+  updateIfRevision(
+    userId: string,
+    profile: PersistedProfileData,
+    expectedRevision: number,
+  ): Promise<ConditionalProfileWriteResult>;
 }
+
+export type VersionedProfileRecord = {
+  profile: PersistedProfileData;
+  revision: number;
+};
+
+export type ConditionalProfileWriteResult =
+  | ({ ok: true } & VersionedProfileRecord)
+  | { ok: false; reason: "REVISION_CONFLICT" };
 
 export interface PasswordCredentialRepository {
   getPasswordHash(userId: string): Promise<string | null>;
@@ -126,9 +141,11 @@ export type AssetRecord = {
 
 export interface AssetRepository {
   findById(id: string): Promise<AssetRecord | null>;
+  findByIdsForUser(userId: string, ids: string[]): Promise<AssetRecord[]>;
   create(asset: AssetRecord): Promise<AssetRecord>;
   createForUser(userId: string, asset: Omit<AssetRecord, "profileId">): Promise<AssetRecord>;
   delete(id: string): Promise<void>;
+  deleteUnusedForUser(userId: string, ids: string[]): Promise<AssetRecord[]>;
 }
 
 export type CustomDomainRecord = {

@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Linkzzz
 
-## Getting Started
+Linkzzz is a Next.js 16 SaaS application with a Prisma 7/PostgreSQL backend,
+server-side sessions, subscription-aware access control, profile editing,
+analytics, geo routing, custom domains, and S3-compatible asset storage.
 
-First, run the development server:
+## Local development
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Copy `.env.example` to `.env`, keep a local PostgreSQL `DATABASE_URL`, then run:
+
+```powershell
+npm.cmd install
+npx.cmd prisma generate
+npx.cmd prisma migrate deploy
+npx.cmd prisma db seed
+npm.cmd run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Development defaults to the in-memory rate limiter and local asset storage.
+Application data always uses PostgreSQL.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verification
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+npm.cmd run test
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd run build
+```
 
-## Learn More
+The browser E2E suite needs the seeded development database and Chromium:
 
-To learn more about Next.js, take a look at the following resources:
+```powershell
+npm.cmd run test:e2e:install
+npm.cmd run test:e2e
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The critical E2E test provisions a uniquely named temporary customer through
+the admin UI, completes the forced password change, creates a link, publishes a
+profile, verifies the public analytics request, and removes that test customer.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Production readiness
 
-## Deploy on Vercel
+Production uses PostgreSQL, Upstash, and S3-compatible object storage. Fill all
+production values shown in `.env.example`, then validate their shape without
+printing secrets:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```powershell
+npm.cmd run env:check
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See `PRODUCTION_READINESS_NOTES.md` for the complete deployment order.

@@ -153,7 +153,11 @@ model Profile {
   avatarAssetId String?
   coverAssetId  String?
 
+  avatarAsset Asset? @relation("ProfileAvatar", fields: [avatarAssetId], references: [id], onDelete: SetNull)
+  coverAsset  Asset? @relation("ProfileCover", fields: [coverAssetId], references: [id], onDelete: SetNull)
+
   appearance Json
+  revision   Int  @default(1)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -163,9 +167,12 @@ model Profile {
   links           Link[]
   socials         SocialLink[]
   stats           ProfileStat[]
-  assets          Asset[]
+  assets          Asset[]          @relation("OwnedAssets")
   domains         CustomDomain[]
   analyticsEvents AnalyticsEvent[]
+
+  @@index([avatarAssetId])
+  @@index([coverAssetId])
 }
 
 model Link {
@@ -195,6 +202,7 @@ model Link {
   customStyle Json?
 
   imageAssetId String?
+  imageAsset   Asset?  @relation("LinkImage", fields: [imageAssetId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -205,6 +213,7 @@ model Link {
 
   @@index([profileId])
   @@index([sortOrder])
+  @@index([imageAssetId])
 }
 
 model GeoDestination {
@@ -275,7 +284,10 @@ model Asset {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile   Profile   @relation("OwnedAssets", fields: [profileId], references: [id], onDelete: Cascade)
+  avatarFor Profile[] @relation("ProfileAvatar")
+  coverFor  Profile[] @relation("ProfileCover")
+  imageFor  Link[]    @relation("LinkImage")
 
   @@index([profileId])
 }

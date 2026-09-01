@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import DashboardShell from "@/components/dashboard/dashboard-shell";
 import { ProfileProvider } from "@/features/profile/profile-context";
 import { getCurrentSession } from "@/server/auth/current-session";
-import { getOrCreateProfileForUser } from "@/server/profile/profile-service";
+import { getOrCreateVersionedProfileForUser } from "@/server/profile/profile-service";
 
 export default async function DashboardLayout({
   children,
@@ -20,14 +20,17 @@ export default async function DashboardLayout({
     redirect("/admin");
   }
 
-  const profile = await getOrCreateProfileForUser(session.user.id);
+  const profileRecord = await getOrCreateVersionedProfileForUser(session.user.id);
 
-  if (!profile) {
+  if (!profileRecord) {
     throw new Error("Customer profile could not be loaded.");
   }
 
   return (
-    <ProfileProvider initialProfile={profile}>
+    <ProfileProvider
+      initialProfile={profileRecord.profile}
+      initialRevision={profileRecord.revision}
+    >
       <DashboardShell>{children}</DashboardShell>
     </ProfileProvider>
   );

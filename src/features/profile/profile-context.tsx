@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -20,7 +21,7 @@ import type { PublicProfileData } from "@/types/profile";
 
 type SaveProfileResult =
   | { ok: true }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code?: "PROFILE_CONFLICT" };
 
 type ProfileContextValue = {
   profile: PublicProfileData;
@@ -34,9 +35,11 @@ const ProfileContext = createContext<ProfileContextValue | null>(null);
 export function ProfileProvider({
   children,
   initialProfile,
+  initialRevision,
 }: {
   children: ReactNode;
   initialProfile: PersistedProfileData;
+  initialRevision: number;
 }) {
   const hydratedInitialProfile = useMemo(
     () => hydrateProfile(initialProfile),
@@ -46,38 +49,68 @@ export function ProfileProvider({
     hydratedInitialProfile,
   );
   const [saving, setSaving] = useState(false);
+  const revisionRef = useRef(initialRevision);
 
   async function saveProfile(
     profileOverride?: PublicProfileData,
   ): Promise<SaveProfileResult> {
     const profileToSave = profileOverride ?? profile;
+    const uploadedAssetIds: string[] = [];
     setSaving(true);
 
     try {
-      const persistedProfile = await persistProfileMedia(profileToSave);
+      const persistedProfile = await persistProfileMedia(
+        profileToSave,
+        uploadedAssetIds,
+      );
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(serializeProfile(persistedProfile)),
+        body: JSON.stringify({
+          profile: serializeProfile(persistedProfile),
+          revision: revisionRef.current,
+        }),
       });
 
       const payload = (await response.json().catch(() => null)) as
-        | { error?: string }
+        | {
+            error?: string;
+            code?: string;
+            profile?: PersistedProfileData;
+            revision?: number;
+          }
         | null;
 
       if (!response.ok) {
+        await cleanupUploadedAssets(uploadedAssetIds);
         return {
           ok: false,
           error: payload?.error ?? "Could not save profile.",
+          code:
+            payload?.code === "PROFILE_CONFLICT"
+              ? "PROFILE_CONFLICT"
+              : undefined,
         };
       }
 
-      revokeReplacedBlobUrls(profileToSave, persistedProfile);
-      setProfile(persistedProfile);
+      if (
+        !payload?.profile ||
+        !Number.isSafeInteger(payload.revision) ||
+        Number(payload.revision) < 1
+      ) {
+        await cleanupUploadedAssets(uploadedAssetIds);
+        return { ok: false, error: "Server returned an invalid profile revision." };
+      }
+
+      const savedProfile = hydrateProfile(payload.profile);
+      revisionRef.current = payload.revision as number;
+      revokeReplacedBlobUrls(profileToSave, savedProfile);
+      setProfile(savedProfile);
       return { ok: true };
     } catch {
+      await cleanupUploadedAssets(uploadedAssetIds);
       return {
         ok: false,
         error: "Could not connect to the Linkzzz server.",
@@ -96,11 +129,38 @@ export function ProfileProvider({
   );
 }
 
-async function persistProfileMedia(profile: PublicProfileData): Promise<PublicProfileData> {
+async function persistProfileMedia(
+  profile: PublicProfileData,
+  uploadedAssetIds: string[],
+): Promise<PublicProfileData> {
   const next = { ...profile, links: profile.links.map((link) => ({ ...link })) };
-  if (next.avatarUrl?.startsWith("blob:")) next.avatarUrl = await uploadBlob(next.avatarUrl, "AVATAR", "avatar.jpg");
-  if (next.coverImageUrl?.startsWith("blob:")) next.coverImageUrl = await uploadBlob(next.coverImageUrl, "COVER", "cover.jpg");
-  for (const link of next.links) if (link.imageUrl?.startsWith("blob:")) link.imageUrl = await uploadBlob(link.imageUrl, "LINK_IMAGE", "link-image.jpg");
+  if (!next.avatarUrl) next.avatarAssetId = undefined;
+  else if (next.avatarUrl.startsWith("blob:")) {
+    const uploaded = await uploadBlob(next.avatarUrl, "AVATAR", "avatar.jpg");
+    next.avatarUrl = uploaded.url;
+    next.avatarAssetId = uploaded.assetId;
+    uploadedAssetIds.push(uploaded.assetId);
+  }
+  if (!next.coverImageUrl) next.coverAssetId = undefined;
+  else if (next.coverImageUrl.startsWith("blob:")) {
+    const uploaded = await uploadBlob(next.coverImageUrl, "COVER", "cover.jpg");
+    next.coverImageUrl = uploaded.url;
+    next.coverAssetId = uploaded.assetId;
+    uploadedAssetIds.push(uploaded.assetId);
+  }
+  for (const link of next.links) {
+    if (!link.imageUrl) link.imageAssetId = undefined;
+    else if (link.imageUrl.startsWith("blob:")) {
+      const uploaded = await uploadBlob(
+        link.imageUrl,
+        "LINK_IMAGE",
+        "link-image.jpg",
+      );
+      link.imageUrl = uploaded.url;
+      link.imageAssetId = uploaded.assetId;
+      uploadedAssetIds.push(uploaded.assetId);
+    }
+  }
   return next;
 }
 
@@ -110,9 +170,24 @@ async function uploadBlob(url: string, type: "AVATAR" | "COVER" | "LINK_IMAGE", 
   form.set("file", new File([blob], fallbackName, { type: blob.type }));
   form.set("type", type);
   const response = await fetch("/api/assets/images", { method: "POST", body: form });
-  const payload = await response.json().catch(() => null) as { url?: string; error?: string } | null;
-  if (!response.ok || !payload?.url) throw new Error(payload?.error ?? "Image upload failed.");
-  return payload.url;
+  const payload = await response.json().catch(() => null) as {
+    assetId?: string;
+    url?: string;
+    error?: string;
+  } | null;
+  if (!response.ok || !payload?.url || !payload.assetId) {
+    throw new Error(payload?.error ?? "Image upload failed.");
+  }
+  return { url: payload.url, assetId: payload.assetId };
+}
+
+async function cleanupUploadedAssets(assetIds: string[]) {
+  if (!assetIds.length) return;
+  await fetch("/api/assets/images", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ assetIds }),
+  }).catch(() => undefined);
 }
 
 function revokeReplacedBlobUrls(before: PublicProfileData, after: PublicProfileData) {

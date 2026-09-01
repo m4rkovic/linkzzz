@@ -2,6 +2,7 @@ import type { ChangeEventHandler } from "react";
 import { ImagePlus, Trash2 } from "lucide-react";
 import ColorPicker from "@/components/ui/color-picker";
 import { RangeField, SegmentedControl, SelectField, ToggleRow } from "@/components/ui/editor-controls";
+import UserContentImage from "@/components/ui/user-content-image";
 import { AppearanceSection } from "./appearance-section";
 import type { HeroAppearance, HeroContentPosition, LinkImageFit, LinkImagePosition, PublicProfileData } from "@/types/profile";
 
@@ -21,7 +22,7 @@ export default function HeroSection({ profile, hero, onChange, onCoverUpload, on
             {profile.coverImageUrl ? (
               <div className="overflow-hidden rounded-2xl border border-zinc-200">
                 <div className="relative aspect-[16/7] bg-zinc-100">
-                  <img src={profile.coverImageUrl} alt="" className="h-full w-full" style={{ objectFit: hero.imageFit, objectPosition: getObjectPosition(hero.imagePosition ?? "center") }} />
+                  <UserContentImage src={profile.coverImageUrl} alt="" className="h-full w-full" style={{ objectFit: hero.imageFit, objectPosition: getObjectPosition(hero.imagePosition ?? "center") }} />
                   <button type="button" onClick={onRemoveCover} className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur transition hover:bg-black" aria-label="Remove cover"><Trash2 size={16} /></button>
                 </div>
               </div>

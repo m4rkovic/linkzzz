@@ -6,6 +6,7 @@ import type { PublicProfileLink } from "@/types/profile";
 import type { LinkDraft } from "@/features/links/link-editor-types";
 import { capitalize } from "@/features/links/link-editor-model";
 import { getPlatformName, PlatformIcon } from "@/config/platforms";
+import UserContentImage from "@/components/ui/user-content-image";
 import { ActionButton, StatusBadge } from "./link-editor-primitives";
 import LinkEditorForm from "./link-editor-form";
 
@@ -78,7 +79,7 @@ export default function SortableLinkCard({
 
           <div className="hidden h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-zinc-100 sm:flex sm:items-center sm:justify-center">
             {link.imageUrl ? (
-              <img src={link.imageUrl} alt="" className="h-full w-full object-cover" />
+              <UserContentImage src={link.imageUrl} alt="" className="h-full w-full object-cover" />
             ) : (
               <PlatformIcon
                 platform={link.platform ?? "custom"}

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 
 import ProfileRenderer from "@/components/public/profile-renderer";
-import { mockVisitor } from "@/data/mock-profiles";
 import { hydrateProfile } from "@/features/profile/profile-serialization";
 
 import type { PersistedProfileData } from "@/types/persisted-profile";
@@ -64,7 +63,6 @@ export default function PublicProfile({
     <>
       <ProfileRenderer
         profile={profile}
-        visitor={mockVisitor}
         mode="public"
         onShare={shareProfile}
         onLinkClick={trackLinkClick}

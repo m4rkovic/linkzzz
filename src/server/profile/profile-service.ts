@@ -3,13 +3,14 @@ import "server-only";
 import { defaultAppearance } from "@/config/profile-defaults";
 import { getPlanLinkLimit } from "@/server/business/plans";
 import { getSubscriptionAccess } from "@/server/business/subscriptions";
+import { getAssetStorage } from "@/server/assets/storage-factory";
 import type { AuthenticatedSession } from "@/server/auth/auth-service";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import { validateProfilePayload } from "@/server/profile/profile-validation";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 
 export type UpdateProfileResult =
-  | { ok: true; profile: PersistedProfileData }
+  | { ok: true; profile: PersistedProfileData; revision: number }
   | {
       ok: false;
       code:
@@ -17,6 +18,7 @@ export type UpdateProfileResult =
         | "SLUG_TAKEN"
         | "PROFILE_DISABLED"
         | "LINK_LIMIT_REACHED"
+        | "PROFILE_CONFLICT"
         | "SUBSCRIPTION_MISSING";
       message: string;
     };
@@ -24,8 +26,14 @@ export type UpdateProfileResult =
 export async function getOrCreateProfileForUser(
   userId: string,
 ): Promise<PersistedProfileData | null> {
+  return (await getOrCreateVersionedProfileForUser(userId))?.profile ?? null;
+}
+
+export async function getOrCreateVersionedProfileForUser(
+  userId: string,
+) {
   const dependencies = await getServerDependencies();
-  const existing = await dependencies.profiles.findByUserId(userId);
+  const existing = await dependencies.profiles.findVersionedByUserId(userId);
   if (existing) return existing;
 
   const user = await dependencies.users.findById(userId);
@@ -43,7 +51,8 @@ export async function getOrCreateProfileForUser(
     appearance: structuredClone(defaultAppearance),
   };
 
-  return dependencies.profiles.upsert(user.id, created);
+  await dependencies.profiles.upsert(user.id, created);
+  return dependencies.profiles.findVersionedByUserId(user.id);
 }
 
 export async function getProfileBySlug(
@@ -83,6 +92,7 @@ export async function getPublicProfileBySlug(
 export async function updateOwnProfile(
   session: AuthenticatedSession,
   payload: unknown,
+  expectedRevision: number,
 ): Promise<UpdateProfileResult> {
   const validation = validateProfilePayload(payload);
   if (!validation.ok) {
@@ -94,8 +104,38 @@ export async function updateOwnProfile(
   }
 
   const dependencies = await getServerDependencies();
-  const current = await dependencies.profiles.findByUserId(session.user.id);
+  const currentRecord = await dependencies.profiles.findVersionedByUserId(
+    session.user.id,
+  );
+  const current = currentRecord?.profile ?? null;
   const incoming = validation.value;
+
+  const assetReferences = collectAssetReferences(incoming);
+  if (assetReferences.length) {
+    if (!dependencies.assets) {
+      return {
+        ok: false,
+        code: "INVALID_PROFILE",
+        message: "Asset persistence is unavailable.",
+      };
+    }
+    const ownedAssets = await dependencies.assets.findByIdsForUser(
+      session.user.id,
+      [...new Set(assetReferences.map((reference) => reference.id))],
+    );
+    const ownedById = new Map(ownedAssets.map((asset) => [asset.id, asset]));
+    if (
+      assetReferences.some(
+        (reference) => ownedById.get(reference.id)?.type !== reference.type,
+      )
+    ) {
+      return {
+        ok: false,
+        code: "INVALID_PROFILE",
+        message: "One or more profile images are invalid.",
+      };
+    }
+  }
 
   if (current?.status === "DISABLED") {
     return {
@@ -146,7 +186,21 @@ export async function updateOwnProfile(
   }
 
   const next = preserveUnpersistedMedia(incoming, current);
-  const saved = await dependencies.profiles.upsert(session.user.id, next);
+  const writeResult = await dependencies.profiles.updateIfRevision(
+    session.user.id,
+    next,
+    expectedRevision,
+  );
+  if (!writeResult.ok) {
+    return {
+      ok: false,
+      code: "PROFILE_CONFLICT",
+      message:
+        "This profile changed in another tab. Reload the page before saving again.",
+    };
+  }
+  const { profile: saved, revision } = writeResult;
+  await cleanupReplacedAssets(session.user.id, current, saved, dependencies);
 
   if (current?.slug !== saved.slug) {
     await dependencies.audit.write({
@@ -183,7 +237,58 @@ export async function updateOwnProfile(
     resourceId: session.user.id,
   });
 
-  return { ok: true, profile: saved };
+  return { ok: true, profile: saved, revision };
+}
+
+function collectAssetReferences(profile: PersistedProfileData) {
+  const references: Array<{
+    id: string;
+    type: "AVATAR" | "COVER" | "LINK_IMAGE";
+  }> = [];
+  if (profile.avatarAssetId) {
+    references.push({ id: profile.avatarAssetId, type: "AVATAR" });
+  }
+  if (profile.coverAssetId) {
+    references.push({ id: profile.coverAssetId, type: "COVER" });
+  }
+  for (const link of profile.links) {
+    if (link.imageAssetId) {
+      references.push({ id: link.imageAssetId, type: "LINK_IMAGE" });
+    }
+  }
+  return references;
+}
+
+async function cleanupReplacedAssets(
+  userId: string,
+  previous: PersistedProfileData | null,
+  next: PersistedProfileData,
+  dependencies: Awaited<ReturnType<typeof getServerDependencies>>,
+) {
+  if (!previous || !dependencies.assets) return;
+  const previousIds = new Set(
+    collectAssetReferences(previous).map((reference) => reference.id),
+  );
+  const nextIds = new Set(
+    collectAssetReferences(next).map((reference) => reference.id),
+  );
+  const candidates = [...previousIds].filter((id) => !nextIds.has(id));
+  if (!candidates.length) return;
+
+  const removed = await dependencies.assets.deleteUnusedForUser(
+    userId,
+    candidates,
+  );
+  if (!removed.length) return;
+
+  try {
+    const storage = await getAssetStorage();
+    await Promise.allSettled(
+      removed.map((asset) => storage.remove(asset.storageKey)),
+    );
+  } catch {
+    // The database no longer references these files. A storage sweep may retry later.
+  }
 }
 
 function preserveUnpersistedMedia(

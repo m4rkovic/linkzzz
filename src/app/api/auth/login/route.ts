@@ -41,6 +41,13 @@ export async function POST(request: NextRequest) {
   });
 
   if (!result.ok) {
+    if (result.code === "RATE_LIMIT_UNAVAILABLE") {
+      return NextResponse.json(
+        { error: "Sign-in protection is temporarily unavailable. Try again shortly." },
+        { status: 503 },
+      );
+    }
+
     if (result.code === "RATE_LIMITED") {
       return NextResponse.json(
         {

@@ -12,6 +12,7 @@ import ProfilePublishingSection from "@/components/profile/profile-publishing-se
 import ProfileStatsEditor from "@/components/profile/profile-stats-editor";
 import SocialLinksEditor from "@/components/profile/social-links-editor";
 import ProfilePreviewFrame from "@/components/ui/profile-preview-frame";
+import UserContentImage from "@/components/ui/user-content-image";
 import { useProfile } from "@/features/profile/profile-context";
 
 import type {
@@ -104,7 +105,7 @@ export default function ProfileEditor() {
           <div className="mt-6 flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
             <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-950 text-xl font-bold text-white">
               {profile.avatarUrl ? (
-                <img
+                <UserContentImage
                   src={profile.avatarUrl}
                   alt={profile.displayName}
                   className="h-full w-full object-cover"

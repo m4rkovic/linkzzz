@@ -10,16 +10,13 @@ import {
 } from "@/server/auth/session-token";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import {
-  InMemoryRateLimiter,
+  checkRateLimit,
   LOGIN_RATE_LIMIT,
   SENSITIVE_ACTION_RATE_LIMIT,
 } from "@/server/security/rate-limit";
 import type { UserRecord } from "@/server/services/contracts";
 import type { AuthenticatedPrincipal } from "@/server/types/auth";
 import { validatePassword } from "@/server/validation/password";
-
-const loginRateLimiter = new InMemoryRateLimiter();
-const sensitiveActionRateLimiter = new InMemoryRateLimiter();
 
 export type AuthenticatedSession = {
   sessionId: string;
@@ -41,6 +38,7 @@ export type LoginResult =
         | "INVALID_CREDENTIALS"
         | "ACCOUNT_UNAVAILABLE"
         | "SUBSCRIPTION_UNAVAILABLE"
+        | "RATE_LIMIT_UNAVAILABLE"
         | "RATE_LIMITED";
       retryAfterMs?: number;
     };
@@ -53,6 +51,7 @@ export type ChangePasswordResult =
         | "INVALID_CURRENT_PASSWORD"
         | "INVALID_NEW_PASSWORD"
         | "PASSWORD_UNCHANGED"
+        | "RATE_LIMIT_UNAVAILABLE"
         | "RATE_LIMITED";
       message?: string;
       retryAfterMs?: number;
@@ -75,10 +74,14 @@ export async function loginWithPassword(input: {
   await ensureDevelopmentAuthSeeded();
 
   const normalizedIdentifier = input.identifier.trim().toLowerCase();
-  const rateLimit = loginRateLimiter.check(
+  const rateLimit = await checkRateLimit(
     `${input.requestKey}:${normalizedIdentifier || "empty"}`,
     LOGIN_RATE_LIMIT,
   );
+
+  if (!rateLimit.available) {
+    return { ok: false, code: "RATE_LIMIT_UNAVAILABLE" };
+  }
 
   if (!rateLimit.allowed) {
     return {
@@ -244,10 +247,14 @@ export async function changePassword(input: {
   newPassword: string;
   requestKey: string;
 }): Promise<ChangePasswordResult> {
-  const rateLimit = sensitiveActionRateLimiter.check(
+  const rateLimit = await checkRateLimit(
     `change-password:${input.session.user.id}:${input.requestKey}`,
     SENSITIVE_ACTION_RATE_LIMIT,
   );
+
+  if (!rateLimit.available) {
+    return { ok: false, code: "RATE_LIMIT_UNAVAILABLE" };
+  }
 
   if (!rateLimit.allowed) {
     return {

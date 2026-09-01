@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { ServerDependencies } from "@/server/services/contracts";
-import { prisma } from "@/server/persistence/prisma/client";
+import { getPrismaClient } from "@/server/persistence/prisma/client";
 import {
   PrismaAnalyticsRepository, PrismaAssetRepository, PrismaAuditRepository,
   PrismaCustomDomainRepository, PrismaPasswordCredentialRepository,
@@ -13,6 +13,7 @@ import {
 
 let dependencies: ServerDependencies | undefined;
 export async function getPrismaServerDependencies(): Promise<ServerDependencies> {
+  const prisma = getPrismaClient();
   return dependencies ??= {
     users: new PrismaUserRepository(prisma),
     passwords: new PrismaPasswordCredentialRepository(prisma),

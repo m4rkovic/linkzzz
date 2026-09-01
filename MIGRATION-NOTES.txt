@@ -1,25 +1,22 @@
-LINKZZZ ASSET STORAGE ADAPTERS PATCH
+LINKZZZ ASSET LIFECYCLE PATCH
 
 Extract over the project root and allow existing files to be overwritten.
 
-Development needs no configuration and continues using public/uploads.
-
-For Cloudflare R2 or another S3-compatible production store set:
-  ASSET_STORAGE_ADAPTER=s3
-  S3_ENDPOINT=https://<account-or-provider-endpoint>
-  S3_BUCKET=<private-upload-bucket-name>
-  S3_REGION=auto
-  S3_ACCESS_KEY_ID=<secret>
-  S3_SECRET_ACCESS_KEY=<secret>
-  S3_PUBLIC_BASE_URL=https://<public-cdn-or-bucket-domain>
-
-Never commit the access keys. Configure the bucket/CDN CORS policy for the final
-Linkzzz origin and expose uploads as read-only publicly; writes remain server-side.
-
-Run:
-  npm.cmd test
+Run in this order:
+  npx.cmd prisma generate
+  npx.cmd prisma migrate deploy
   npm.cmd run typecheck
+  npm.cmd test
   npm.cmd run lint
   npm.cmd run build
 
-No dependency install, Prisma migration, generate or seed is required.
+The migration adds foreign keys from Profile.avatarAssetId,
+Profile.coverAssetId and Link.imageAssetId to Asset. Before adding constraints it
+sets only invalid/mismatched legacy IDs to NULL; existing image URLs are not
+modified.
+
+New uploads retain their Asset IDs. Profile saves validate asset ownership and
+type. Replaced or removed assets are deleted only after a successful profile
+transaction. Failed profile saves request cleanup of newly uploaded, unreferenced
+assets; cleanup is ownership-scoped and never deletes an asset still referenced
+by a profile or link.

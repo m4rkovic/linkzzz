@@ -1,5 +1,9 @@
 # Linkzzz Backend Phase 1 — JSON persistence
 
+> Historical note: this adapter is no longer connected to the application
+> runtime. Prisma/PostgreSQL is now mandatory. These files remain only as a
+> reference for the early development phase.
+
 This patch adds a local server-only JSON persistence adapter.
 
 ## Runtime database

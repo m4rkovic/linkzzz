@@ -28,7 +28,9 @@ export default function ProfilePublishingSection() {
     const result = await saveProfile(nextProfile);
 
     if (!result.ok) {
-      setProfile(profile);
+      if (result.code !== "PROFILE_CONFLICT") {
+        setProfile(profile);
+      }
       setError(result.error);
     }
   }

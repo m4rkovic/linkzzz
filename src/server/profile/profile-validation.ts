@@ -59,8 +59,16 @@ export function validateProfilePayload(
     return invalid("Avatar URL is invalid.");
   }
 
+  if (!isOptionalString(profile.avatarAssetId, 100)) {
+    return invalid("Avatar asset is invalid.");
+  }
+
   if (!isOptionalString(profile.coverImageUrl, 2048)) {
     return invalid("Cover URL is invalid.");
+  }
+
+  if (!isOptionalString(profile.coverAssetId, 100)) {
+    return invalid("Cover asset is invalid.");
   }
 
   if (!isOptionalString(profile.locationLabel, 100)) {
@@ -155,6 +163,7 @@ function validateLink(
     !isString(link.id, 1, 100) ||
     !isString(link.title, 1, 120) ||
     !isOptionalString(link.description, 300) ||
+    !isOptionalString(link.imageAssetId, 100) ||
     typeof link.visible !== "boolean"
   ) {
     return invalid("Link is invalid.");
@@ -175,6 +184,7 @@ function validateLink(
     return invalid("Geo destinations are invalid.");
   }
 
+  const destinationCountryCodes = new Set<string>();
   for (const rawDestination of link.geoDestinations) {
     if (
       !rawDestination ||
@@ -186,7 +196,8 @@ function validateLink(
     const destination = rawDestination as Record<string, unknown>;
     if (
       !isString(destination.id, 1, 100) ||
-      !isString(destination.countryCode, 2, 3) ||
+      typeof destination.countryCode !== "string" ||
+      !/^[a-z]{2}$/i.test(destination.countryCode) ||
       !isString(destination.countryName, 1, 100) ||
       typeof destination.url !== "string"
     ) {
@@ -194,6 +205,12 @@ function validateLink(
     }
     const destinationUrl = validateExternalUrl(destination.url);
     if (!destinationUrl.ok) return invalid(destinationUrl.error);
+
+    const normalizedCountryCode = destination.countryCode.toUpperCase();
+    if (destinationCountryCodes.has(normalizedCountryCode)) {
+      return invalid("Geo destination countries must be unique per link.");
+    }
+    destinationCountryCodes.add(normalizedCountryCode);
   }
 
   return { ok: true, id: link.id };

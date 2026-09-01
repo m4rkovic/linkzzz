@@ -52,7 +52,9 @@ export function useLinksEditor() {
 
     const result = await saveProfile(nextProfile);
     if (!result.ok) {
-      setProfile(previousProfile);
+      if (result.code !== "PROFILE_CONFLICT") {
+        setProfile(previousProfile);
+      }
       setError(result.error);
       return false;
     }

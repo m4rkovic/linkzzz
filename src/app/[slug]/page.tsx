@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import PublicProfile from "@/components/public/public-profile";
+import {
+  getVisitorCountryCode,
+  resolvePublicProfileGeoRouting,
+} from "@/server/geo/geo-routing";
 import { getPublicProfileBySlug } from "@/server/profile/profile-service";
 
 type PublicProfilePageProps = {
@@ -44,5 +49,8 @@ export default async function PublicProfilePage({
     notFound();
   }
 
-  return <PublicProfile initialProfile={profile} />;
+  const countryCode = getVisitorCountryCode(await headers());
+  const routedProfile = resolvePublicProfileGeoRouting(profile, countryCode);
+
+  return <PublicProfile initialProfile={routedProfile} />;
 }

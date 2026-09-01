@@ -1,6 +1,8 @@
 # Linkzzz Prisma/PostgreSQL persistence patch
 
-Prisma/PostgreSQL is the default persistence adapter. The existing JSON adapter is retained only as an explicit local fallback.
+Prisma/PostgreSQL is the only application runtime persistence adapter. The old
+JSON files remain as legacy reference code, but the dependency factory does not
+import them and `PERSISTENCE_ADAPTER=json` is no longer supported.
 
 ## Environment
 
@@ -8,12 +10,6 @@ Keep the existing `DATABASE_URL` in `.env`:
 
 ```env
 DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/linkzzz?schema=public"
-```
-
-Optional JSON fallback:
-
-```env
-PERSISTENCE_ADAPTER=json
 ```
 
 Optional seed password overrides (defaults remain the existing dev credentials):

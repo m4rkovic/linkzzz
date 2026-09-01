@@ -12,17 +12,19 @@ type Option = {
 
 export function Field({
   label,
+  htmlFor,
   optional = false,
   children,
 }: {
   label: string;
+  htmlFor?: string;
   optional?: boolean;
   children: ReactNode;
 }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
-        <label className="text-xs font-semibold text-zinc-600">{label}</label>
+        <label htmlFor={htmlFor} className="text-xs font-semibold text-zinc-600">{label}</label>
         {optional && <span className="text-[10px] text-zinc-400">Optional</span>}
       </div>
       <div className="mt-2">{children}</div>

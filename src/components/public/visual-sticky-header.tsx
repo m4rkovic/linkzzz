@@ -10,6 +10,7 @@ import {
     Share2,
 } from "lucide-react";
 
+import UserContentImage from "@/components/ui/user-content-image";
 import type {
     PublicProfileData,
 } from "@/types/profile";
@@ -213,7 +214,7 @@ function StickyAvatar({
                         radius,
                 }}
             >
-                <img
+                <UserContentImage
                     src={
                         profile.avatarUrl
                     }

@@ -1,16 +1,19 @@
-# Linkzzz server foundation
+# Linkzzz server boundary
 
-This directory is the server-side boundary for the backend phase.
+The application backend is implemented behind repository and service contracts.
+Prisma/PostgreSQL is the only application runtime persistence adapter. The old
+JSON implementation remains in `persistence/json` as legacy reference code and
+is not imported by the application dependency factory.
 
-Current Phase 0 contains only pure rules/contracts/security helpers. It intentionally does not implement persistence, real login or sessions because PostgreSQL/Prisma are not connected yet.
+Current rules:
 
-Rules:
 - client state is never authoritative;
-- server validates input;
-- server authorizes every sensitive operation;
-- plan/subscription rules are enforced server-side;
-- repositories hide persistence details;
-- route handlers/server actions should remain thin;
-- sensitive actions write audit records.
+- every mutating route validates origin and input;
+- authentication and authorization are enforced server-side;
+- plan and subscription rules are enforced server-side;
+- services depend on repository contracts, not directly on Prisma;
+- sensitive administrative actions write audit records;
+- production rate limiting uses shared Upstash storage;
+- production assets use S3-compatible object storage.
 
 Do not import server modules into client components.

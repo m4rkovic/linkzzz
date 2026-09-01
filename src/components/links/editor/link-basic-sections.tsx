@@ -21,10 +21,10 @@ export default function LinkBasicSections({ draft, onChange }: Props) {
     <>
       <EditorSection title="Content" description="Basic information for the link.">
         <div className="grid gap-4">
-          <Field label="Title"><input type="text" value={draft.title} maxLength={80} onChange={(event) => onChange({ title: event.target.value })} placeholder="My Telegram" className={inputClass} /></Field>
-          <Field label="Description" optional><input type="text" value={draft.description} maxLength={120} onChange={(event) => onChange({ description: event.target.value })} placeholder="Join the community" className={inputClass} /></Field>
-          <Field label="Default URL">
-            <input type="text" value={draft.url} onChange={(event) => onChange({ url: event.target.value })} placeholder="https://..." className={inputClass} />
+          <Field label="Title" htmlFor="link-title"><input id="link-title" type="text" value={draft.title} maxLength={80} onChange={(event) => onChange({ title: event.target.value })} placeholder="My Telegram" className={inputClass} /></Field>
+          <Field label="Description" htmlFor="link-description" optional><input id="link-description" type="text" value={draft.description} maxLength={120} onChange={(event) => onChange({ description: event.target.value })} placeholder="Join the community" className={inputClass} /></Field>
+          <Field label="Default URL" htmlFor="link-default-url">
+            <input id="link-default-url" type="text" value={draft.url} onChange={(event) => onChange({ url: event.target.value })} placeholder="https://..." className={inputClass} />
             <p className="mt-1.5 text-xs leading-5 text-zinc-400">Used when no country-specific Geo Route exists.</p>
           </Field>
         </div>

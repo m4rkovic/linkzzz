@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { resolveSessionToken } from "@/server/auth/auth-service";
 import {
-  getOrCreateProfileForUser,
+  getOrCreateVersionedProfileForUser,
   updateOwnProfile,
 } from "@/server/profile/profile-service";
+import { isValidProfileRevision } from "@/server/profile/profile-revision";
 import { getSessionCookieName } from "@/server/security/session-cookie";
 import { hasValidRequestOrigin } from "@/server/security/request";
 
@@ -20,12 +21,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Customer account required." }, { status: 403 });
   }
 
-  const profile = await getOrCreateProfileForUser(session.user.id);
-  if (!profile) {
+  const record = await getOrCreateVersionedProfileForUser(session.user.id);
+  if (!record) {
     return NextResponse.json({ error: "Profile not found." }, { status: 404 });
   }
 
-  return NextResponse.json({ profile });
+  return NextResponse.json(record);
 }
 
 export async function PUT(request: NextRequest) {
@@ -54,17 +55,26 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const result = await updateOwnProfile(session, body);
+  if (!isProfileUpdateBody(body)) {
+    return NextResponse.json(
+      { error: "Profile and revision are required." },
+      { status: 400 },
+    );
+  }
+
+  const result = await updateOwnProfile(session, body.profile, body.revision);
 
   if (!result.ok) {
     const status =
       result.code === "PROFILE_DISABLED"
         ? 403
-        : result.code === "SLUG_TAKEN"
+        : result.code === "PROFILE_CONFLICT"
           ? 409
-          : result.code === "LINK_LIMIT_REACHED"
+          : result.code === "SLUG_TAKEN"
             ? 409
-            : 400;
+            : result.code === "LINK_LIMIT_REACHED"
+              ? 409
+              : 400;
 
     return NextResponse.json(
       { error: result.message, code: result.code },
@@ -72,7 +82,19 @@ export async function PUT(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ ok: true, profile: result.profile });
+  return NextResponse.json({
+    ok: true,
+    profile: result.profile,
+    revision: result.revision,
+  });
+}
+
+function isProfileUpdateBody(
+  value: unknown,
+): value is { profile: unknown; revision: number } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const body = value as Record<string, unknown>;
+  return "profile" in body && isValidProfileRevision(body.revision);
 }
 
 async function getSession(request: NextRequest) {
