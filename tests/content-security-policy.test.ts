@@ -16,6 +16,7 @@ test("production CSP allows only nonce-authorized inline scripts", () => {
   assert.match(policy, /script-src-attr 'none'/);
   assert.doesNotMatch(scriptDirective(policy), /'unsafe-inline'/);
   assert.doesNotMatch(scriptDirective(policy), /'unsafe-eval'/);
+  assert.match(connectDirective(policy), /connect-src 'self' blob:/);
   assert.match(policy, /upgrade-insecure-requests/);
 });
 
@@ -35,4 +36,10 @@ function scriptDirective(policy: string) {
   return policy
     .split("; ")
     .find((directive) => directive.startsWith("script-src ")) ?? "";
+}
+
+function connectDirective(policy: string) {
+  return policy
+    .split("; ")
+    .find((directive) => directive.startsWith("connect-src ")) ?? "";
 }

@@ -23,7 +23,9 @@ export function buildContentSecurityPolicy(input: {
     "font-src 'self' data: https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: https:",
-    `connect-src 'self'${input.isDevelopment ? " ws: wss:" : ""}`,
+    // Profile image previews are object URLs. Saving fetches the object URL
+    // locally before posting the resulting File to the same-origin API.
+    `connect-src 'self' blob:${input.isDevelopment ? " ws: wss:" : ""}`,
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     input.isDevelopment ? "" : "upgrade-insecure-requests",
