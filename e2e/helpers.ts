@@ -7,7 +7,24 @@ export async function loginAsCustomer(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Username or email").fill(CUSTOMER_IDENTIFIER);
   await page.getByLabel("Password", { exact: true }).fill(CUSTOMER_PASSWORD);
+
+  const loginResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/auth/login") && response.request().method() === "POST",
+  );
+
   await page.getByRole("button", { name: "Sign in" }).click();
+  const loginResponse = await loginResponsePromise;
+
+  if (!loginResponse.ok()) {
+    const body = await loginResponse.text().catch(() => "");
+    throw new Error(
+      `Customer E2E login failed with HTTP ${loginResponse.status()}${
+        body ? `: ${body}` : ""
+      }`,
+    );
+  }
+
   await expect(page).toHaveURL(/\/dashboard(?:\/|$)/);
 }
 

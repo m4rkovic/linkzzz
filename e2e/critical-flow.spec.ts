@@ -1,4 +1,4 @@
-import "dotenv/config";
+﻿import "dotenv/config";
 
 import { expect, test } from "@playwright/test";
 import { Client } from "pg";
@@ -37,7 +37,7 @@ test("admin provisions a customer who publishes a profile and records analytics"
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Public slug").fill(slug);
   await page.getByLabel("Temporary password").fill(temporaryPassword);
-  await page.getByRole("button", { name: /Premium Plus/ }).click();
+  await page.getByRole("button", { name: /Pro/ }).click();
   await page.getByRole("button", { name: "Create customer" }).click();
   await expect(page).toHaveURL(/\/admin\/users\/[a-f0-9-]+$/);
 
@@ -129,3 +129,4 @@ async function removeTestCustomer(username: string) {
     await database.end();
   }
 }
+
