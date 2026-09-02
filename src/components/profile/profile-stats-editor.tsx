@@ -306,7 +306,7 @@ export default function ProfileStatsEditor() {
                 confirmLabel="Delete stat"
                 destructive
                 onClose={() => setPendingDeleteId(null)}
-                onConfirm={() => pendingDeleteId && deleteStat(pendingDeleteId)}
+                onConfirm={() => { if (pendingDeleteId) deleteStat(pendingDeleteId); }}
             />
         </section>
     );

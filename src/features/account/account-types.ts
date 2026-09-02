@@ -1,7 +1,4 @@
-import {
-  getPlanDefinition,
-  type PlanId,
-} from "@/features/plans/plan-catalog";
+import type { PlanId } from "@/features/plans/plan-catalog";
 
 export type AccountPlan = PlanId;
 

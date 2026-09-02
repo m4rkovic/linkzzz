@@ -8,23 +8,30 @@ import {
 } from "@/server/geo/geo-routing";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 
-test("visitor country uses Vercel and Cloudflare ISO country headers", () => {
-  assert.equal(
-    getVisitorCountryCode(new Headers({ "x-vercel-ip-country": "de" })),
-    "DE",
-  );
-  assert.equal(
-    getVisitorCountryCode(new Headers({ "cf-ipcountry": "RS" })),
-    "RS",
-  );
-  assert.equal(
-    getVisitorCountryCode(new Headers({ "x-vercel-ip-country": "XX" })),
-    null,
-  );
-  assert.equal(
-    getVisitorCountryCode(new Headers({ "x-vercel-ip-country": "invalid" })),
-    null,
-  );
+test("visitor country uses Vercel and Cloudflare ISO country headers when proxy headers are trusted", () => {
+  const previous = process.env.LINKZZZ_TRUST_PROXY_HEADERS;
+  try {
+    process.env.LINKZZZ_TRUST_PROXY_HEADERS = "1";
+    assert.equal(
+      getVisitorCountryCode(new Headers({ "x-vercel-ip-country": "de" })),
+      "DE",
+    );
+    assert.equal(
+      getVisitorCountryCode(new Headers({ "cf-ipcountry": "RS" })),
+      "RS",
+    );
+    assert.equal(
+      getVisitorCountryCode(new Headers({ "x-vercel-ip-country": "XX" })),
+      null,
+    );
+    assert.equal(
+      getVisitorCountryCode(new Headers({ "x-vercel-ip-country": "invalid" })),
+      null,
+    );
+  } finally {
+    if (previous === undefined) delete process.env.LINKZZZ_TRUST_PROXY_HEADERS;
+    else process.env.LINKZZZ_TRUST_PROXY_HEADERS = previous;
+  }
 });
 
 test("geo routing selects the matching destination on the server", () => {

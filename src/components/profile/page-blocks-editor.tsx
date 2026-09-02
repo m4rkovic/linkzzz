@@ -254,8 +254,13 @@ function BlockScheduleFields({
   onChange: (block: PageContentBlock) => void;
 }) {
   const scheduled = Boolean(block.visibleFrom || block.visibleUntil);
+  const [open, setOpen] = useState(scheduled);
   return (
-    <details className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2.5" defaultOpen={scheduled}>
+    <details
+      className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2.5"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
       <summary className="cursor-pointer text-xs font-black text-zinc-700">Schedule visibility</summary>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Field label="Visible from">

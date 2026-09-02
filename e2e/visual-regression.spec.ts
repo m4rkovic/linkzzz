@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { loginAsCustomer, openAppearanceEditor } from "./helpers";
 
 async function stabilize(page: Parameters<typeof loginAsCustomer>[0]) {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.addStyleTag({
     content: `
       *, *::before, *::after {

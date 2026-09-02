@@ -32,7 +32,16 @@ test("admin provisions a customer who publishes a Smart Link and records analyti
   await expect(page).toHaveURL(/\/admin$/);
 
   await page.goto("/admin/users/new", { waitUntil: "domcontentloaded" });
-  await page.getByLabel("Display name").fill(displayName);
+  const displayNameInput = page.getByLabel("Display name");
+  // create-user-form.tsx has no hydration gate on its inputs, unlike the login
+  // form. On a route Next hasn't compiled yet this run, domcontentloaded can
+  // land before hydration attaches onChange, so an immediate .fill() is
+  // silently dropped from React state (the DOM shows it, state doesn't).
+  // Retry until the value actually sticks before trusting the rest of the form.
+  await expect(async () => {
+    await displayNameInput.fill(displayName);
+    await expect(displayNameInput).toHaveValue(displayName);
+  }).toPass();
   await page.getByLabel("Login username").fill(username);
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Public slug").fill(slug);
@@ -112,16 +121,44 @@ async function login(
   identifier: string,
   password: string,
 ) {
-  await page.goto("/login", { waitUntil: "domcontentloaded" });
-  await page.getByLabel("Username or email").fill(identifier);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  const loginResponse = page.waitForResponse(
-    (response) =>
-      response.url().endsWith("/api/auth/login") &&
-      response.request().method() === "POST",
+  const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100";
+  const origin = new URL(baseURL).origin;
+  const response = await page.request.post(`${origin}/api/auth/login`, {
+    headers: { origin },
+    data: {
+      identifier,
+      password,
+      rememberMe: true,
+    },
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    role?: "CUSTOMER" | "ADMIN";
+    mustChangePassword?: boolean;
+    error?: string;
+  };
+
+  if (!response.ok() || !payload.ok || !payload.role) {
+    throw new Error(
+      `E2E API login failed (${response.status()}): ${payload.error ?? "Unknown login error."}`,
+    );
+  }
+
+  const destination = payload.mustChangePassword
+    ? "/change-password"
+    : payload.role === "ADMIN"
+      ? "/admin"
+      : "/dashboard";
+
+  await page.goto(destination, { waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(
+    payload.mustChangePassword
+      ? /\/change-password(?:\/|$)/
+      : payload.role === "ADMIN"
+        ? /\/admin(?:\/|$)/
+        : /\/dashboard(?:\/|$)/,
   );
-  await page.getByRole("button", { name: "Sign in" }).click();
-  expect((await loginResponse).ok()).toBe(true);
 }
 
 async function removeTestCustomer(username: string) {
@@ -154,8 +191,3 @@ async function removeTestCustomer(username: string) {
     await database.end();
   }
 }
-
-
-
-
-

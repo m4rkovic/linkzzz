@@ -22,6 +22,7 @@ export type AdminHistoryItem = {
 export type AdminSmartLinkModel = {
   id: string;
   title: string;
+  slug: string;
   type: SmartLinkType;
   status: SmartLinkStatus;
   updatedAt: Date;

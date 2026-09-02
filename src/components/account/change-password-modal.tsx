@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { FormEvent, useMemo, useRef, useState, type RefObject } from "react";
 import { Check, Eye, EyeOff, KeyRound, X } from "lucide-react";
 
 import { getPasswordRules, isStrongEnough } from "@/features/account/password-validation";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
+import { useHydrated } from "@/components/ui/use-hydrated";
 
 type ChangePasswordResponse = {
   ok?: boolean;
@@ -27,11 +28,7 @@ export default function ChangePasswordModal({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
+  const hydrated = useHydrated();
 
   const rules = useMemo(() => getPasswordRules(newPassword), [newPassword]);
   const firstInputRef = useRef<HTMLInputElement>(null);

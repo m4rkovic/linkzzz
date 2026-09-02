@@ -19,7 +19,7 @@ import type {
 
 const PERIODS: AnalyticsPeriod[] = ["today", "7d", "30d", "90d", "all"];
 const DAY_MS = 86_400_000;
-const COUNTRY_NAMES = new Map(LINK_GEO_COUNTRIES.map((country) => [country.code, country.name]));
+const COUNTRY_NAMES = new Map<string, string>(LINK_GEO_COUNTRIES.map((country) => [country.code, country.name]));
 
 export function buildAnalyticsDashboardData(input: {
   events: AnalyticsEventRecord[];

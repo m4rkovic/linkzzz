@@ -40,7 +40,6 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     colorScheme: "light",
-    reducedMotion: "reduce",
     locale: "en-US",
     timezoneId: "UTC",
   },

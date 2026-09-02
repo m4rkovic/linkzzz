@@ -16,6 +16,7 @@ import { resolveSmartLink } from "@/server/smart-links/redirect-resolver";
 import { getSmartLinkRequestContext } from "@/server/smart-links/request-context";
 import { withSmartLinkOutboundRoutes } from "@/server/smart-links/outbound-routing";
 import { getPublicSmartLinkBySlug } from "@/server/smart-links/smart-link-service";
+import { getServerRenderTimestamp } from "@/server/time/server-clock";
 
 export default async function Home() {
   const requestHeaders = await headers();
@@ -61,7 +62,7 @@ export default async function Home() {
       <PublicProfile
         initialProfile={withSmartLinkOutboundRoutes(routedProfile, smartLink.slug)}
         tracking={smartLink.tracking}
-        initialNowMs={Date.now()}
+        initialNowMs={getServerRenderTimestamp()}
       />
     );
   }

@@ -167,7 +167,7 @@ export default function SocialLinksEditor() {
         confirmLabel="Remove"
         destructive
         onClose={() => setPendingDeleteId(null)}
-        onConfirm={() => pendingDeleteId && deleteSocial(pendingDeleteId)}
+        onConfirm={() => { if (pendingDeleteId) deleteSocial(pendingDeleteId); }}
       />
     </section>
   );
