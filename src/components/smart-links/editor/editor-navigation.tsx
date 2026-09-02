@@ -16,7 +16,7 @@ export function EditorNavigation({
   if (vertical) {
     const groups = ["Essential", "Advanced"] as const;
     return (
-      <nav className="space-y-4" aria-label="Smart Link sections">
+      <nav className="space-y-4" aria-label="Smart Link sections" data-editor-navigation="sidebar">
         {groups.map((group) => {
           const groupSections = sections.filter((section) => section.group === group);
           if (!groupSections.length) return null;
@@ -49,7 +49,7 @@ export function EditorNavigation({
   }
 
   return (
-    <nav className="flex min-w-0 gap-2 overflow-x-auto pb-2" aria-label="Smart Link sections">
+    <nav className="flex min-w-0 gap-2 overflow-x-auto pb-2" aria-label="Smart Link sections" data-editor-navigation="compact">
       {sections.map(({ id, label, icon: Icon }, index) => (
         <div key={id} className="flex shrink-0 items-center gap-2">
           {index > 0 && sections[index - 1]?.group !== sections[index]?.group && (

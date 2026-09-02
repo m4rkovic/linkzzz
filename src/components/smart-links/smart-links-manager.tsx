@@ -13,6 +13,7 @@ import EmptyState from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
 import type { DestinationConfig } from "@/types/smart-link";
 import { getPlanDefinition } from "@/features/plans/plan-catalog";
+import { formatUtcDate } from "@/lib/date-format";
 import {
   ArrowUpRight,
   BarChart3,
@@ -548,7 +549,5 @@ function slugify(value: string) {
 }
 
 function formatUpdated(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
+  return formatUtcDate(value, { month: "short", day: "numeric", year: "numeric" });
 }

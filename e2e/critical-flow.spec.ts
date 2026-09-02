@@ -16,7 +16,7 @@ test.afterEach(async () => {
   createdUsername = undefined;
 });
 
-test("admin provisions a customer who publishes a profile and records analytics", async ({
+test("admin provisions a customer who publishes a Smart Link and records analytics", async ({
   page,
 }) => {
   const suffix = Date.now().toString(36);
@@ -25,13 +25,13 @@ test("admin provisions a customer who publishes a profile and records analytics"
   const email = `${username}@example.test`;
   const displayName = `E2E Customer ${suffix}`;
   const temporaryPassword = "E2eTemporary!2026";
-  const permanentPassword = "E2ePermanent!2026";
+  const permanentPassword = "LinkzzzE2E!2026";
   createdUsername = username;
 
   await login(page, adminUsername, adminPassword);
   await expect(page).toHaveURL(/\/admin$/);
 
-  await page.goto("/admin/users/new", { waitUntil: "networkidle" });
+  await page.goto("/admin/users/new", { waitUntil: "domcontentloaded" });
   await page.getByLabel("Display name").fill(displayName);
   await page.getByLabel("Login username").fill(username);
   await page.getByLabel("Email address").fill(email);
@@ -49,23 +49,47 @@ test("admin provisions a customer who publishes a profile and records analytics"
   await page.getByLabel("Current password").fill(temporaryPassword);
   await page.getByLabel("New password", { exact: true }).fill(permanentPassword);
   await page.getByLabel("Confirm new password").fill(permanentPassword);
-  await page.getByRole("button", { name: "Change password" }).click();
-  await expect(page.getByText("Password changed", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Sign in again" }).click();
+  const changePasswordButton = page.getByRole("button", { name: "Change password" });
+  await expect(changePasswordButton).toBeEnabled();
+  const passwordChangeResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/auth/change-password") &&
+      response.request().method() === "POST",
+  );
+  await changePasswordButton.click();
+  const passwordChangeResponse = await passwordChangeResponsePromise;
+  const passwordChangePayload = await passwordChangeResponse.json().catch(() => ({}));
+  if (!passwordChangeResponse.ok()) {
+    throw new Error(
+      `Password change failed (${passwordChangeResponse.status()}): ${passwordChangePayload.error ?? "Unknown error"}`,
+    );
+  }
+  await expect(page).toHaveURL(/\/login\?passwordChanged=1$/);
+  await expect(
+    page.getByText("Password changed. Sign in again with your new password.", { exact: true }),
+  ).toBeVisible();
   await expect(page).toHaveURL(/\/login(?:\?|$)/);
 
   await login(page, username, permanentPassword);
   await expect(page).toHaveURL(/\/dashboard$/);
+  await page.goto("/dashboard/links", { waitUntil: "domcontentloaded" });
+  const provisionedSmartLink = page.getByRole("article").first();
+  await expect(provisionedSmartLink).toBeVisible();
+  await provisionedSmartLink.getByRole("link", { name: /Edit/ }).click();
+  await expect(page).toHaveURL(/\/dashboard\/links\/[^/]+$/);
 
-  await page.goto("/dashboard/links", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Add link" }).click();
-  await expect(page.getByRole("heading", { name: "Create link" })).toBeVisible();
+  const editorNavigation = page.locator('nav[data-editor-navigation="sidebar"]');
+  await expect(editorNavigation).toBeVisible();
+  await editorNavigation.getByRole("button", { name: "Page", exact: true }).click();
+  await page.getByRole("button", { name: "Cards", exact: true }).click();
+  await page.getByRole("button", { name: "Add link", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Create link", exact: true })).toBeVisible();
   await page.getByLabel("Title").fill("E2E verified link");
   await page.getByLabel("Default URL").fill("https://example.com/e2e");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("1 / 100", { exact: true })).toBeVisible();
 
-  await page.goto("/dashboard/profile", { waitUntil: "networkidle" });
+  await page.goto("/dashboard/profile", { waitUntil: "domcontentloaded" });
   await page.getByLabel("Display name").fill(displayName);
   await page.getByLabel("Bio").fill("Verified through the Linkzzz critical E2E flow.");
   await page.getByRole("button", { name: "Save changes" }).click();
@@ -78,7 +102,7 @@ test("admin provisions a customer who publishes a profile and records analytics"
     return response.request().postData()?.includes('"type":"PAGE_VIEW"') ?? false;
   });
 
-  await page.goto(`/${slug}`, { waitUntil: "networkidle" });
+  await page.goto(`/${slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText(displayName, { exact: true }).first()).toBeVisible();
   expect((await analyticsResponse).status()).toBe(202);
 });
@@ -88,7 +112,7 @@ async function login(
   identifier: string,
   password: string,
 ) {
-  await page.goto("/login", { waitUntil: "networkidle" });
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
   await page.getByLabel("Username or email").fill(identifier);
   await page.getByLabel("Password", { exact: true }).fill(password);
   const loginResponse = page.waitForResponse(
@@ -130,5 +154,8 @@ async function removeTestCustomer(username: string) {
     await database.end();
   }
 }
+
+
+
 
 

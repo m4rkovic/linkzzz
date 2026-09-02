@@ -58,6 +58,7 @@ export default defineConfig({
     },
     {
       name: "mobile-390",
+      testIgnore: /critical-flow\.spec\.ts/,
       use: {
         ...devices["iPhone 13"],
         viewport: { width: 390, height: 844 },

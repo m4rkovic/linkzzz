@@ -1,7 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 
 import {
   ArrowRight,
@@ -21,14 +20,18 @@ type LoginResponse = {
   error?: string;
 };
 
-export default function LoginForm() {
-  const router = useRouter();
+export default function LoginForm({ notice }: { notice?: string }) {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,14 +64,16 @@ export default function LoginForm() {
         return;
       }
 
-      router.replace(
-        payload.mustChangePassword
-          ? "/change-password"
-          : payload.role === "ADMIN"
-            ? "/admin"
-            : "/dashboard",
-      );
-      router.refresh();
+      const destination = payload.mustChangePassword
+        ? "/change-password"
+        : payload.role === "ADMIN"
+          ? "/admin"
+          : "/dashboard";
+
+      // Authentication changes the server-visible session cookie. A full document
+      // navigation is intentionally used here so the next protected route is
+      // rendered against the new auth state without an overlapping RSC refresh.
+      window.location.replace(destination);
     } catch {
       setError("Unable to reach the server. Try again.");
     } finally {
@@ -132,6 +137,15 @@ export default function LoginForm() {
                 Enter the credentials provided by your Linkzzz administrator.
               </p>
             </div>
+
+            {notice && (
+              <div
+                role="status"
+                className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-5 text-emerald-800"
+              >
+                {notice}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
               <div>
@@ -202,7 +216,7 @@ export default function LoginForm() {
               </div>
 
               {error && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-5 text-red-700">
+                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-5 text-red-700">
                   {error}
                 </div>
               )}
@@ -212,7 +226,7 @@ export default function LoginForm() {
                 variant="primary"
                 size="lg"
                 block
-                disabled={loading}
+                disabled={!hydrated || loading}
                 className="font-black"
               >
                 {loading ? "Signing in..." : "Sign in"}

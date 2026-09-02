@@ -8,6 +8,7 @@ import { buttonClassName } from "@/components/ui/button";
 import type { AdminUserListItem } from "@/types/admin-api";
 import { getPlanUsageLabel } from "@/features/admin/subscription-rules";
 import { getPlanDefinition } from "@/features/plans/plan-catalog";
+import { formatUtcDate } from "@/lib/date-format";
 
 type QuickView = "ALL" | "EXPIRING" | "CANCELLING" | "EXPIRED";
 
@@ -93,5 +94,5 @@ function Info({ label, value }: { label: string; value: string }) { return <div 
 function Status({ user }: { user: AdminUserListItem }) { const status = effectiveStatus(user); return <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700">{status.replaceAll("_", " ")}</span>; }
 function effectiveStatus(user: AdminUserListItem) { if (user.accountStatus === "SUSPENDED") return "SUSPENDED"; if (user.accountStatus === "DISABLED") return "STOPPED"; if (user.subscriptionStatus !== "STOPPED" && new Date(user.periodEnd).getTime() < Date.now()) return "EXPIRED"; return user.subscriptionStatus; }
 function isExpiringSoon(user: AdminUserListItem) { if (effectiveStatus(user) !== "ACTIVE") return false; const days = Math.ceil((new Date(user.periodEnd).getTime() - Date.now()) / 86400000); return days >= 0 && days <= 7; }
-function formatDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", year: "numeric" }).format(new Date(value)); }
+function formatDate(value: string) { return formatUtcDate(value, { month: "short", day: "2-digit", year: "numeric" }); }
 function parseQuickView(value: string | null): QuickView { switch (value?.toUpperCase()) { case "EXPIRING": return "EXPIRING"; case "CANCELLING": return "CANCELLING"; case "EXPIRED": return "EXPIRED"; default: return "ALL"; } }

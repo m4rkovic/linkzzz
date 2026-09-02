@@ -4,27 +4,35 @@ const CUSTOMER_IDENTIFIER = process.env.E2E_CUSTOMER_IDENTIFIER ?? "skyhook";
 const CUSTOMER_PASSWORD = process.env.E2E_CUSTOMER_PASSWORD ?? "LinkzzzSky!2026";
 
 export async function loginAsCustomer(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Username or email").fill(CUSTOMER_IDENTIFIER);
-  await page.getByLabel("Password", { exact: true }).fill(CUSTOMER_PASSWORD);
+  const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100";
+  const origin = new URL(baseURL).origin;
+  const response = await page.request.post(`${origin}/api/auth/login`, {
+    headers: { origin },
+    data: {
+      identifier: CUSTOMER_IDENTIFIER,
+      password: CUSTOMER_PASSWORD,
+      rememberMe: true,
+    },
+  });
 
-  const loginResponsePromise = page.waitForResponse(
-    (response) =>
-      response.url().includes("/api/auth/login") && response.request().method() === "POST",
-  );
+  const payload = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    role?: string;
+    mustChangePassword?: boolean;
+    error?: string;
+  };
 
-  await page.getByRole("button", { name: "Sign in" }).click();
-  const loginResponse = await loginResponsePromise;
-
-  if (!loginResponse.ok()) {
-    const body = await loginResponse.text().catch(() => "");
+  if (!response.ok() || !payload.ok) {
     throw new Error(
-      `Customer E2E login failed with HTTP ${loginResponse.status()}${
-        body ? `: ${body}` : ""
-      }`,
+      `Customer E2E API login failed (${response.status()}): ${payload.error ?? "Unknown login error."}`,
     );
   }
 
+  if (payload.mustChangePassword) {
+    throw new Error("Customer E2E seed unexpectedly requires a password change.");
+  }
+
+  await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/dashboard(?:\/|$)/);
 }
 
@@ -41,8 +49,11 @@ export async function openSeedLandingPageEditor(page: Page) {
 
 export async function openAppearanceEditor(page: Page) {
   await openSeedLandingPageEditor(page);
-  const visibleNavigation = page.locator('nav[aria-label="Smart Link sections"]:visible');
-  await visibleNavigation.getByRole("button", { name: "Page", exact: true }).click();
+  const viewportWidth = page.viewportSize()?.width ?? 1440;
+  const navigationKind = viewportWidth >= 1280 ? "sidebar" : "compact";
+  const navigation = page.locator(`nav[data-editor-navigation="${navigationKind}"]`);
+  await expect(navigation).toBeVisible();
+  await navigation.getByRole("button", { name: "Page", exact: true }).click();
   await page.getByRole("button", { name: "Appearance", exact: true }).click();
   await expect(page.getByRole("navigation", { name: "Appearance settings" })).toBeVisible();
 }

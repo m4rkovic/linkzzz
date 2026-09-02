@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import AdminConfirmDialog from "@/components/admin/ui/admin-confirm-dialog";
 import type { AdminSmartLinkModel } from "@/features/admin/admin-types";
+import { formatUtcDate } from "@/lib/date-format";
 
 export default function UserSmartLinksCard({
   smartLinks,
@@ -73,7 +74,7 @@ export default function UserSmartLinksCard({
                   </div>
                   <p className="mt-1 break-all text-xs text-zinc-500">/{smartLink.slug}</p>
                   <p className="mt-1 text-[11px] text-zinc-400">
-                    Updated {new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", year: "numeric" }).format(smartLink.updatedAt)}
+                    Updated {formatUtcDate(smartLink.updatedAt, { month: "short", day: "2-digit", year: "numeric" })}
                   </p>
                 </div>
 

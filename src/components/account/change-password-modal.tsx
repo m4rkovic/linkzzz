@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { useRouter } from "next/navigation";
 import { Check, Eye, EyeOff, KeyRound, X } from "lucide-react";
 
 import { getPasswordRules, isStrongEnough } from "@/features/account/password-validation";
@@ -21,7 +20,6 @@ export default function ChangePasswordModal({
   onClose?: () => void;
   forced?: boolean;
 }) {
-  const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -104,6 +102,7 @@ export default function ChangePasswordModal({
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      window.location.replace("/login?passwordChanged=1");
     } catch {
       setError("Unable to reach the server. Try again.");
     } finally {
@@ -112,8 +111,7 @@ export default function ChangePasswordModal({
   }
 
   function goToLogin() {
-    router.replace("/login");
-    router.refresh();
+    window.location.replace("/login");
   }
 
   return (
@@ -169,7 +167,7 @@ export default function ChangePasswordModal({
                 </div>
               </div>
 
-              {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+              {error && <p role="alert" data-testid="change-password-error" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
               <label className="flex cursor-pointer items-center gap-3 text-sm text-zinc-600">
                 <input type="checkbox" checked={showPasswords} onChange={(event) => setShowPasswords(event.target.checked)} className="h-4 w-4 rounded border-zinc-300" />
@@ -178,7 +176,7 @@ export default function ChangePasswordModal({
 
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 {!forced && <button type="button" onClick={resetAndClose} disabled={loading} className="min-h-11 rounded-xl border border-zinc-200 px-4 text-sm font-semibold text-zinc-700 disabled:opacity-60">Cancel</button>}
-                <button type="submit" disabled={!hydrated || loading} className="min-h-11 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Changing..." : "Change password"}</button>
+                <button type={hydrated ? "submit" : "button"} disabled={!hydrated || loading} className="min-h-11 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Changing..." : "Change password"}</button>
               </div>
             </>
           )}

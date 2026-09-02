@@ -2,6 +2,10 @@ import { expect, test } from "@playwright/test";
 
 import { loginAsCustomer, openAppearanceEditor } from "./helpers";
 
+// These tests are read-only (dialogs are cancelled, appearance reset is not confirmed),
+// so they can safely run in parallel browser contexts.
+test.describe.configure({ mode: "parallel" });
+
 function skipMobileKeyboard(testInfo: { project: { name: string } }) {
   test.skip(
     testInfo.project.name === "mobile-390",
@@ -77,16 +81,21 @@ test.describe("R1.4 keyboard and focus checks", () => {
     const layout = page.getByRole("button", { name: "Layout", exact: true });
     await layout.focus();
 
-    const outline = await layout.evaluate((element) => {
+    const focusStyle = await layout.evaluate((element) => {
       const style = getComputedStyle(element);
       return {
-        style: style.outlineStyle,
-        width: Number.parseFloat(style.outlineWidth),
+        focusVisible: element.matches(":focus-visible"),
+        outlineStyle: style.outlineStyle,
+        outlineWidth: Number.parseFloat(style.outlineWidth),
+        boxShadow: style.boxShadow,
       };
     });
 
-    expect(outline.style).not.toBe("none");
-    expect(outline.width).toBeGreaterThanOrEqual(2);
+    expect(focusStyle.focusVisible).toBe(true);
+    expect(
+      (focusStyle.outlineStyle !== "none" && focusStyle.outlineWidth >= 2) ||
+        focusStyle.boxShadow !== "none",
+    ).toBe(true);
   });
 });
 

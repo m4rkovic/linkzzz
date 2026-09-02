@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Check, Eye, EyeOff, KeyRound, Link2, Mail, RefreshCw, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import { buttonClassName } from "@/components/ui/button";
@@ -10,15 +10,32 @@ import type { AdminPlan as Plan } from "@/features/admin/admin-types";
 import { getPlanDefinition } from "@/features/plans/plan-catalog";
 
 const inputClass = controlClassName("h-12 px-4 shadow-sm");
-function formatDateInput(date: Date) { const year = date.getFullYear(); const month = String(date.getMonth() + 1).padStart(2, "0"); const day = String(date.getDate()).padStart(2, "0"); return `${year}-${month}-${day}`; }
-function addMonthsClamped(source: Date, months: number) { const day = source.getDate(); const target = new Date(source); target.setDate(1); target.setMonth(target.getMonth() + months); target.setDate(Math.min(day, new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate())); return target; }
+function addMonthsClampedDateInput(value: string, months: number) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
 
-export default function CreateUserForm() {
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const absoluteMonth = monthIndex + months;
+  const targetYear = year + Math.floor(absoluteMonth / 12);
+  const targetMonthIndex = ((absoluteMonth % 12) + 12) % 12;
+  const maxDay = new Date(Date.UTC(targetYear, targetMonthIndex + 1, 0)).getUTCDate();
+  const targetDay = Math.min(day, maxDay);
+
+  return `${targetYear}-${String(targetMonthIndex + 1).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
+}
+
+type CreateUserFormProps = {
+  initialDate: string;
+};
+
+export default function CreateUserForm({ initialDate }: CreateUserFormProps) {
   const router = useRouter();
-  const today = useMemo(() => new Date(), []);
+  const initialExpiryDate = addMonthsClampedDateInput(initialDate, 1);
   const [displayName, setDisplayName] = useState(""); const [username, setUsername] = useState(""); const [email, setEmail] = useState(""); const [slug, setSlug] = useState("");
   const [password, setPassword] = useState(""); const [showPassword, setShowPassword] = useState(false); const [plan, setPlan] = useState<Plan>("BASIC");
-  const [startDate, setStartDate] = useState(formatDateInput(today)); const [expiryDate, setExpiryDate] = useState(formatDateInput(addMonthsClamped(today, 1)));
+  const [startDate, setStartDate] = useState(initialDate); const [expiryDate, setExpiryDate] = useState(initialExpiryDate);
   const [autoRenew, setAutoRenew] = useState(false); const [mustChangePassword, setMustChangePassword] = useState(true); const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
 
   function handleUsername(value: string) { const next = value.toLowerCase().replace(/[^a-z0-9_-]/g, ""); if (!slug || slug === username) setSlug(next); setUsername(next); }
@@ -46,7 +63,7 @@ export default function CreateUserForm() {
 
           <FormSection icon={CalendarDays} title="Plan & subscription" description="Choose access limits and the initial service period.">
             <div className="grid gap-3 sm:grid-cols-3"><PlanButton selected={plan === "BASIC"} title="Basic" detail="50 Smart Links · 10 page links" onClick={() => setPlan("BASIC")} /><PlanButton selected={plan === "PRO"} title="Pro" detail="100 Smart Links · 30 page links" onClick={() => setPlan("PRO")} /><PlanButton selected={plan === "ENTERPRISE"} title="Enterprise" detail="200+ Smart Links · 100 page links" onClick={() => setPlan("ENTERPRISE")} /></div>
-            <div className="mt-5 grid gap-5 sm:grid-cols-2"><Field label="Start date"><input type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); if (event.target.value) setExpiryDate(formatDateInput(addMonthsClamped(new Date(`${event.target.value}T12:00:00`), 1))); }} className={inputClass} required /></Field><Field label="Expiry date"><input type="date" value={expiryDate} min={startDate} onChange={(event) => setExpiryDate(event.target.value)} className={inputClass} required /></Field></div>
+            <div className="mt-5 grid gap-5 sm:grid-cols-2"><Field label="Start date"><input type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); if (event.target.value) setExpiryDate(addMonthsClampedDateInput(event.target.value, 1)); }} className={inputClass} required /></Field><Field label="Expiry date"><input type="date" value={expiryDate} min={startDate} onChange={(event) => setExpiryDate(event.target.value)} className={inputClass} required /></Field></div>
             <Toggle checked={autoRenew} onChange={setAutoRenew} title="Automatic renewal" description="Keep renewal enabled for this subscription." icon={RefreshCw} />
           </FormSection>
         </div>
