@@ -52,6 +52,7 @@ test("admin provisions a customer who publishes a profile and records analytics"
   await page.getByRole("button", { name: "Change password" }).click();
   await expect(page.getByText("Password changed", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Sign in again" }).click();
+  await expect(page).toHaveURL(/\/login(?:\?|$)/);
 
   await login(page, username, permanentPassword);
   await expect(page).toHaveURL(/\/dashboard$/);
@@ -129,4 +130,5 @@ async function removeTestCustomer(username: string) {
     await database.end();
   }
 }
+
 

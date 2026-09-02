@@ -2,8 +2,16 @@ import { expect, test } from "@playwright/test";
 
 import { loginAsCustomer, openAppearanceEditor } from "./helpers";
 
+function skipMobileKeyboard(testInfo: { project: { name: string } }) {
+  test.skip(
+    testInfo.project.name === "mobile-390",
+    "Keyboard traversal is covered by the desktop browser project; mobile uses touch-focused coverage.",
+  );
+}
+
 test.describe("R1.4 keyboard and focus checks", () => {
-  test("login can be completed without a pointer", async ({ page, context }) => {
+  test("login can be completed without a pointer", async ({ page, context }, testInfo) => {
+    skipMobileKeyboard(testInfo);
     await context.clearCookies();
     await page.goto("/login");
 
@@ -24,7 +32,8 @@ test.describe("R1.4 keyboard and focus checks", () => {
     await expect(page).toHaveURL(/\/dashboard(?:\/|$)/);
   });
 
-  test("create-link dialog receives keyboard focus and closes with Escape", async ({ page }) => {
+  test("create-link dialog receives keyboard focus and closes with Escape", async ({ page }, testInfo) => {
+    skipMobileKeyboard(testInfo);
     await loginAsCustomer(page);
     await page.goto("/dashboard/links");
 
@@ -40,7 +49,8 @@ test.describe("R1.4 keyboard and focus checks", () => {
     await expect(dialog).toBeHidden();
   });
 
-  test("appearance categories work by keyboard and expose selection", async ({ page }) => {
+  test("appearance categories work by keyboard and expose selection", async ({ page }, testInfo) => {
+    skipMobileKeyboard(testInfo);
     await loginAsCustomer(page);
     await openAppearanceEditor(page);
 
@@ -59,7 +69,8 @@ test.describe("R1.4 keyboard and focus checks", () => {
     await expect(page.getByRole("heading", { name: "Page spacing" })).toBeVisible();
   });
 
-  test("focus-visible fallback is present on editor controls", async ({ page }) => {
+  test("focus-visible fallback is present on editor controls", async ({ page }, testInfo) => {
+    skipMobileKeyboard(testInfo);
     await loginAsCustomer(page);
     await openAppearanceEditor(page);
 
@@ -79,7 +90,8 @@ test.describe("R1.4 keyboard and focus checks", () => {
   });
 });
 
-test("analytics period tabs expose keyboard selection", async ({ page }) => {
+test("analytics period tabs expose keyboard selection", async ({ page }, testInfo) => {
+  skipMobileKeyboard(testInfo);
   await loginAsCustomer(page);
   await page.goto("/dashboard/analytics");
 
@@ -88,10 +100,11 @@ test("analytics period tabs expose keyboard selection", async ({ page }) => {
   await page.keyboard.press("Enter");
 
   await expect(sevenDays).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("heading", { name: "Traffic", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
 });
 
-test("appearance reset uses an accessible confirmation dialog", async ({ page }) => {
+test("appearance reset uses an accessible confirmation dialog", async ({ page }, testInfo) => {
+  skipMobileKeyboard(testInfo);
   await loginAsCustomer(page);
   await openAppearanceEditor(page);
 

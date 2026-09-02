@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useRef, useState, type RefObject } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Eye, EyeOff, KeyRound, X } from "lucide-react";
 
@@ -29,6 +29,11 @@ export default function ChangePasswordModal({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const rules = useMemo(() => getPasswordRules(newPassword), [newPassword]);
   const firstInputRef = useRef<HTMLInputElement>(null);
@@ -173,7 +178,7 @@ export default function ChangePasswordModal({
 
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 {!forced && <button type="button" onClick={resetAndClose} disabled={loading} className="min-h-11 rounded-xl border border-zinc-200 px-4 text-sm font-semibold text-zinc-700 disabled:opacity-60">Cancel</button>}
-                <button type="submit" disabled={loading} className="min-h-11 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Changing..." : "Change password"}</button>
+                <button type="submit" disabled={!hydrated || loading} className="min-h-11 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Changing..." : "Change password"}</button>
               </div>
             </>
           )}

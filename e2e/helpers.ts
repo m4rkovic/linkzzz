@@ -41,7 +41,8 @@ export async function openSeedLandingPageEditor(page: Page) {
 
 export async function openAppearanceEditor(page: Page) {
   await openSeedLandingPageEditor(page);
-  await page.getByRole("button", { name: "Page", exact: true }).click();
+  const visibleNavigation = page.locator('nav[aria-label="Smart Link sections"]:visible');
+  await visibleNavigation.getByRole("button", { name: "Page", exact: true }).click();
   await page.getByRole("button", { name: "Appearance", exact: true }).click();
   await expect(page.getByRole("navigation", { name: "Appearance settings" })).toBeVisible();
 }
