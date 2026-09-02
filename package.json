@@ -3,11 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
-    "dev:turbo": "next dev",
-    "dev:e2e": "next dev --webpack",
-    "build": "next build --webpack",
-    "build:turbo": "next build",
+    "dev": "node ./scripts/dev-with-tailwind.mjs",
+    "dev:e2e": "node ./scripts/dev-with-tailwind.mjs",
+    "build": "npm run css:build && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -21,14 +19,19 @@
     "test:e2e:repair": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/repair-legacy-e2e.ps1 && node ./scripts/repair-critical-login.mjs",
     "test:e2e:update": "playwright test --update-snapshots",
     "clean:test-artifacts": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Remove-Item ./test-results,./playwright-report -Recurse -Force -ErrorAction SilentlyContinue\"",
-    "clean:next": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Remove-Item ./.next -Recurse -Force -ErrorAction SilentlyContinue\"",
     "zip:release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/create-release-zip.ps1",
     "quality:repair": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/repair-quality-gate.ps1",
     "env:check": "tsx scripts/check-production-env.ts",
     "prisma:generate": "prisma generate",
     "prisma:seed": "prisma db seed",
     "test:e2e:critical": "playwright test e2e/critical-flow.spec.ts --project=desktop-1440 --workers=1",
-    "test:e2e:keyboard": "playwright test e2e/keyboard-accessibility.spec.ts --workers=4"
+    "test:e2e:keyboard": "playwright test e2e/keyboard-accessibility.spec.ts --workers=4",
+    "dev:next": "next dev --webpack",
+    "dev:turbo": "next dev",
+    "css:build": "tailwindcss -i ./src/styles/tailwind.input.css -o ./src/app/tailwind.generated.css --minify",
+    "css:watch": "tailwindcss -i ./src/styles/tailwind.input.css -o ./src/app/tailwind.generated.css --watch",
+    "build:turbo": "npm run css:build && next build",
+    "clean:next": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Remove-Item ./.next -Recurse -Force -ErrorAction SilentlyContinue\""
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -57,8 +60,9 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "prisma": "^7.10.0",
-    "tailwindcss": "^4",
+    "tailwindcss": "4.3.3",
     "tsx": "^4.20.5",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@tailwindcss/cli": "4.3.3"
   }
 }
