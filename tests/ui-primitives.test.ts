@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { badgeClassName } from "../src/components/ui/badge";
@@ -6,6 +7,15 @@ import { buttonClassName } from "../src/components/ui/button";
 import { cardClassName } from "../src/components/ui/card";
 import { controlClassName } from "../src/components/ui/form-control";
 import { cx } from "../src/lib/class-names";
+
+test("Tailwind is wired through PostCSS so utility classes reach the browser", () => {
+  const postcssConfig = readFileSync(
+    new URL("../postcss.config.mjs", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(postcssConfig, /["']@tailwindcss\/postcss["']/);
+});
 
 test("cx keeps only meaningful class names", () => {
   assert.equal(cx("base", false, undefined, "active", null), "base active");
@@ -28,4 +38,3 @@ test("cards and controls share the expected interaction treatment", () => {
   assert.match(controlClassName(), /focus:border-brand-violet/);
   assert.match(controlClassName("pl-10"), /pl-10/);
 });
-

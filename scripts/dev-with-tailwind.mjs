@@ -45,7 +45,7 @@ const tailwind = run(npx, [
   "--watch",
 ]);
 
-const next = run(npx, ["next", "dev", "--webpack", ...extraNextArgs]);
+const next = run(npx, ["next", "dev"]);
 
 let stopping = false;
 function stop(exitCode = 0) {

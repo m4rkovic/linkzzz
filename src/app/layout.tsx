@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { connection } from "next/server";
-import "./tailwind.generated.css";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,7 +31,9 @@ export const metadata: Metadata = {
   ],
 };
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({
+  children,
+}: Readonly<{ children: ReactNode }>) {
   // A fresh CSP nonce exists only at request time, so the whole route tree must
   // render dynamically instead of reusing build-time HTML.
   await connection();

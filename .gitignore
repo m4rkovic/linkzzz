@@ -29,4 +29,3 @@ Thumbs.db
 .idea/
 
 /src/generated/prisma
-/src/app/tailwind.generated.css
