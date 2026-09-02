@@ -13,6 +13,13 @@ async function stabilize(page: Parameters<typeof loginAsCustomer>[0]) {
       }
     `,
   });
+
+  const viewportWidth = page.viewportSize()?.width;
+  if (viewportWidth) {
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+      .toBeLessThanOrEqual(viewportWidth);
+  }
 }
 
 test.describe("R1.4 visual regression matrix", () => {

@@ -12,7 +12,7 @@ test.describe("R1.4 keyboard and focus checks", () => {
     await page.keyboard.type(process.env.E2E_CUSTOMER_IDENTIFIER ?? "skyhook");
 
     await page.keyboard.press("Tab");
-    await expect(page.getByLabel("Password")).toBeFocused();
+    await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
     await page.keyboard.type(process.env.E2E_CUSTOMER_PASSWORD ?? "LinkzzzSky!2026");
 
     await page.keyboard.press("Tab");

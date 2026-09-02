@@ -6,7 +6,7 @@ const CUSTOMER_PASSWORD = process.env.E2E_CUSTOMER_PASSWORD ?? "LinkzzzSky!2026"
 export async function loginAsCustomer(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Username or email").fill(CUSTOMER_IDENTIFIER);
-  await page.getByLabel("Password").fill(CUSTOMER_PASSWORD);
+  await page.getByLabel("Password", { exact: true }).fill(CUSTOMER_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard(?:\/|$)/);
 }
