@@ -1,18 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import ProfileRenderer from "@/components/public/profile-renderer";
+import SmartLinkTracking, { trackSmartLinkExternalEvent } from "@/components/public/smart-link-tracking";
 import { hydrateProfile } from "@/features/profile/profile-serialization";
 
 import type { PersistedProfileData } from "@/types/persisted-profile";
+import type { TrackingConfig } from "@/types/smart-link";
 
 type PublicProfileProps = {
   initialProfile: PersistedProfileData;
+  tracking: TrackingConfig;
+  initialNowMs: number;
 };
 
 export default function PublicProfile({
   initialProfile,
+  tracking,
+  initialNowMs,
 }: PublicProfileProps) {
   const profile = useMemo(
     () => hydrateProfile(initialProfile),
@@ -20,16 +26,12 @@ export default function PublicProfile({
   );
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    trackAnalyticsEvent(profile.slug, "PAGE_VIEW");
-  }, [profile.slug]);
-
   function trackLinkClick(linkId: string) {
-    trackAnalyticsEvent(profile.slug, "LINK_CLICK", linkId);
+    trackSmartLinkExternalEvent(tracking, "destination_click", linkId);
   }
 
   function trackSocialClick(socialId: string) {
-    trackAnalyticsEvent(profile.slug, "SOCIAL_CLICK", socialId);
+    trackSmartLinkExternalEvent(tracking, "social_click", socialId);
   }
 
   async function shareProfile() {
@@ -61,12 +63,14 @@ export default function PublicProfile({
 
   return (
     <>
+      <SmartLinkTracking tracking={tracking} />
       <ProfileRenderer
         profile={profile}
         mode="public"
         onShare={shareProfile}
         onLinkClick={trackLinkClick}
         onSocialClick={trackSocialClick}
+        initialNowMs={initialNowMs}
       />
 
       {copied && (
@@ -79,21 +83,4 @@ export default function PublicProfile({
       )}
     </>
   );
-}
-
-function trackAnalyticsEvent(slug: string, type: "PAGE_VIEW" | "LINK_CLICK" | "SOCIAL_CLICK", linkId?: string) {
-  let visitorId: string | undefined;
-  try {
-    visitorId = window.localStorage.getItem("linkzzz_visitor_id") ?? crypto.randomUUID();
-    window.localStorage.setItem("linkzzz_visitor_id", visitorId);
-  } catch {
-    visitorId = undefined;
-  }
-  void fetch("/api/analytics/events", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ slug, type, linkId, visitorId }),
-    keepalive: true,
-    credentials: "omit",
-  }).catch(() => undefined);
 }

@@ -23,16 +23,16 @@ export default function TrafficChart({ data }: Props) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <BarChart3 size={18} className="text-zinc-500" />
+            <BarChart3 size={18} className="text-brand-violet-strong" />
             <h2 className="text-lg font-semibold text-zinc-950">Traffic</h2>
           </div>
-          <p className="mt-1 text-sm text-zinc-500">Visits, unique visitors and link clicks.</p>
+          <p className="mt-1 text-sm text-zinc-500">Human visits, pseudonymous unique visitors and destination clicks.</p>
         </div>
 
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-zinc-500">
           <ChartLegend label="Visits" className="bg-zinc-950" />
-          <ChartLegend label="Unique" className="bg-zinc-500" />
-          <ChartLegend label="Clicks" className="bg-zinc-300" />
+          <ChartLegend label="Unique" className="bg-brand-violet-strong" />
+          <ChartLegend label="Clicks" className="bg-brand-lime-strong" />
         </div>
       </div>
 
@@ -41,7 +41,7 @@ export default function TrafficChart({ data }: Props) {
           <AreaChart data={data} margin={{ top: 10, right: 6, left: -24, bottom: 0 }}>
             <defs>
               <linearGradient id="analyticsVisitsGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#18181b" stopOpacity={0.2} />
+                <stop offset="5%" stopColor="#18181b" stopOpacity={0.16} />
                 <stop offset="95%" stopColor="#18181b" stopOpacity={0} />
               </linearGradient>
             </defs>
@@ -54,7 +54,7 @@ export default function TrafficChart({ data }: Props) {
               minTickGap={18}
               tick={{ fontSize: 11, fill: "#a1a1aa" }}
             />
-            <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#a1a1aa" }} />
+            <YAxis tickLine={false} axisLine={false} allowDecimals={false} tick={{ fontSize: 11, fill: "#a1a1aa" }} />
             <Tooltip
               contentStyle={{
                 borderRadius: "12px",
@@ -64,8 +64,8 @@ export default function TrafficChart({ data }: Props) {
               }}
             />
             <Area type="monotone" dataKey="visits" stroke="#18181b" strokeWidth={2} fill="url(#analyticsVisitsGradient)" />
-            <Area type="monotone" dataKey="unique" stroke="#71717a" strokeWidth={2} fillOpacity={0} />
-            <Area type="monotone" dataKey="clicks" stroke="#a1a1aa" strokeWidth={2} fillOpacity={0} />
+            <Area type="monotone" dataKey="unique" stroke="var(--linkzzz-violet-strong)" strokeWidth={2} fillOpacity={0} />
+            <Area type="monotone" dataKey="clicks" stroke="var(--linkzzz-lime-strong)" strokeWidth={2} fillOpacity={0} />
           </AreaChart>
         </ResponsiveContainer>
       </div>

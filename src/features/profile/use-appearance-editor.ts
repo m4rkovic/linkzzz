@@ -3,6 +3,7 @@
 import { useState, type ChangeEvent } from "react";
 import { defaultAppearance } from "@/config/profile-defaults";
 import { useProfile } from "@/features/profile/profile-context";
+import { useToast } from "@/components/ui/toast";
 import type {
   CardAppearance,
   HeroAppearance,
@@ -13,7 +14,8 @@ import type {
 import type { AppearancePreset } from "@/features/profile/appearance-presets";
 
 export function useAppearanceEditor() {
-  const { profile, setProfile, saveProfile, saving } = useProfile();
+  const { profile, setProfile, saveProfile, saving, dirty } = useProfile();
+  const { pushToast } = useToast();
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
   const appearance = profile.appearance;
@@ -87,12 +89,11 @@ export function useAppearanceEditor() {
   }
 
   function resetAppearance() {
-    const confirmed = window.confirm("Reset appearance to the default Linkzzz style?");
-    if (!confirmed) return;
     if (profile.coverImageUrl?.startsWith("blob:")) {
       URL.revokeObjectURL(profile.coverImageUrl);
     }
     setProfile((current) => ({ ...current, coverImageUrl: undefined, appearance: { ...defaultAppearance } }));
+    pushToast({ title: "Appearance reset", description: "Default Linkzzz styling is ready to save.", tone: "info" });
   }
 
   async function saveChanges() {
@@ -101,9 +102,11 @@ export function useAppearanceEditor() {
     const result = await saveProfile();
     if (!result.ok) {
       setSaveError(result.error);
+      pushToast({ title: "Appearance save failed", description: result.error, tone: "error" });
       return;
     }
     setSaved(true);
+    pushToast({ title: "Appearance saved", tone: "success" });
     window.setTimeout(() => setSaved(false), 1600);
   }
 
@@ -112,6 +115,7 @@ export function useAppearanceEditor() {
     saved,
     saveError,
     saving,
+    dirty,
     appearance,
     page,
     hero,

@@ -16,7 +16,9 @@ test("production CSP allows only nonce-authorized inline scripts", () => {
   assert.match(policy, /script-src-attr 'none'/);
   assert.doesNotMatch(scriptDirective(policy), /'unsafe-inline'/);
   assert.doesNotMatch(scriptDirective(policy), /'unsafe-eval'/);
-  assert.match(connectDirective(policy), /connect-src 'self' blob:/);
+  assert.match(connectDirective(policy), /https:\/\/www\.google-analytics\.com/);
+  assert.match(connectDirective(policy), /https:\/\/www\.facebook\.com/);
+  assert.match(policy, /frame-src 'self' https:\/\/www\.youtube\.com https:\/\/www\.youtube-nocookie\.com https:\/\/open\.spotify\.com/);
   assert.match(policy, /upgrade-insecure-requests/);
 });
 

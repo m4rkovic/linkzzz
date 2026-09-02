@@ -1,0 +1,399 @@
+import "server-only";
+
+import { defaultAppearance } from "@/config/profile-defaults";
+import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import { toJson } from "@/server/persistence/prisma/repositories/json";
+import type { SmartLinkRepository } from "@/server/services/contracts";
+import type {
+  DeeplinkConfig,
+  DestinationConfig,
+  GeoConfig,
+  ShieldConfig,
+  SmartLinkRecord,
+  TrackingConfig,
+} from "@/types/smart-link";
+
+function smartLinkRecord(row: {
+  id: string;
+  userId: string;
+  type: SmartLinkRecord["type"];
+  title: string;
+  slug: string;
+  status: SmartLinkRecord["status"];
+  primaryDestination: unknown;
+  deeplinkConfig: unknown;
+  geoConfig: unknown;
+  shieldConfig: unknown;
+  trackingConfig: unknown;
+  revision: number;
+  createdAt: Date;
+  updatedAt: Date;
+}): SmartLinkRecord {
+  return {
+    id: row.id,
+    userId: row.userId,
+    type: row.type,
+    title: row.title,
+    slug: row.slug,
+    status: row.status,
+    primaryDestination:
+      (row.primaryDestination as DestinationConfig | null) ?? undefined,
+    deeplink: row.deeplinkConfig as DeeplinkConfig,
+    geo: row.geoConfig as GeoConfig,
+    shield: row.shieldConfig as ShieldConfig,
+    tracking: row.trackingConfig as TrackingConfig,
+    revision: row.revision,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export class PrismaSmartLinkRepository implements SmartLinkRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async listForUser(userId: string) {
+    const rows = await this.db.smartLink.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+    });
+    return rows.map(smartLinkRecord);
+  }
+
+  async countForUser(userId: string) {
+    return this.db.smartLink.count({ where: { userId } });
+  }
+
+  async findByIdForUser(id: string, userId: string) {
+    const row = await this.db.smartLink.findFirst({ where: { id, userId } });
+    return row ? smartLinkRecord(row) : null;
+  }
+
+  async findBySlug(slug: string) {
+    const row = await this.db.smartLink.findUnique({
+      where: { slug: slug.trim().toLowerCase() },
+    });
+    return row ? smartLinkRecord(row) : null;
+  }
+
+  async create(record: Parameters<SmartLinkRepository["create"]>[0]) {
+    const row = await this.db.$transaction(async (tx) => {
+      const smartLink = await tx.smartLink.create({
+        data: {
+          userId: record.userId,
+          type: record.type,
+          title: record.title,
+          slug: record.slug.trim().toLowerCase(),
+          status: record.status,
+          primaryDestination: record.primaryDestination
+            ? toJson(record.primaryDestination)
+            : undefined,
+          deeplinkConfig: toJson(record.deeplink),
+          geoConfig: toJson(record.geo),
+          shieldConfig: toJson(record.shield),
+          trackingConfig: toJson(record.tracking),
+        },
+      });
+
+      if (record.type === "LANDING_PAGE") {
+        await tx.page.create({
+          data: {
+            smartLinkId: smartLink.id,
+            displayName: record.title,
+            bio: "",
+            appearance: toJson(defaultAppearance),
+            contentBlocks: toJson([]),
+          },
+        });
+      }
+
+      return smartLink;
+    });
+    return smartLinkRecord(row);
+  }
+
+  async updateIfRevision(
+    id: string,
+    userId: string,
+    editable: Parameters<SmartLinkRepository["updateIfRevision"]>[2],
+    expectedRevision: number,
+  ) {
+    const updated = await this.db.smartLink.updateMany({
+      where: { id, userId, revision: expectedRevision },
+      data: {
+        title: editable.title,
+        slug: editable.slug.trim().toLowerCase(),
+        status: editable.status,
+        primaryDestination: editable.primaryDestination
+          ? toJson(editable.primaryDestination)
+          : Prisma.JsonNull,
+        deeplinkConfig: toJson(editable.deeplink),
+        geoConfig: toJson(editable.geo),
+        shieldConfig: toJson(editable.shield),
+        trackingConfig: toJson(editable.tracking),
+        revision: { increment: 1 },
+      },
+    });
+
+    if (!updated.count) {
+      return { ok: false as const, reason: "REVISION_CONFLICT" as const };
+    }
+
+    const row = await this.db.smartLink.findFirstOrThrow({ where: { id, userId } });
+    return { ok: true as const, smartLink: smartLinkRecord(row) };
+  }
+
+  async duplicateForUser(
+    id: string,
+    userId: string,
+    title: string,
+    slug: string,
+  ) {
+    return this.db.$transaction(async (tx) => {
+      const source = await tx.smartLink.findFirst({
+        where: { id, userId },
+        include: {
+          assets: true,
+          page: {
+            include: {
+              cards: { include: { geoDestinations: true } },
+              socials: true,
+              stats: true,
+            },
+          },
+        },
+      });
+      if (!source) return null;
+
+      const duplicate = await tx.smartLink.create({
+        data: {
+          userId,
+          type: source.type,
+          title,
+          slug: slug.trim().toLowerCase(),
+          status: "DRAFT",
+          primaryDestination: source.primaryDestination === null
+            ? Prisma.JsonNull
+            : toJson(source.primaryDestination),
+          deeplinkConfig: toJson(source.deeplinkConfig),
+          geoConfig: toJson(source.geoConfig),
+          shieldConfig: toJson(source.shieldConfig),
+          trackingConfig: toJson(source.trackingConfig),
+        },
+      });
+
+      const assetIdMap = new Map<string, string>();
+      for (const asset of source.assets) {
+        const copy = await tx.asset.create({
+          data: {
+            smartLinkId: duplicate.id,
+            type: asset.type,
+            fileName: asset.fileName,
+            storageKey: asset.storageKey,
+            mimeType: asset.mimeType,
+            sizeBytes: asset.sizeBytes,
+            width: asset.width,
+            height: asset.height,
+          },
+        });
+        assetIdMap.set(asset.id, copy.id);
+      }
+
+      if (source.page) {
+        const page = await tx.page.create({
+          data: {
+            smartLinkId: duplicate.id,
+            displayName: source.page.displayName,
+            username: source.page.username,
+            bio: source.page.bio,
+            locationLabel: source.page.locationLabel,
+            avatarAssetId: source.page.avatarAssetId
+              ? assetIdMap.get(source.page.avatarAssetId) ?? null
+              : null,
+            coverAssetId: source.page.coverAssetId
+              ? assetIdMap.get(source.page.coverAssetId) ?? null
+              : null,
+            appearance: toJson(source.page.appearance),
+            contentBlocks: toJson(remapBlockAssets(source.page.contentBlocks, assetIdMap)),
+          },
+        });
+
+        const cardIdMap = new Map<string, string>();
+        for (const card of source.page.cards) {
+          const cardCopy = await tx.pageCard.create({
+            data: {
+              pageId: page.id,
+              title: card.title,
+              description: card.description,
+              url: card.url,
+              visible: card.visible,
+              sortOrder: card.sortOrder,
+              platform: card.platform,
+              layout: card.layout,
+              aspectRatio: card.aspectRatio,
+              imageFit: card.imageFit,
+              imagePosition: card.imagePosition,
+              titlePosition: card.titlePosition,
+              showPlatformIcon: card.showPlatformIcon,
+              showTitle: card.showTitle,
+              showDescription: card.showDescription,
+              overlayEnabled: card.overlayEnabled,
+              overlayOpacity: card.overlayOpacity,
+              customStyle: card.customStyle === null
+                ? Prisma.JsonNull
+                : toJson(card.customStyle),
+              imageAssetId: card.imageAssetId
+                ? assetIdMap.get(card.imageAssetId) ?? null
+                : null,
+            },
+          });
+          cardIdMap.set(card.id, cardCopy.id);
+          if (card.geoDestinations.length) {
+            await tx.pageCardGeoDestination.createMany({
+              data: card.geoDestinations.map((geo) => ({
+                pageCardId: cardCopy.id,
+                countryCode: geo.countryCode,
+                countryName: geo.countryName,
+                url: geo.url,
+              })),
+            });
+          }
+        }
+
+        await tx.page.update({
+          where: { id: page.id },
+          data: {
+            appearance: toJson(remapPageEngagement(source.page.appearance, cardIdMap)),
+          },
+        });
+
+        if (source.page.socials.length) {
+          await tx.socialLink.createMany({
+            data: source.page.socials.map((social) => ({
+              pageId: page.id,
+              name: social.name,
+              url: social.url,
+              visible: social.visible,
+              platform: social.platform,
+              sortOrder: social.sortOrder,
+            })),
+          });
+        }
+
+        if (source.page.stats.length) {
+          await tx.pageStat.createMany({
+            data: source.page.stats.map((stat) => ({
+              pageId: page.id,
+              value: stat.value,
+              label: stat.label,
+              visible: stat.visible,
+              sortOrder: stat.sortOrder,
+            })),
+          });
+        }
+      }
+
+      const created = await tx.smartLink.findUniqueOrThrow({
+        where: { id: duplicate.id },
+      });
+      return smartLinkRecord(created);
+    });
+  }
+
+  async deleteIfRevision(
+    id: string,
+    userId: string,
+    expectedRevision: number,
+  ) {
+    return this.db.$transaction(async (tx) => {
+      const source = await tx.smartLink.findFirst({
+        where: { id, userId },
+        select: {
+          id: true,
+          revision: true,
+          assets: { select: { storageKey: true } },
+        },
+      });
+      if (!source) {
+        return { ok: false as const, reason: "NOT_FOUND" as const };
+      }
+      if (source.revision !== expectedRevision) {
+        return { ok: false as const, reason: "REVISION_CONFLICT" as const };
+      }
+
+      const deleted = await tx.smartLink.deleteMany({
+        where: { id, userId, revision: expectedRevision },
+      });
+      if (!deleted.count) {
+        return { ok: false as const, reason: "REVISION_CONFLICT" as const };
+      }
+
+      const storageKeys = [...new Set(source.assets.map((asset) => asset.storageKey))];
+      if (!storageKeys.length) {
+        return { ok: true as const, storageKeysToRemove: [] };
+      }
+
+      const stillReferenced = await tx.asset.findMany({
+        where: { storageKey: { in: storageKeys } },
+        select: { storageKey: true },
+      });
+      const retained = new Set(stillReferenced.map((asset) => asset.storageKey));
+      return {
+        ok: true as const,
+        storageKeysToRemove: storageKeys.filter((storageKey) => !retained.has(storageKey)),
+      };
+    });
+  }
+}
+
+function remapPageEngagement(value: unknown, cardIdMap: Map<string, string>) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const appearance = structuredClone(value) as Record<string, unknown>;
+  const rawEngagement = appearance.__engagement;
+  if (!rawEngagement || typeof rawEngagement !== "object" || Array.isArray(rawEngagement)) return appearance;
+
+  const engagement = { ...(rawEngagement as Record<string, unknown>) };
+  const featuredLinkId = typeof engagement.featuredLinkId === "string"
+    ? cardIdMap.get(engagement.featuredLinkId)
+    : undefined;
+  if (featuredLinkId) engagement.featuredLinkId = featuredLinkId;
+  else delete engagement.featuredLinkId;
+
+  const rawCampaign = engagement.campaign;
+  if (rawCampaign && typeof rawCampaign === "object" && !Array.isArray(rawCampaign)) {
+    const campaign = { ...(rawCampaign as Record<string, unknown>) };
+    const primaryLinkId = typeof campaign.primaryLinkId === "string"
+      ? cardIdMap.get(campaign.primaryLinkId)
+      : undefined;
+    if (primaryLinkId) campaign.primaryLinkId = primaryLinkId;
+    else {
+      delete campaign.primaryLinkId;
+      campaign.enabled = false;
+    }
+    engagement.campaign = campaign;
+  }
+
+  appearance.__engagement = engagement;
+  return appearance;
+}
+
+function remapBlockAssets(value: unknown, assetIdMap: Map<string, string>) {
+  if (!Array.isArray(value)) return [];
+  return structuredClone(value).map((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+    const block = raw as Record<string, unknown>;
+    if (block.type !== "GALLERY" || !Array.isArray(block.images)) return block;
+    return {
+      ...block,
+      images: block.images.map((rawImage) => {
+        if (!rawImage || typeof rawImage !== "object" || Array.isArray(rawImage)) return rawImage;
+        const image = { ...(rawImage as Record<string, unknown>) };
+        const assetId = typeof image.imageAssetId === "string" ? image.imageAssetId : undefined;
+        const mappedAssetId = assetId ? assetIdMap.get(assetId) : undefined;
+        if (mappedAssetId) image.imageAssetId = mappedAssetId;
+        else delete image.imageAssetId;
+        return image;
+      }),
+    };
+  });
+}
+

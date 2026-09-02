@@ -29,4 +29,3 @@ Thumbs.db
 .idea/
 
 /src/generated/prisma
-.env.example

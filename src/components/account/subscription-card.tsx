@@ -7,6 +7,7 @@ import {
 
 import AccountOverviewCard from "@/components/account/account-overview-card";
 import type { AccountSummary } from "@/features/account/account-types";
+import { getPlanDefinition } from "@/features/plans/plan-catalog";
 
 function getStatusLabel(status: AccountSummary["subscriptionStatus"]) {
   switch (status) {
@@ -35,10 +36,7 @@ function getStatusClass(status: AccountSummary["subscriptionStatus"]) {
 }
 
 export default function SubscriptionCard({ account }: { account: AccountSummary }) {
-  const planName = account.plan === "PREMIUM_PLUS" ? "Premium Plus" : "Premium";
-  const planDescription = account.plan === "PREMIUM_PLUS"
-    ? "Up to 100 links and full analytics access."
-    : "Up to 40 links with full profile controls.";
+  const plan = getPlanDefinition(account.plan);
 
   return (
     <section className="min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
@@ -46,8 +44,10 @@ export default function SubscriptionCard({ account }: { account: AccountSummary 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-sm font-medium text-zinc-500">Current plan</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-zinc-950">{planName}</h2>
-            <p className="mt-1 text-sm text-zinc-500">{planDescription}</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-zinc-950">{plan.name}</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              {plan.smartLinkDisplay} Smart Links · {plan.pageLinkLimit} links per Landing Page.
+            </p>
           </div>
 
           <span className={`inline-flex self-start items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${getStatusClass(account.subscriptionStatus)}`}>

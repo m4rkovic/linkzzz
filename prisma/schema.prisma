@@ -19,8 +19,9 @@ enum AccountStatus {
 }
 
 enum PlanType {
-  PREMIUM
-  PREMIUM_PLUS
+  BASIC
+  PRO
+  ENTERPRISE
 }
 
 enum SubscriptionStatus {
@@ -30,16 +31,25 @@ enum SubscriptionStatus {
   STOPPED
 }
 
-enum ProfileStatus {
+enum SmartLinkStatus {
   DRAFT
   PUBLISHED
   DISABLED
+}
+
+enum SmartLinkType {
+  LANDING_PAGE
+  DIRECT
 }
 
 enum AnalyticsEventType {
   PAGE_VIEW
   LINK_CLICK
   SOCIAL_CLICK
+  SMART_LINK_VIEW
+  DEEPLINK_ATTEMPT
+  DEEPLINK_FALLBACK
+  BLOCKED_AUTOMATED_REQUEST
 }
 
 enum AssetType {
@@ -66,7 +76,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile      Profile?
+  smartLinks   SmartLink[]
   credential   PasswordCredential?
   subscription Subscription?
   sessions     Session[]
@@ -74,6 +84,38 @@ model User {
   subscriptionHistory SubscriptionHistory[]
   auditEventsAsActor  AuditLog[]            @relation("AuditActor")
   auditEventsAsTarget AuditLog[]            @relation("AuditTarget")
+}
+
+model SmartLink {
+  id     String @id @default(uuid())
+  userId String
+
+  type   SmartLinkType   @default(LANDING_PAGE)
+  title  String
+  slug   String          @unique
+  status SmartLinkStatus @default(DRAFT)
+
+  primaryDestination Json?
+  deeplinkConfig     Json  @default("{\"enabled\":true,\"strategy\":\"SMART\",\"openInBrowserHelper\":false,\"longPressHelper\":false}")
+  geoConfig          Json  @default("{\"enabled\":false,\"rules\":[],\"fallback\":{\"type\":\"DEFAULT_PAGE\"}}")
+  shieldConfig       Json  @default("{\"enabled\":false,\"mode\":\"STANDARD\",\"verifiedCrawlerPolicy\":\"ALLOW\"}")
+  trackingConfig     Json  @default("{\"internalAnalytics\":true}")
+
+  revision Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  page            Page?
+  assets          Asset[]
+  analyticsEvents AnalyticsEvent[]
+  leadSubmissions LeadSubmission[]
+  domains         CustomDomain[]
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
 }
 
 model PasswordCredential {
@@ -139,11 +181,9 @@ model SubscriptionHistory {
   @@index([createdAt])
 }
 
-model Profile {
-  id     String        @id @default(uuid())
-  userId String        @unique
-  slug   String        @unique
-  status ProfileStatus @default(DRAFT)
+model Page {
+  id          String @id @default(uuid())
+  smartLinkId String @unique
 
   displayName   String
   username      String?
@@ -153,31 +193,29 @@ model Profile {
   avatarAssetId String?
   coverAssetId  String?
 
-  avatarAsset Asset? @relation("ProfileAvatar", fields: [avatarAssetId], references: [id], onDelete: SetNull)
-  coverAsset  Asset? @relation("ProfileCover", fields: [coverAssetId], references: [id], onDelete: SetNull)
+  avatarAsset Asset? @relation("PageAvatar", fields: [avatarAssetId], references: [id], onDelete: SetNull)
+  coverAsset  Asset? @relation("PageCover", fields: [coverAssetId], references: [id], onDelete: SetNull)
 
-  appearance Json
-  revision   Int  @default(1)
+  appearance    Json
+  contentBlocks Json @default("[]")
+  revision      Int  @default(1)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  smartLink SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
 
-  links           Link[]
-  socials         SocialLink[]
-  stats           ProfileStat[]
-  assets          Asset[]          @relation("OwnedAssets")
-  domains         CustomDomain[]
-  analyticsEvents AnalyticsEvent[]
+  cards   PageCard[]
+  socials SocialLink[]
+  stats   PageStat[]
 
   @@index([avatarAssetId])
   @@index([coverAssetId])
 }
 
-model Link {
-  id        String @id @default(uuid())
-  profileId String
+model PageCard {
+  id     String @id @default(uuid())
+  pageId String
 
   title       String
   description String?
@@ -197,28 +235,28 @@ model Link {
   showDescription  Boolean @default(true)
 
   overlayEnabled Boolean @default(false)
-  overlayOpacity Int?
+  overlayOpacity Float?
 
   customStyle Json?
 
   imageAssetId String?
-  imageAsset   Asset?  @relation("LinkImage", fields: [imageAssetId], references: [id], onDelete: SetNull)
+  imageAsset   Asset?  @relation("PageCardImage", fields: [imageAssetId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile         Profile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  geoDestinations GeoDestination[]
+  page            Page                     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  geoDestinations PageCardGeoDestination[]
   analyticsEvents AnalyticsEvent[]
 
-  @@index([profileId])
+  @@index([pageId])
   @@index([sortOrder])
   @@index([imageAssetId])
 }
 
-model GeoDestination {
+model PageCardGeoDestination {
   id          String @id @default(uuid())
-  linkId      String
+  pageCardId  String
   countryCode String
   countryName String
   url         String
@@ -226,15 +264,15 @@ model GeoDestination {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  pageCard PageCard @relation(fields: [pageCardId], references: [id], onDelete: Cascade)
 
-  @@index([linkId])
+  @@index([pageCardId])
   @@index([countryCode])
 }
 
 model SocialLink {
-  id        String @id @default(uuid())
-  profileId String
+  id     String @id @default(uuid())
+  pageId String
 
   name      String
   url       String
@@ -245,14 +283,14 @@ model SocialLink {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
-  @@index([profileId])
+  @@index([pageId])
 }
 
-model ProfileStat {
-  id        String @id @default(uuid())
-  profileId String
+model PageStat {
+  id     String @id @default(uuid())
+  pageId String
 
   value     String
   label     String
@@ -262,14 +300,14 @@ model ProfileStat {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
-  @@index([profileId])
+  @@index([pageId])
 }
 
 model Asset {
-  id        String @id @default(uuid())
-  profileId String
+  id          String @id @default(uuid())
+  smartLinkId String
 
   type AssetType
 
@@ -284,18 +322,18 @@ model Asset {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile   Profile   @relation("OwnedAssets", fields: [profileId], references: [id], onDelete: Cascade)
-  avatarFor Profile[] @relation("ProfileAvatar")
-  coverFor  Profile[] @relation("ProfileCover")
-  imageFor  Link[]    @relation("LinkImage")
+  smartLink SmartLink  @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
+  avatarFor Page[]     @relation("PageAvatar")
+  coverFor  Page[]     @relation("PageCover")
+  imageFor  PageCard[] @relation("PageCardImage")
 
-  @@index([profileId])
+  @@index([smartLinkId])
 }
 
 model AnalyticsEvent {
-  id        String  @id @default(uuid())
-  profileId String
-  linkId    String?
+  id          String  @id @default(uuid())
+  smartLinkId String
+  pageCardId  String?
 
   type AnalyticsEventType
 
@@ -314,18 +352,34 @@ model AnalyticsEvent {
 
   createdAt DateTime @default(now())
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  link    Link?   @relation(fields: [linkId], references: [id], onDelete: SetNull)
+  smartLink SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
+  pageCard  PageCard? @relation(fields: [pageCardId], references: [id], onDelete: SetNull)
 
-  @@index([profileId])
-  @@index([linkId])
+  @@index([smartLinkId])
+  @@index([pageCardId])
   @@index([createdAt])
   @@index([type])
 }
 
+
+model LeadSubmission {
+  id          String @id @default(uuid())
+  smartLinkId String
+  blockId     String
+  email       String
+
+  createdAt DateTime @default(now())
+
+  smartLink SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
+
+  @@index([smartLinkId])
+  @@index([blockId])
+  @@index([createdAt])
+}
+
 model CustomDomain {
-  id        String @id @default(uuid())
-  profileId String
+  id          String @id @default(uuid())
+  smartLinkId String
 
   domain            String             @unique
   status            CustomDomainStatus @default(PENDING)
@@ -335,9 +389,9 @@ model CustomDomain {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  smartLink SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
 
-  @@index([profileId])
+  @@index([smartLinkId])
 }
 
 model AuditLog {

@@ -79,6 +79,7 @@ function createProfile() {
         ],
       },
     ],
+    contentBlocks: [],
     appearance: structuredClone(defaultAppearance),
   } satisfies PersistedProfileData;
 }

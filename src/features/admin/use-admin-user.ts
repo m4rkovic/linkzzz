@@ -1,16 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { createMockAdminUser } from "@/features/admin/mock-admin-user";
-import type { AdminHistoryItem, AdminPlan, AdminProfileStatus, AdminUserModel } from "@/features/admin/admin-types";
+import { useToast } from "@/components/ui/toast";
+import type { AdminHistoryItem, AdminPlan, AdminUserModel } from "@/features/admin/admin-types";
 import type { AdminUserAction, AdminUserSnapshot } from "@/types/admin-api";
 
 function hydrateUser(user: AdminUserSnapshot): AdminUserModel {
-  return { ...user, periodStart: new Date(user.periodStart), periodEnd: new Date(user.periodEnd) };
+  return {
+    ...user,
+    periodStart: new Date(user.periodStart),
+    periodEnd: new Date(user.periodEnd),
+    smartLinks: user.smartLinks.map((smartLink) => ({
+      ...smartLink,
+      updatedAt: new Date(smartLink.updatedAt),
+    })),
+  };
 }
 
 export function useAdminUser(userId: string) {
-  const [user, setUser] = useState<AdminUserModel>(() => createMockAdminUser(userId));
+  const { pushToast } = useToast();
+  const [user, setUser] = useState<AdminUserModel | null>(null);
   const [history, setHistory] = useState<AdminHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -36,38 +45,46 @@ export function useAdminUser(userId: string) {
     return () => window.clearTimeout(timeoutId);
   }, [load]);
 
-  async function action(payload: AdminUserAction) {
+  async function action(payload: AdminUserAction, successTitle: string) {
     setError("");
-    const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/actions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const body = await response.json();
-    if (!response.ok) {
-      const message = body.error ?? "Admin action failed.";
+    try {
+      const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Admin action failed.");
+      setUser(hydrateUser(body.user));
+      setHistory(body.history);
+      pushToast({ title: successTitle, tone: "success" });
+      return body as { temporaryPassword?: string };
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Admin action failed.";
       setError(message);
-      throw new Error(message);
+      pushToast({ title: "Admin action failed", description: message, tone: "error" });
+      throw caught;
     }
-    setUser(hydrateUser(body.user));
-    setHistory(body.history);
-    return body as { temporaryPassword?: string };
   }
 
   return {
-    user, history, loading, error, reload: load,
-    renewSubscription: (months: number) => void action({ type: "RENEW", months: months as 1 | 3 | 6 | 12 }),
-    stopRenewal: () => void action({ type: "STOP_RENEWAL" }),
-    resumeRenewal: () => void action({ type: "RESUME_RENEWAL" }),
-    stopImmediately: () => void action({ type: "STOP_IMMEDIATELY" }),
-    changePlan: (plan: AdminPlan) => void action({ type: "CHANGE_PLAN", plan }),
-    setProfileStatus: (status: AdminProfileStatus) => {
-      if (status === "DRAFT") return;
-      void action({ type: "SET_PROFILE_STATUS", status });
-    },
-    changeSlug: (slug: string) => void action({ type: "CHANGE_SLUG", slug }),
-    suspendAccount: (reason: string) => void action({ type: "SUSPEND", reason }),
-    reactivateAccount: () => void action({ type: "REACTIVATE" }),
-    resetPassword: async () => (await action({ type: "RESET_PASSWORD" })).temporaryPassword ?? "",
+    user,
+    history,
+    loading,
+    error,
+    reload: load,
+    renewSubscription: (months: number) => action({ type: "RENEW", months: months as 1 | 3 | 6 | 12 }, "Subscription renewed"),
+    stopRenewal: () => action({ type: "STOP_RENEWAL" }, "Renewal stopped"),
+    resumeRenewal: () => action({ type: "RESUME_RENEWAL" }, "Renewal resumed"),
+    stopImmediately: () => action({ type: "STOP_IMMEDIATELY" }, "Subscription stopped"),
+    changePlan: (plan: AdminPlan) => action({ type: "CHANGE_PLAN", plan }, "Plan updated"),
+    setSmartLinkStatus: (smartLinkId: string, status: "PUBLISHED" | "DISABLED") =>
+      action(
+        { type: "SET_SMART_LINK_STATUS", smartLinkId, status },
+        status === "DISABLED" ? "Smart Link disabled" : "Smart Link restored",
+      ),
+    suspendAccount: (reason: string) => action({ type: "SUSPEND", reason }, "Account suspended"),
+    reactivateAccount: () => action({ type: "REACTIVATE" }, "Account reactivated"),
+    resetPassword: async () => (await action({ type: "RESET_PASSWORD" }, "Temporary password created")).temporaryPassword ?? "",
   };
 }

@@ -31,13 +31,26 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
+    colorScheme: "light",
+    reducedMotion: "reduce",
+    locale: "en-US",
+    timezoneId: "UTC",
   },
   projects: [
     {
-      name: "chromium",
+      name: "desktop-1440",
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 1000 },
+        deviceScaleFactor: 1,
+      },
+    },
+    {
+      name: "mobile-390",
+      use: {
+        ...devices["iPhone 13"],
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 1,
       },
     },
   ],

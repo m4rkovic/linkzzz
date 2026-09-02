@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 
 import AdminSidebar from "@/components/admin/admin-sidebar";
 import AdminTopbar from "@/components/admin/admin-topbar";
+import { ToastProvider } from "@/components/ui/toast";
 
 type AdminShellProps = {
   children: React.ReactNode;
@@ -14,7 +15,8 @@ export default function AdminShell({ children }: AdminShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-dvh w-full max-w-full overflow-x-hidden bg-zinc-50 xl:pl-64">
+    <ToastProvider>
+      <div className="min-h-dvh w-full max-w-full overflow-x-hidden bg-zinc-50 xl:pl-64">
       <div className="fixed inset-y-0 left-0 z-40 hidden w-64 xl:block">
         <AdminSidebar />
       </div>
@@ -50,6 +52,7 @@ export default function AdminShell({ children }: AdminShellProps) {
           <div className="w-full min-w-0 max-w-full">{children}</div>
         </main>
       </div>
-    </div>
+      </div>
+    </ToastProvider>
   );
 }

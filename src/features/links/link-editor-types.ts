@@ -1,10 +1,14 @@
 import type {
-  GeoDestination,
+  LinkGeoConfig,
   LinkCardAspectRatio,
   LinkCardBackgroundType,
   LinkCardLayout,
+  LinkCtaStyle,
   LinkImageFit,
   LinkImagePosition,
+  LinkFocusEffect,
+  LinkAvailability,
+  LinkSensitiveContent,
   LinkPlatformBadgePosition,
   LinkPlatformBadgeStyle,
   LinkTitlePosition,
@@ -29,6 +33,24 @@ export type CardStyleDraft = {
   platformBadgePosition: LinkPlatformBadgePosition;
   platformBadgeBackgroundColor: string;
   platformBadgeTextColor: string;
+  focusEffect: LinkFocusEffect;
+  dimSiblings: boolean;
+  focusColor: string;
+  focusDelayMs: number;
+  focusDurationMs: number;
+  focusOncePerSession: boolean;
+  badgeText: string;
+  badgeBackgroundColor: string;
+  badgeTextColor: string;
+  ctaText: string;
+  ctaStyle: LinkCtaStyle;
+  ctaBackgroundColor: string;
+  ctaTextColor: string;
+  titleSize: number;
+  descriptionSize: number;
+  descriptionColor: string;
+  contentPadding: number;
+  imageScale: number;
 };
 
 export type LinkDraft = {
@@ -49,5 +71,7 @@ export type LinkDraft = {
   overlayOpacity: number;
   titlePosition: LinkTitlePosition;
   customStyle: CardStyleDraft;
-  geoDestinations: GeoDestination[];
+  availability: LinkAvailability;
+  sensitiveContent: LinkSensitiveContent;
+  geo: LinkGeoConfig;
 };

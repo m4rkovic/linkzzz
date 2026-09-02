@@ -1,4 +1,5 @@
 import type { ElementType } from "react";
+import type { DestinationConfig } from "@/types/smart-link";
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +31,13 @@ export type BackgroundType =
     | "solid"
     | "gradient";
 
+export type BackgroundEffect =
+    | "none"
+    | "soft-glow"
+    | "mesh";
+
+export type PageMobileColumns = 1 | 2;
+
 /*
 |--------------------------------------------------------------------------
 | PLATFORMS
@@ -39,19 +47,32 @@ export type BackgroundType =
 export type PlatformId =
     | "custom"
     | "website"
+    | "store"
     | "instagram"
     | "tiktok"
     | "youtube"
+    | "youtube-music"
     | "spotify"
+    | "apple-music"
+    | "soundcloud"
+    | "bandcamp"
     | "facebook"
     | "x"
     | "threads"
+    | "snapchat"
     | "twitch"
     | "discord"
     | "telegram"
+    | "whatsapp"
+    | "reddit"
+    | "pinterest"
     | "linkedin"
     | "github"
-    | "soundcloud";
+    | "patreon"
+    | "ko-fi"
+    | "buy-me-a-coffee"
+    | "email"
+    | "phone";
 
 /*
 |--------------------------------------------------------------------------
@@ -67,6 +88,35 @@ export type GeoDestination = {
     countryName: string;
 
     url: string;
+};
+
+export type LinkGeoRuleAction =
+    | "SHOW"
+    | "HIDE"
+    | "REDIRECT";
+
+export type LinkGeoRule = {
+    id: string;
+
+    countryCode: string;
+
+    countryName: string;
+
+    action: LinkGeoRuleAction;
+
+    destination?: DestinationConfig;
+};
+
+export type LinkGeoFallback =
+    | "SHOW"
+    | "HIDE";
+
+export type LinkGeoConfig = {
+    enabled: boolean;
+
+    fallback: LinkGeoFallback;
+
+    rules: LinkGeoRule[];
 };
 
 /*
@@ -119,6 +169,70 @@ export type LinkPlatformBadgePosition =
     | "top-left"
     | "top-right";
 
+export type LinkFocusEffect =
+    | "none"
+    | "glow"
+    | "shake"
+    | "glow-shake";
+
+export type LinkCtaStyle =
+    | "none"
+    | "pill"
+    | "solid"
+    | "glass";
+
+export type LinkExpiryAction =
+    | "HIDE"
+    | "DISABLE";
+
+export type ScheduledVisibility = {
+    visibleFrom?: string;
+    visibleUntil?: string;
+};
+
+export type LinkAvailability = ScheduledVisibility & {
+    expiryAction?: LinkExpiryAction;
+};
+
+export type LinkSensitiveContent = {
+    enabled: boolean;
+    title?: string;
+    message?: string;
+    continueLabel?: string;
+};
+
+export type ProfileActiveIndicatorMode =
+    | "OFF"
+    | "STATIC_ACTIVE";
+
+export type ProfileResponseTimeMode =
+    | "OFF"
+    | "TEN_MINUTES"
+    | "ONE_HOUR"
+    | "CUSTOM";
+
+export type ProfileVisitorMessaging = {
+    activeIndicator?: ProfileActiveIndicatorMode;
+    responseTime?: ProfileResponseTimeMode;
+    customResponseTime?: string;
+};
+
+export type ProfileCampaign = ScheduledVisibility & {
+    enabled: boolean;
+    primaryLinkId?: string;
+    pinPrimary?: boolean;
+    focusEffect?: LinkFocusEffect;
+    dimSiblings?: boolean;
+    focusColor?: string;
+};
+
+export type ProfileEngagement = {
+    /** Always pin this link first when no active campaign overrides it. */
+    featuredLinkId?: string;
+    campaign?: ProfileCampaign;
+    visitorMessaging?: ProfileVisitorMessaging;
+};
+
 /*
 |--------------------------------------------------------------------------
 | PER-CARD CUSTOM STYLE
@@ -166,6 +280,42 @@ export type LinkCardCustomStyle = {
     platformBadgeBackgroundColor?: string;
 
     platformBadgeTextColor?: string;
+
+    focusEffect?: LinkFocusEffect;
+
+    dimSiblings?: boolean;
+
+    focusColor?: string;
+
+    focusDelayMs?: number;
+
+    focusDurationMs?: number;
+
+    focusOncePerSession?: boolean;
+
+    badgeText?: string;
+
+    badgeBackgroundColor?: string;
+
+    badgeTextColor?: string;
+
+    ctaText?: string;
+
+    ctaStyle?: LinkCtaStyle;
+
+    ctaBackgroundColor?: string;
+
+    ctaTextColor?: string;
+
+    titleSize?: number;
+
+    descriptionSize?: number;
+
+    descriptionColor?: string;
+
+    contentPadding?: number;
+
+    imageScale?: number;
 };
 
 /*
@@ -232,8 +382,21 @@ export type PublicProfileLink = {
     customStyle?: LinkCardCustomStyle;
 
     /*
-     * Geo routing
+     * Scheduled availability
      */
+    availability?: LinkAvailability;
+
+    /*
+     * Optional warning shown before the outbound resolver is allowed to continue.
+     */
+    sensitiveContent?: LinkSensitiveContent;
+
+    /*
+     * Per-card Geo behavior. New rules live here; geoDestinations is kept
+     * as a compatibility mirror for older saved profiles.
+     */
+    geo?: LinkGeoConfig;
+
     geoDestinations: GeoDestination[];
 };
 
@@ -284,7 +447,21 @@ export type PageAppearance = {
 
     horizontalPadding: number;
 
+    mobileHorizontalPadding: number;
+
     sectionSpacing: number;
+
+    mobileSectionSpacing: number;
+
+    verticalPadding: number;
+
+    mobileColumns: PageMobileColumns;
+
+    sectionBackgroundColor: string;
+
+    sectionBorderColor: string;
+
+    sectionSurfaceOpacity: number;
 };
 
 /*
@@ -452,6 +629,14 @@ export type ProfileAppearance = {
 
     gradientTo: string;
 
+    gradientAngle?: number;
+
+    backgroundEffect?: BackgroundEffect;
+
+    backgroundEffectColor?: string;
+
+    backgroundEffectIntensity?: number;
+
     /*
      * Typography
      */
@@ -460,6 +645,10 @@ export type ProfileAppearance = {
     secondaryTextColor: string;
 
     fontFamily: string;
+
+    headingWeight?: 600 | 700 | 800 | 900;
+
+    headingLetterSpacing?: number;
 
     /*
      * Classic button system
@@ -489,6 +678,93 @@ export type ProfileAppearance = {
 
     cards?: CardAppearance;
 };
+
+/*
+|--------------------------------------------------------------------------
+| PAGE CONTENT BLOCKS
+|--------------------------------------------------------------------------
+*/
+
+export type PageBlockAlignment = "left" | "center";
+
+export type PageBlockGalleryImage = {
+    id: string;
+    imageUrl?: string;
+    imageAssetId?: string;
+    alt?: string;
+};
+
+export type PageContentBlock = (
+    | {
+        id: string;
+        type: "TEXT";
+        visible: boolean;
+        heading?: string;
+        body: string;
+        alignment: PageBlockAlignment;
+        surface: "plain" | "card";
+      }
+    | {
+        id: string;
+        type: "CTA";
+        visible: boolean;
+        title: string;
+        description?: string;
+        buttonText: string;
+        url: string;
+        alignment: PageBlockAlignment;
+        style: "solid" | "outline" | "glass";
+      }
+    | {
+        id: string;
+        type: "EMAIL_CAPTURE";
+        visible: boolean;
+        title: string;
+        description?: string;
+        placeholder: string;
+        buttonText: string;
+        successMessage: string;
+      }
+    | {
+        id: string;
+        type: "GALLERY";
+        visible: boolean;
+        title?: string;
+        columns: 2 | 3 | 4;
+        aspectRatio: "square" | "portrait" | "landscape";
+        images: PageBlockGalleryImage[];
+      }
+    | {
+        id: string;
+        type: "DIVIDER";
+        visible: boolean;
+        style: "solid" | "faded";
+        thickness: number;
+      }
+    | {
+        id: string;
+        type: "SPACER";
+        visible: boolean;
+        height: number;
+      }
+    | {
+        id: string;
+        type: "EMBED";
+        visible: boolean;
+        title?: string;
+        url: string;
+      }
+    | {
+        id: string;
+        type: "COUNTDOWN";
+        visible: boolean;
+        title: string;
+        targetAt: string;
+        completionText: string;
+        alignment: PageBlockAlignment;
+        surface: "plain" | "card";
+      }
+) & ScheduledVisibility;
 
 /*
 |--------------------------------------------------------------------------
@@ -522,6 +798,10 @@ export type PublicProfileData = {
     links: PublicProfileLink[];
 
     socials: PublicSocialLink[];
+
+    contentBlocks: PageContentBlock[];
+
+    engagement?: ProfileEngagement;
 
     appearance: ProfileAppearance;
 };

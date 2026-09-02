@@ -7,6 +7,8 @@ import LinkBasicSections from "./link-basic-sections";
 import LinkMediaSection from "./link-media-section";
 import LinkDisplaySection from "./link-display-section";
 import LinkCardDesignSection from "./link-card-design-section";
+import LinkAvailabilitySection from "./link-availability-section";
+import LinkSensitiveContentSection from "./link-sensitive-content-section";
 
 export default function LinkEditorForm({ draft, setDraft, error, onSave, onCancel, protectedImageUrl }: {
   draft: LinkDraft;
@@ -33,9 +35,11 @@ export default function LinkEditorForm({ draft, setDraft, error, onSave, onCance
       <LinkMediaSection draft={draft} onChange={updateDraft} protectedImageUrl={protectedImageUrl} />
       <LinkDisplaySection draft={draft} onChange={updateDraft} />
       <LinkCardDesignSection draft={draft} onChange={updateCustomStyle} />
+      <LinkAvailabilitySection draft={draft} onChange={updateDraft} />
+      <LinkSensitiveContentSection draft={draft} onChange={updateDraft} />
 
-      <EditorSection title="Geo routing" description="Send visitors from specific countries to different destinations." icon={Globe2}>
-        <GeoRoutingEditor destinations={draft.geoDestinations} onChange={(geoDestinations) => updateDraft({ geoDestinations })} />
+      <EditorSection title="Geo routing" description="Control this card by visitor country without changing the page-wide Geo rules." icon={Globe2}>
+        <GeoRoutingEditor geo={draft.geo} onChange={(geo) => updateDraft({ geo })} />
       </EditorSection>
 
       {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}

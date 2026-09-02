@@ -4,9 +4,11 @@ import { useMemo, useState } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useProfile } from "@/features/profile/profile-context";
+import { useToast } from "@/components/ui/toast";
 import type { PublicProfileData, PublicProfileLink } from "@/types/profile";
 import type { LinkDraft } from "@/features/links/link-editor-types";
 import { MAX_LINKS } from "@/features/links/link-config";
+import { sanitizeEngagementForLinks } from "@/features/engagement/profile-engagement";
 import {
   applyDraftToLink,
   createEmptyDraft,
@@ -19,6 +21,7 @@ import {
 
 export function useLinksEditor() {
   const { profile, setProfile, saveProfile, saving } = useProfile();
+  const { pushToast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
   const [error, setError] = useState("");
@@ -29,25 +32,36 @@ export function useLinksEditor() {
 
   const previewProfile = useMemo<PublicProfileData>(() => {
     if (editingId) {
+      const previewLink = profile.links.find((link) => link.id === editingId);
+      const previewLinks = profile.links.map((link) =>
+        link.id === editingId ? applyDraftToLink(link, draft) : link,
+      );
+      const focusedId = previewLink && draft.customStyle.focusEffect !== "none" ? editingId : undefined;
       return {
         ...profile,
-        links: profile.links.map((link) =>
-          link.id === editingId ? applyDraftToLink(link, draft) : link,
-        ),
+        links: makeFocusExclusive(previewLinks, focusedId),
       };
     }
     if (creatingNew) {
+      const previewLink = createLinkFromDraft("__preview__", draft);
       return {
         ...profile,
-        links: [...profile.links, createLinkFromDraft("__preview__", draft)],
+        links: makeFocusExclusive(
+          [...profile.links, previewLink],
+          draft.customStyle.focusEffect !== "none" ? previewLink.id : undefined,
+        ),
       };
     }
     return profile;
   }, [profile, editingId, creatingNew, draft]);
 
-  async function commitLinks(nextLinks: PublicProfileLink[]) {
+  async function commitLinks(nextLinks: PublicProfileLink[], successMessage?: string) {
     const previousProfile = profile;
-    const nextProfile = { ...profile, links: nextLinks };
+    const nextProfile = {
+      ...profile,
+      links: nextLinks,
+      engagement: sanitizeEngagementForLinks(profile.engagement, nextLinks),
+    };
     setProfile(nextProfile);
 
     const result = await saveProfile(nextProfile);
@@ -56,9 +70,11 @@ export function useLinksEditor() {
         setProfile(previousProfile);
       }
       setError(result.error);
+      pushToast({ title: "Link update failed", description: result.error, tone: "error" });
       return false;
     }
 
+    if (successMessage) pushToast({ title: successMessage, tone: "success" });
     return true;
   }
 
@@ -93,13 +109,16 @@ export function useLinksEditor() {
     const validation = validateDraft(draft);
     if (validation) return setError(validation);
     const normalized = normalizeDraft(draft);
-    const nextLinks = [
-      ...links,
-      createLinkFromDraft(crypto.randomUUID(), normalized),
-    ];
+    const newLink = createLinkFromDraft(crypto.randomUUID(), normalized);
+    const nextLinks = makeFocusExclusive(
+      [...links, newLink],
+      newLink.customStyle?.focusEffect && newLink.customStyle.focusEffect !== "none"
+        ? newLink.id
+        : undefined,
+    );
 
     setError("");
-    if (await commitLinks(nextLinks)) {
+    if (await commitLinks(nextLinks, "Link added")) {
       setCreatingNew(false);
     }
   }
@@ -110,12 +129,18 @@ export function useLinksEditor() {
     if (validation) return setError(validation);
     const normalized = normalizeDraft(draft);
     const original = links.find((link) => link.id === editingId);
-    const nextLinks = links.map((link) =>
-      link.id === editingId ? applyDraftToLink(link, normalized) : link,
+    const editedLink = original ? applyDraftToLink(original, normalized) : undefined;
+    const nextLinks = makeFocusExclusive(
+      links.map((link) =>
+        link.id === editingId ? applyDraftToLink(link, normalized) : link,
+      ),
+      editedLink?.customStyle?.focusEffect && editedLink.customStyle.focusEffect !== "none"
+        ? editingId
+        : undefined,
     );
 
     setError("");
-    if (await commitLinks(nextLinks)) {
+    if (await commitLinks(nextLinks, "Link updated")) {
       if (
         original?.imageUrl?.startsWith("blob:") &&
         original.imageUrl !== normalized.imageUrl
@@ -133,15 +158,16 @@ export function useLinksEditor() {
       links.map((link) =>
         link.id === id ? { ...link, visible: !link.visible } : link,
       ),
+      "Link visibility updated",
     );
   }
 
   async function deleteLink(id: string) {
-    if (saving || !window.confirm("Delete this link?")) return;
+    if (saving) return;
     const existing = links.find((link) => link.id === id);
     setError("");
 
-    if (await commitLinks(links.filter((link) => link.id !== id))) {
+    if (await commitLinks(links.filter((link) => link.id !== id), "Link deleted")) {
       if (existing?.imageUrl?.startsWith("blob:")) {
         URL.revokeObjectURL(existing.imageUrl);
       }
@@ -159,7 +185,7 @@ export function useLinksEditor() {
     if (oldIndex === -1 || newIndex === -1) return;
 
     setError("");
-    await commitLinks(arrayMove(links, oldIndex, newIndex));
+    await commitLinks(arrayMove(links, oldIndex, newIndex), "Link order saved");
   }
 
   return {
@@ -182,4 +208,18 @@ export function useLinksEditor() {
     deleteLink,
     handleDragEnd,
   };
+}
+
+
+function makeFocusExclusive(links: PublicProfileLink[], focusedId?: string) {
+  if (!focusedId) return links;
+  return links.map((link) => {
+    if (link.id === focusedId || !link.customStyle?.focusEffect || link.customStyle.focusEffect === "none") {
+      return link;
+    }
+    return {
+      ...link,
+      customStyle: { ...link.customStyle, focusEffect: "none" as const },
+    };
+  });
 }

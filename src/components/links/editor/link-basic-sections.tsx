@@ -1,9 +1,10 @@
 import { SlidersHorizontal } from "lucide-react";
+import { DestinationPicker } from "@/components/destinations/destination-picker";
 import { Field, INPUT_CLASS as inputClass } from "@/components/ui/editor-controls";
-import type { LinkCardAspectRatio, PlatformId } from "@/types/profile";
+import type { LinkCardAspectRatio } from "@/types/profile";
 import type { LinkDraft } from "@/features/links/link-editor-types";
 import { LINK_LAYOUT_OPTIONS } from "@/features/links/link-config";
-import { PlatformIcon, PLATFORMS } from "@/config/platforms";
+import { platformToProviderId, providerToPlatformId } from "@/config/platforms";
 import { AspectRatioButton, CardLayoutIcon, EditorSection } from "./link-editor-primitives";
 
 type Props = { draft: LinkDraft; onChange: (values: Partial<LinkDraft>) => void };
@@ -19,23 +20,27 @@ export default function LinkBasicSections({ draft, onChange }: Props) {
 
   return (
     <>
-      <EditorSection title="Content" description="Basic information for the link.">
+      <EditorSection title="Content" description="Basic information and destination for the card.">
         <div className="grid gap-4">
-          <Field label="Title" htmlFor="link-title"><input id="link-title" type="text" value={draft.title} maxLength={80} onChange={(event) => onChange({ title: event.target.value })} placeholder="My Telegram" className={inputClass} /></Field>
-          <Field label="Description" htmlFor="link-description" optional><input id="link-description" type="text" value={draft.description} maxLength={120} onChange={(event) => onChange({ description: event.target.value })} placeholder="Join the community" className={inputClass} /></Field>
-          <Field label="Default URL" htmlFor="link-default-url">
-            <input id="link-default-url" type="text" value={draft.url} onChange={(event) => onChange({ url: event.target.value })} placeholder="https://..." className={inputClass} />
-            <p className="mt-1.5 text-xs leading-5 text-zinc-400">Used when no country-specific Geo Route exists.</p>
-          </Field>
+          <Field label="Title" htmlFor="link-title"><input id="link-title" type="text" value={draft.title} maxLength={80} onChange={(event) => onChange({ title: event.target.value })} placeholder="Listen on Spotify" className={inputClass} /></Field>
+          <Field label="Description" htmlFor="link-description" optional><input id="link-description" type="text" value={draft.description} maxLength={120} onChange={(event) => onChange({ description: event.target.value })} placeholder="New single out now" className={inputClass} /></Field>
         </div>
-      </EditorSection>
 
-      <EditorSection title="Platform" description="Choose which service this link represents.">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-white"><PlatformIcon platform={draft.platform} size={18} /></div>
-          <select value={draft.platform} onChange={(event) => onChange({ platform: event.target.value as PlatformId })} className={inputClass}>
-            {PLATFORMS.map((platform) => <option key={platform.id} value={platform.id}>{platform.name}</option>)}
-          </select>
+        <div className="mt-5">
+          <DestinationPicker
+            title="Card destination"
+            showFallback={false}
+            showLabel={false}
+            value={{
+              provider: platformToProviderId(draft.platform),
+              value: draft.url,
+              url: draft.url,
+            }}
+            onChange={(destination) => onChange({
+              url: destination.url,
+              platform: providerToPlatformId(destination.provider),
+            })}
+          />
         </div>
       </EditorSection>
 

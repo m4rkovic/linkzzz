@@ -9,6 +9,7 @@ import {
     getSocialRadius,
 } from "@/components/public/profile-renderer-utils";
 import UserContentImage from "@/components/ui/user-content-image";
+import { resolveResponseTimeLabel, resolveVisitorMessaging } from "@/features/engagement/visitor-messaging";
 import type { PublicProfileData, VisitorLocation } from "@/types/profile";
 
 /*
@@ -535,5 +536,69 @@ export function UnavailableProfile({
                 </p>
             </div>
         </main>
+    );
+}
+
+/*
+|--------------------------------------------------------------------------
+| VISITOR MESSAGING
+|--------------------------------------------------------------------------
+*/
+
+export function ProfileVisitorSignals({
+    profile,
+    alignment = "center",
+    primaryColor,
+    secondaryColor,
+}: {
+    profile: PublicProfileData;
+    alignment?: "left" | "center";
+    primaryColor?: string;
+    secondaryColor?: string;
+}) {
+    const messaging = resolveVisitorMessaging(profile.engagement);
+    const active = messaging.activeIndicator === "STATIC_ACTIVE";
+    const responseText = resolveResponseTimeLabel(profile.engagement);
+
+    if (!active && !responseText) return null;
+
+    const textColor = secondaryColor ?? profile.appearance.secondaryTextColor;
+    const dotColor = primaryColor ?? profile.appearance.primaryTextColor;
+
+    return (
+        <div
+            className={`mt-3 flex flex-wrap items-center gap-2 ${alignment === "left" ? "justify-start" : "justify-center"}`}
+            aria-label="Availability information"
+        >
+            {active && (
+                <span
+                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold backdrop-blur-sm"
+                    style={{
+                        color: textColor,
+                        borderColor: addAlpha(dotColor, 0.2),
+                        backgroundColor: addAlpha(dotColor, 0.07),
+                    }}
+                >
+                    <span
+                        className="h-1.5 w-1.5 rounded-full bg-brand-lime"
+                        aria-hidden="true"
+                    />
+                    Active
+                </span>
+            )}
+
+            {responseText && (
+                <span
+                    className="inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium backdrop-blur-sm"
+                    style={{
+                        color: textColor,
+                        borderColor: addAlpha(dotColor, 0.16),
+                        backgroundColor: addAlpha(dotColor, 0.05),
+                    }}
+                >
+                    {responseText}
+                </span>
+            )}
+        </div>
     );
 }

@@ -1,8 +1,8 @@
 # Linkzzz Prisma/PostgreSQL persistence patch
 
 Prisma/PostgreSQL is the only application runtime persistence adapter. The old
-JSON files remain as legacy reference code, but the dependency factory does not
-import them and `PERSISTENCE_ADAPTER=json` is no longer supported.
+JSON persistence files have been removed and `PERSISTENCE_ADAPTER=json` is not
+supported.
 
 ## Environment
 
@@ -26,33 +26,35 @@ From the project root, after extracting this ZIP over the project:
 ```powershell
 npm.cmd install
 npx.cmd prisma generate
-npx.cmd prisma migrate deploy
+npx.cmd prisma migrate reset --force
 npx.cmd prisma db seed
 npm.cmd run typecheck
 npm.cmd run lint
 npm.cmd run build
 ```
 
-For a local database whose existing `init` migration has already been applied, do not create another schema migration: this patch uses the existing `prisma/schema.prisma`. Use `prisma migrate deploy` to apply any checked-in pending migrations, then seed.
-
-For a brand-new local development database, if no migration exists yet:
-
-```powershell
-npx.cmd prisma migrate dev --name init
-npx.cmd prisma db seed
-```
+The SmartLink schema cleanup intentionally replaces the old development
+migration history. Run `prisma migrate reset --force` once on every existing
+development database. It deletes the schema and all local data, applies the new
+clean initial migration, and then the explicit seed command restores mock data.
 
 ## Seeded development accounts
 
 - Admin: `admin` / `LinkzzzAdmin!2026`
 - Customer: `skyhook` / `LinkzzzSky!2026`
 
-The seed is idempotent for users and profile creation, uses the existing scrypt hashing layer, and refreshes development credential hashes. Override both passwords through environment variables outside local development.
+The seed is idempotent, uses the existing scrypt hashing layer, refreshes
+development credential hashes, creates a populated `/skyhook` Landing Page,
+and adds a draft `/skyhook-listen` Direct SmartLink. It only inserts PageCards
+and social accounts when the seeded page does not already contain them.
 
 ## Persistence design
 
 - Application services import only `getServerDependencies`; they do not import Prisma.
 - Prisma 7 uses one central client with `@prisma/adapter-pg` and a development singleton.
-- `ProfileRepository.upsert` persists Profile, Link, GeoDestination, SocialLink, and ProfileStat atomically.
+- `SmartLinkRepository` owns top-level Landing Page and Direct Link records.
+- `ProfileRepository.upsert` remains the transitional service name, but it
+  persists `Page`, `PageCard`, `PageCardGeoDestination`, `SocialLink`, and
+  `PageStat` atomically.
 - Subscription upserts also append SubscriptionHistory.
 - AnalyticsEvent, Asset, CustomDomain, and AuditLog have Prisma repository adapters available through the dependency container.

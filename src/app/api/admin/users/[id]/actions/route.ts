@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { isPlanId } from "@/features/plans/plan-catalog";
 import { performAdminUserAction } from "@/server/admin/admin-service";
 import { getCurrentSession } from "@/server/auth/current-session";
 import { requireAdmin } from "@/server/auth/guards";
@@ -53,11 +54,10 @@ function isAdminUserAction(value: unknown): value is AdminUserAction {
     case "RENEW":
       return [1, 3, 6, 12].includes(Number(body.months));
     case "CHANGE_PLAN":
-      return body.plan === "PREMIUM" || body.plan === "PREMIUM_PLUS";
-    case "SET_PROFILE_STATUS":
-      return body.status === "PUBLISHED" || body.status === "DISABLED";
-    case "CHANGE_SLUG":
-      return typeof body.slug === "string";
+      return isPlanId(body.plan);
+    case "SET_SMART_LINK_STATUS":
+      return typeof body.smartLinkId === "string" &&
+        (body.status === "PUBLISHED" || body.status === "DISABLED");
     case "SUSPEND":
       return body.reason === undefined || typeof body.reason === "string";
     case "STOP_RENEWAL":

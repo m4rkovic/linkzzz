@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, CalendarDays, Clock3, Search, UserPlus, Users } from "lucide-react";
+import { buttonClassName } from "@/components/ui/button";
 import type { AdminUserListItem } from "@/types/admin-api";
-import { getPlanLimit } from "@/features/admin/subscription-rules";
+import { getPlanUsageLabel } from "@/features/admin/subscription-rules";
+import { getPlanDefinition } from "@/features/plans/plan-catalog";
 
 type QuickView = "ALL" | "EXPIRING" | "CANCELLING" | "EXPIRED";
 
@@ -61,7 +63,7 @@ export default function UsersDashboard() {
   return <div className="mx-auto w-full max-w-7xl space-y-6">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div><h1 className="text-2xl font-bold tracking-tight text-zinc-950">Users</h1><p className="mt-1 text-sm text-zinc-500">Manage customer accounts, plans and subscriptions.</p></div>
-      <Link href="/admin/users/new" className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 text-sm font-semibold text-white"><UserPlus size={17}/> Create user</Link>
+      <Link href="/admin/users/new" className={buttonClassName({ variant: "primary", className: "font-black" })}><UserPlus size={17}/> Create user</Link>
     </div>
 
     {error && <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
@@ -79,14 +81,14 @@ export default function UsersDashboard() {
 
     {loading ? <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-500">Loading customers...</div> : filtered.length === 0 ? <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">No customers match this view.</div> : <>
       <div className="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white lg:block">
-        <table className="w-full text-left text-sm"><thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Plan</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Links</th><th className="px-5 py-3">Expires</th><th className="px-5 py-3"></th></tr></thead><tbody>{filtered.map((user) => <tr key={user.id} className="border-t border-zinc-100"><td className="px-5 py-4"><p className="font-semibold text-zinc-950">{user.displayName}</p><p className="mt-1 text-xs text-zinc-500">@{user.username} · {user.email}</p></td><td className="px-5 py-4 font-medium">{user.plan === "PREMIUM_PLUS" ? "Premium Plus" : "Premium"}</td><td className="px-5 py-4"><Status user={user}/></td><td className="px-5 py-4">{user.linksUsed} / {getPlanLimit(user.plan)}</td><td className="px-5 py-4">{formatDate(user.periodEnd)}</td><td className="px-5 py-4 text-right"><Link href={`/admin/users/${user.id}`} className="font-semibold text-zinc-950">Manage</Link></td></tr>)}</tbody></table>
+        <table className="w-full text-left text-sm"><thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Plan</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Smart Links</th><th className="px-5 py-3">Expires</th><th className="px-5 py-3"></th></tr></thead><tbody>{filtered.map((user) => <tr key={user.id} className="border-t border-zinc-100"><td className="px-5 py-4"><p className="font-semibold text-zinc-950">{user.displayName}</p><p className="mt-1 text-xs text-zinc-500">@{user.username} · {user.email}</p></td><td className="px-5 py-4 font-medium">{getPlanDefinition(user.plan).name}</td><td className="px-5 py-4"><Status user={user}/></td><td className="px-5 py-4">{getPlanUsageLabel(user.plan, user.linksUsed)}</td><td className="px-5 py-4">{formatDate(user.periodEnd)}</td><td className="px-5 py-4 text-right"><Link href={`/admin/users/${user.id}`} className="font-semibold text-zinc-950">Manage</Link></td></tr>)}</tbody></table>
       </div>
-      <div className="space-y-3 lg:hidden">{filtered.map((user) => <Link key={user.id} href={`/admin/users/${user.id}`} className="block rounded-2xl border border-zinc-200 bg-white p-4"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="truncate font-semibold text-zinc-950">{user.displayName}</p><p className="mt-1 truncate text-xs text-zinc-500">@{user.username}</p></div><Status user={user}/></div><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><Info label="Plan" value={user.plan === "PREMIUM_PLUS" ? "Premium Plus" : "Premium"}/><Info label="Links" value={`${user.linksUsed} / ${getPlanLimit(user.plan)}`}/><Info label="Expires" value={formatDate(user.periodEnd)}/><Info label="Slug" value={`/${user.slug}`}/></div></Link>)}</div>
+      <div className="space-y-3 lg:hidden">{filtered.map((user) => <Link key={user.id} href={`/admin/users/${user.id}`} className="block rounded-2xl border border-zinc-200 bg-white p-4"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="truncate font-semibold text-zinc-950">{user.displayName}</p><p className="mt-1 truncate text-xs text-zinc-500">@{user.username}</p></div><Status user={user}/></div><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><Info label="Plan" value={getPlanDefinition(user.plan).name}/><Info label="Smart Links" value={getPlanUsageLabel(user.plan, user.linksUsed)}/><Info label="Expires" value={formatDate(user.periodEnd)}/><Info label="Published" value={`${user.publishedLinks} public`}/></div></Link>)}</div>
     </>}
   </div>;
 }
 
-function Summary({ icon: Icon, label, value, active, onClick }: { icon: React.ElementType; label: string; value: number; active: boolean; onClick: () => void }) { return <button type="button" onClick={onClick} className={`rounded-2xl border p-4 text-left ${active ? "border-zinc-950 bg-zinc-950 text-white" : "border-zinc-200 bg-white"}`}><Icon size={18}/><p className="mt-4 text-2xl font-bold">{value}</p><p className={`mt-1 text-xs ${active ? "text-zinc-400" : "text-zinc-500"}`}>{label}</p></button>; }
+function Summary({ icon: Icon, label, value, active, onClick }: { icon: React.ElementType; label: string; value: number; active: boolean; onClick: () => void }) { return <button type="button" onClick={onClick} className={`rounded-2xl border p-4 text-left ${active ? "border-brand-violet bg-brand-violet-strong text-white shadow-lg shadow-brand-violet/15" : "border-zinc-200 bg-white"}`}><Icon size={18}/><p className="mt-4 text-2xl font-bold">{value}</p><p className={`mt-1 text-xs ${active ? "text-white" : "text-zinc-500"}`}>{label}</p></button>; }
 function Info({ label, value }: { label: string; value: string }) { return <div className="min-w-0 rounded-xl bg-zinc-50 p-3"><p className="text-zinc-400">{label}</p><p className="mt-1 break-words font-semibold text-zinc-800">{value}</p></div>; }
 function Status({ user }: { user: AdminUserListItem }) { const status = effectiveStatus(user); return <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700">{status.replaceAll("_", " ")}</span>; }
 function effectiveStatus(user: AdminUserListItem) { if (user.accountStatus === "SUSPENDED") return "SUSPENDED"; if (user.accountStatus === "DISABLED") return "STOPPED"; if (user.subscriptionStatus !== "STOPPED" && new Date(user.periodEnd).getTime() < Date.now()) return "EXPIRED"; return user.subscriptionStatus; }

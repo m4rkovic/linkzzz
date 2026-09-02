@@ -10,7 +10,7 @@ export default function PeakActivityCard({ data }: Props) {
   return (
     <section className="w-full min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 sm:p-6">
       <h2 className="text-lg font-semibold text-zinc-950">Peak activity</h2>
-      <p className="mt-1 text-sm text-zinc-500">When your audience is most active.</p>
+      <p className="mt-1 text-sm text-zinc-500">Strongest traffic window in the selected period, currently reported in UTC.</p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
         <ActivityItem
@@ -43,7 +43,7 @@ function ActivityItem({
 }) {
   return (
     <div className="min-w-0 rounded-xl bg-zinc-50 p-4">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-zinc-700 shadow-sm ring-1 ring-zinc-200">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-brand-violet-strong shadow-sm ring-1 ring-zinc-200">
         <Icon size={16} />
       </div>
       <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">{eyebrow}</p>

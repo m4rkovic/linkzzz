@@ -1,6 +1,18 @@
 import type { LinkCardCustomStyle, LinkCardLayout, PublicProfileData, PublicProfileLink } from "@/types/profile";
 import type { CardStyleDraft, LinkDraft } from "@/features/links/link-editor-types";
-import { detectPlatform, getPlatformIcon } from "@/config/platforms";
+import { detectPlatform, getPlatformIcon, platformToProviderId } from "@/config/platforms";
+import { normalizeProviderDestination } from "@/features/destinations/provider-registry";
+import { validateLinkAvailability } from "@/features/links/link-availability";
+import { DEFAULT_SENSITIVE_CONTENT_WARNING } from "@/features/links/sensitive-content";
+import {
+  DEFAULT_LINK_GEO_CONFIG,
+  effectiveLinkGeo,
+  linkGeoToLegacyDestinations,
+} from "@/features/links/link-geo";
+import {
+  normalizeLinkGeoConfig,
+  validateLinkGeoConfig,
+} from "@/features/links/link-geo-editor";
 
 export function createDefaultCardStyle(layout: LinkCardLayout): CardStyleDraft {
   let height = 220;
@@ -26,6 +38,24 @@ export function createDefaultCardStyle(layout: LinkCardLayout): CardStyleDraft {
     platformBadgePosition: "top-left",
     platformBadgeBackgroundColor: "#ffffff",
     platformBadgeTextColor: "#09090b",
+    focusEffect: "none",
+    dimSiblings: true,
+    focusColor: "#ffffff",
+    focusDelayMs: 500,
+    focusDurationMs: 4500,
+    focusOncePerSession: false,
+    badgeText: "",
+    badgeBackgroundColor: "#ffffff",
+    badgeTextColor: "#09090b",
+    ctaText: "",
+    ctaStyle: "none",
+    ctaBackgroundColor: "#ffffff",
+    ctaTextColor: "#09090b",
+    titleSize: 22,
+    descriptionSize: 13,
+    descriptionColor: "#ffffff",
+    contentPadding: 20,
+    imageScale: 100,
   };
 }
 
@@ -48,7 +78,9 @@ export function createEmptyDraft(layout: LinkCardLayout): LinkDraft {
     overlayOpacity: 0.42,
     titlePosition: "bottom-center",
     customStyle: createDefaultCardStyle(layout),
-    geoDestinations: [],
+    availability: { expiryAction: "HIDE" },
+    sensitiveContent: { ...DEFAULT_SENSITIVE_CONTENT_WARNING },
+    geo: structuredClone(DEFAULT_LINK_GEO_CONFIG),
   };
 }
 
@@ -93,8 +125,35 @@ export function linkToDraft(link: PublicProfileLink, profile: PublicProfileData)
       platformBadgePosition: link.customStyle?.platformBadgePosition ?? "top-left",
       platformBadgeBackgroundColor: link.customStyle?.platformBadgeBackgroundColor ?? "#ffffff",
       platformBadgeTextColor: link.customStyle?.platformBadgeTextColor ?? "#09090b",
+      focusEffect: link.customStyle?.focusEffect ?? "none",
+      dimSiblings: link.customStyle?.dimSiblings ?? true,
+      focusColor: link.customStyle?.focusColor ?? "#ffffff",
+      focusDelayMs: link.customStyle?.focusDelayMs ?? 500,
+      focusDurationMs: link.customStyle?.focusDurationMs ?? 4500,
+      focusOncePerSession: link.customStyle?.focusOncePerSession ?? false,
+      badgeText: link.customStyle?.badgeText ?? "",
+      badgeBackgroundColor: link.customStyle?.badgeBackgroundColor ?? "#ffffff",
+      badgeTextColor: link.customStyle?.badgeTextColor ?? "#09090b",
+      ctaText: link.customStyle?.ctaText ?? "",
+      ctaStyle: link.customStyle?.ctaStyle ?? "none",
+      ctaBackgroundColor: link.customStyle?.ctaBackgroundColor ?? "#ffffff",
+      ctaTextColor: link.customStyle?.ctaTextColor ?? "#09090b",
+      titleSize: link.customStyle?.titleSize ?? (layout === "featured" ? 28 : 22),
+      descriptionSize: link.customStyle?.descriptionSize ?? 13,
+      descriptionColor: link.customStyle?.descriptionColor ?? "#ffffff",
+      contentPadding: link.customStyle?.contentPadding ?? 20,
+      imageScale: link.customStyle?.imageScale ?? 100,
     },
-    geoDestinations: link.geoDestinations ?? [],
+    availability: {
+      visibleFrom: link.availability?.visibleFrom,
+      visibleUntil: link.availability?.visibleUntil,
+      expiryAction: link.availability?.expiryAction ?? "HIDE",
+    },
+    sensitiveContent: {
+      ...DEFAULT_SENSITIVE_CONTENT_WARNING,
+      ...(link.sensitiveContent ?? {}),
+    },
+    geo: effectiveLinkGeo(link.geo, link.geoDestinations),
   };
 }
 
@@ -120,7 +179,10 @@ export function createLinkFromDraft(id: string, draft: LinkDraft): PublicProfile
     overlayOpacity: draft.overlayOpacity,
     titlePosition: draft.titlePosition,
     customStyle: cardStyleToModel(draft.customStyle),
-    geoDestinations: draft.geoDestinations,
+    availability: normalizeAvailability(draft.availability),
+    sensitiveContent: normalizeSensitiveContent(draft.sensitiveContent),
+    geo: normalizeLinkGeoConfig(draft.geo),
+    geoDestinations: linkGeoToLegacyDestinations(normalizeLinkGeoConfig(draft.geo)),
   };
 }
 
@@ -145,23 +207,47 @@ export function applyDraftToLink(link: PublicProfileLink, draft: LinkDraft): Pub
     overlayOpacity: draft.overlayOpacity,
     titlePosition: draft.titlePosition,
     customStyle: cardStyleToModel(draft.customStyle),
-    geoDestinations: draft.geoDestinations,
+    availability: normalizeAvailability(draft.availability),
+    sensitiveContent: normalizeSensitiveContent(draft.sensitiveContent),
+    geo: normalizeLinkGeoConfig(draft.geo),
+    geoDestinations: linkGeoToLegacyDestinations(normalizeLinkGeoConfig(draft.geo)),
   };
 }
 
 export function normalizeDraft(draft: LinkDraft): LinkDraft {
+  const destination = normalizeProviderDestination(platformToProviderId(draft.platform), draft.url);
   return {
     ...draft,
     title: draft.title.trim(),
     description: draft.description.trim(),
-    url: normalizeUrl(draft.url),
-    geoDestinations: draft.geoDestinations.map((destination) => ({ ...destination, url: normalizeUrl(destination.url) })),
+    url: destination.ok ? destination.value.url : draft.url.trim(),
+    sensitiveContent: {
+      ...draft.sensitiveContent,
+      title: draft.sensitiveContent.title?.trim(),
+      message: draft.sensitiveContent.message?.trim(),
+      continueLabel: draft.sensitiveContent.continueLabel?.trim(),
+    },
+    geo: normalizeLinkGeoConfig(draft.geo),
   };
 }
 
 export function validateDraft(draft: LinkDraft) {
   if (!draft.title.trim()) return "Link title is required.";
-  if (!draft.url.trim()) return "Default URL is required.";
+  if (!draft.url.trim()) return "Default destination is required.";
+  const destination = normalizeProviderDestination(platformToProviderId(draft.platform), draft.url);
+  if (!destination.ok) return destination.error;
+  const availabilityError = validateLinkAvailability(draft.availability);
+  if (availabilityError) return availabilityError;
+  const geoError = validateLinkGeoConfig(draft.geo);
+  if (geoError) return geoError;
+  if (draft.sensitiveContent.enabled) {
+    const title = draft.sensitiveContent.title?.trim() ?? "";
+    const message = draft.sensitiveContent.message?.trim() ?? "";
+    const continueLabel = draft.sensitiveContent.continueLabel?.trim() ?? "";
+    if (!title || title.length > 80) return "Sensitive-content title must contain 1 to 80 characters.";
+    if (!message || message.length > 300) return "Sensitive-content message must contain 1 to 300 characters.";
+    if (!continueLabel || continueLabel.length > 40) return "Sensitive-content continue label must contain 1 to 40 characters.";
+  }
   return "";
 }
 
@@ -195,9 +281,24 @@ function getDefaultHeight(layout: LinkCardLayout, profile: PublicProfileData) {
   return cards?.cardHeight ?? 220;
 }
 
-function normalizeUrl(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
-  return `https://${trimmed}`;
+function normalizeAvailability(availability: LinkDraft["availability"]) {
+  const visibleFrom = availability.visibleFrom || undefined;
+  const visibleUntil = availability.visibleUntil || undefined;
+  if (!visibleFrom && !visibleUntil) return undefined;
+  return {
+    visibleFrom,
+    visibleUntil,
+    expiryAction: availability.expiryAction ?? "HIDE",
+  };
+}
+
+
+function normalizeSensitiveContent(value: LinkDraft["sensitiveContent"]) {
+  if (!value.enabled) return undefined;
+  return {
+    enabled: true,
+    title: value.title?.trim() || DEFAULT_SENSITIVE_CONTENT_WARNING.title,
+    message: value.message?.trim() || DEFAULT_SENSITIVE_CONTENT_WARNING.message,
+    continueLabel: value.continueLabel?.trim() || DEFAULT_SENSITIVE_CONTENT_WARNING.continueLabel,
+  };
 }

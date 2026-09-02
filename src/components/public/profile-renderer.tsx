@@ -12,6 +12,7 @@ type ProfileRendererProps = {
   onShare?: () => void;
   onLinkClick?: (linkId: string) => void;
   onSocialClick?: (socialId: string) => void;
+  initialNowMs?: number;
 };
 
 export default function ProfileRenderer({
@@ -21,6 +22,7 @@ export default function ProfileRenderer({
   onShare,
   onLinkClick,
   onSocialClick,
+  initialNowMs = 0,
 }: ProfileRendererProps) {
   const isPreview = mode === "preview";
 
@@ -37,6 +39,7 @@ export default function ProfileRenderer({
         onShare={onShare}
         onLinkClick={onLinkClick}
         onSocialClick={onSocialClick}
+        initialNowMs={initialNowMs}
       />
     );
   }
@@ -49,6 +52,7 @@ export default function ProfileRenderer({
       onShare={onShare}
       onLinkClick={onLinkClick}
       onSocialClick={onSocialClick}
+      initialNowMs={initialNowMs}
     />
   );
 }

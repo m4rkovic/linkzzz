@@ -1,3 +1,5 @@
+import { BarChart3 } from "lucide-react";
+
 import type { AnalyticsBreakdownItem } from "@/types/analytics";
 
 type Props = {
@@ -14,29 +16,37 @@ export default function AnalyticsBreakdownCard({ title, description, data }: Pro
         <p className="mt-1 text-sm text-zinc-500">{description}</p>
       </div>
 
-      <div className="mt-6 space-y-5">
-        {data.map((item) => (
-          <div key={item.name} className="min-w-0">
-            <div className="flex min-w-0 items-center gap-3">
-              {item.prefix && <span className="shrink-0 text-xl">{item.prefix}</span>}
+      {data.length ? (
+        <div className="mt-6 space-y-5">
+          {data.map((item) => (
+            <div key={item.name} className="min-w-0">
+              <div className="flex min-w-0 items-center gap-3">
+                {item.prefix && <span className="shrink-0 text-xl">{item.prefix}</span>}
 
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center justify-between gap-3">
-                  <p className="min-w-0 truncate text-sm font-medium text-zinc-800">{item.name}</p>
-                  <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                    <span className="text-xs text-zinc-400">{item.value}</span>
-                    <span className="w-9 text-right text-xs font-semibold text-zinc-700">{item.percentage}%</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <p className="min-w-0 truncate text-sm font-medium text-zinc-800">{item.name}</p>
+                    <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                      <span className="text-xs text-zinc-400">{item.value}</span>
+                      <span className="w-9 text-right text-xs font-semibold text-zinc-700">{item.percentage}%</span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-100">
-                  <div className="h-full rounded-full bg-zinc-950" style={{ width: `${item.percentage}%` }} />
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-100">
+                    <div className="h-full rounded-full bg-brand-violet-strong" style={{ width: `${item.percentage}%` }} />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-6 rounded-xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-8 text-center">
+          <BarChart3 size={20} className="mx-auto text-zinc-300" />
+          <p className="mt-2 text-sm font-semibold text-zinc-700">No data in this period</p>
+          <p className="mt-1 text-xs text-zinc-400">This breakdown will fill in as human traffic arrives.</p>
+        </div>
+      )}
     </section>
   );
 }

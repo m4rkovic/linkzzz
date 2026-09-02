@@ -6,6 +6,8 @@ export function buildContentSecurityPolicy(input: {
     "'self'",
     `'nonce-${input.nonce}'`,
     "'strict-dynamic'",
+    "https://www.googletagmanager.com",
+    "https://connect.facebook.net",
     input.isDevelopment ? "'unsafe-eval'" : "",
   ].filter(Boolean);
 
@@ -23,9 +25,10 @@ export function buildContentSecurityPolicy(input: {
     "font-src 'self' data: https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: https:",
+    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com",
     // Profile image previews are object URLs. Saving fetches the object URL
     // locally before posting the resulting File to the same-origin API.
-    `connect-src 'self' blob:${input.isDevelopment ? " ws: wss:" : ""}`,
+    `connect-src 'self' blob: https://www.google-analytics.com https://region1.google-analytics.com https://www.facebook.com${input.isDevelopment ? " ws: wss:" : ""}`,
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     input.isDevelopment ? "" : "upgrade-insecure-requests",

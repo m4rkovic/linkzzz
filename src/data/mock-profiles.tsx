@@ -125,6 +125,8 @@ const skyHookProfile: PublicProfileData = {
     },
   ],
 
+  contentBlocks: [],
+
   appearance: defaultAppearance,
 };
 
@@ -155,11 +157,21 @@ export function createMockProfileBySlug(
     ...profile,
     stats: profile.stats?.map((stat) => ({ ...stat })),
     socials: profile.socials.map((social) => ({ ...social })),
+    contentBlocks: profile.contentBlocks.map((block) => block.type === "GALLERY" ? { ...block, images: block.images.map((image) => ({ ...image })) } : { ...block }),
     links: profile.links.map((link) => ({
       ...link,
       geoDestinations: link.geoDestinations.map((destination) => ({
         ...destination,
       })),
+      geo: link.geo
+        ? {
+            ...link.geo,
+            rules: link.geo.rules.map((rule) => ({
+              ...rule,
+              destination: rule.destination ? { ...rule.destination } : undefined,
+            })),
+          }
+        : undefined,
       customStyle: link.customStyle
         ? { ...link.customStyle }
         : undefined,

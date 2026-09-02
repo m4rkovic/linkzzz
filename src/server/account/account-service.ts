@@ -21,10 +21,11 @@ export async function getAccountSummary(
   userId: string,
 ): Promise<AccountSummary | null> {
   const dependencies = await getServerDependencies();
-  const [user, subscription, profile] = await Promise.all([
+  const [user, subscription, profile, smartLinkCount] = await Promise.all([
     dependencies.users.findById(userId),
     dependencies.subscriptions.findByUserId(userId),
     dependencies.profiles.findByUserId(userId),
+    dependencies.smartLinks.countForUser(userId),
   ]);
 
   if (!user || !subscription || !profile) return null;
@@ -49,6 +50,6 @@ export async function getAccountSummary(
       : `Since ${shortDateFormatter.format(subscription.startedAt)}`,
     expiresLabel: expiresAt ? longDateFormatter.format(expiresAt) : "No expiry date",
     autoRenew: subscription.autoRenew,
-    linksUsed: profile.links.length,
+    linksUsed: smartLinkCount,
   };
 }

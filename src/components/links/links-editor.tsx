@@ -1,11 +1,15 @@
 "use client";
 
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { useState } from "react";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Link2, Plus } from "lucide-react";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 import ProfilePreviewFrame from "@/components/ui/profile-preview-frame";
 import type { VisitorLocation } from "@/types/profile";
 import LinkEditorForm from "./editor/link-editor-form";
+import CampaignEditor from "./campaign-editor";
+import VisitorMessagingEditor from "./visitor-messaging-editor";
 import SortableLinkCard from "./editor/sortable-link-card";
 import { MAX_LINKS } from "@/features/links/link-config";
 import { useLinksEditor } from "@/features/links/use-links-editor";
@@ -14,6 +18,7 @@ const mockVisitor: VisitorLocation = { countryCode: "RS", countryName: "Serbia",
 
 export default function LinksEditor() {
   const editor = useLinksEditor();
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -23,6 +28,8 @@ export default function LinksEditor() {
     <div className="grid w-full min-w-0 max-w-full gap-6 2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8">
       <div className="min-w-0 space-y-6">
         <LinksSummary count={editor.links.length} usagePercentage={editor.usagePercentage} visual={editor.profile.appearance.layoutMode === "visual"} />
+        <CampaignEditor />
+        <VisitorMessagingEditor />
 
         {!editor.creatingNew && !editor.editingId && (
           <button type="button" onClick={editor.beginCreate} disabled={editor.links.length >= MAX_LINKS} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40">
@@ -53,7 +60,9 @@ export default function LinksEditor() {
                   onSave={editor.saveExistingLink}
                   onCancel={editor.cancelEditor}
                   onToggle={() => editor.toggleVisibility(link.id)}
-                  onDelete={() => editor.deleteLink(link.id)}
+                  onDelete={() => setPendingDeleteId(link.id)}
+                  featured={editor.profile.engagement?.featuredLinkId === link.id}
+                  campaignPrimary={editor.profile.engagement?.campaign?.primaryLinkId === link.id}
                 />
               ))}
             </div>
@@ -70,6 +79,21 @@ export default function LinksEditor() {
       </div>
 
       <ProfilePreviewFrame profile={editor.previewProfile} visitor={mockVisitor} subtitle="Changes update instantly" badge="RS" />
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteId)}
+        title="Delete this page link?"
+        description="The link will be removed from this Landing Page. The rest of the page stays unchanged."
+        confirmLabel="Delete link"
+        destructive
+        busy={editor.saving}
+        onClose={() => setPendingDeleteId(null)}
+        onConfirm={async () => {
+          if (!pendingDeleteId) return;
+          await editor.deleteLink(pendingDeleteId);
+          setPendingDeleteId(null);
+        }}
+      />
     </div>
   );
 }

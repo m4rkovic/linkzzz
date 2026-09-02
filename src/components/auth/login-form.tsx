@@ -11,6 +11,9 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/form-control";
+
 type LoginResponse = {
   ok?: boolean;
   role?: "CUSTOMER" | "ADMIN";
@@ -76,19 +79,19 @@ export default function LoginForm() {
   return (
     <div className="flex min-h-screen bg-white">
       <section className="relative hidden w-[46%] overflow-hidden bg-zinc-950 p-10 text-white lg:flex lg:flex-col">
-        <div className="absolute -left-20 top-24 h-72 w-72 rounded-full border border-zinc-800" />
-        <div className="absolute -left-8 top-52 h-96 w-96 rounded-full border border-zinc-800" />
-        <div className="absolute -bottom-20 right-0 h-80 w-80 rounded-full border border-zinc-800" />
+        <div className="absolute -left-20 top-24 h-72 w-72 rounded-full border border-brand-violet/30" />
+        <div className="absolute -left-8 top-52 h-96 w-96 rounded-full border border-brand-lime/20" />
+        <div className="absolute -bottom-20 right-0 h-80 w-80 rounded-full bg-brand-violet/10 blur-2xl" />
 
         <div className="relative z-10">
-          <p className="text-2xl font-black tracking-tight">LINKZZZ</p>
+          <p className="flex items-center gap-2 text-2xl font-black tracking-tight">LINKZZZ <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-brand-lime" /></p>
           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
             Profile platform
           </p>
         </div>
 
         <div className="relative z-10 my-auto max-w-lg">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-violet">
             Your profile. Your audience.
           </p>
 
@@ -97,12 +100,12 @@ export default function LoginForm() {
           </h1>
 
           <p className="mt-6 max-w-md text-base leading-7 text-zinc-400">
-            Manage links, customize your public profile and understand how your
+            Manage Smart Links, customize your public pages and understand how your
             audience interacts with it.
           </p>
 
           <div className="mt-10 grid grid-cols-3 gap-3">
-            <FeatureStat value="100" label="links" />
+            <FeatureStat value="100+" label="Smart Links" />
             <FeatureStat value="Live" label="analytics" />
             <FeatureStat value="Geo" label="insights" />
           </div>
@@ -142,14 +145,14 @@ export default function LoginForm() {
                     className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
                   />
 
-                  <input
+                  <Input
                     id="identifier"
                     type="text"
                     value={identifier}
                     onChange={(event) => setIdentifier(event.target.value)}
                     autoComplete="username"
-                    placeholder="skyhook"
-                    className="h-12 w-full rounded-xl border border-zinc-200 bg-white pl-10 pr-4 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400"
+                    placeholder="username"
+                    className="h-12 pl-10 pr-4"
                   />
                 </div>
               </div>
@@ -165,14 +168,14 @@ export default function LoginForm() {
                     className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
                   />
 
-                  <input
+                  <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     autoComplete="current-password"
                     placeholder="Enter your password"
-                    className="h-12 w-full rounded-xl border border-zinc-200 bg-white pl-10 pr-12 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400"
+                    className="h-12 pl-10 pr-12"
                   />
 
                   <button
@@ -192,7 +195,7 @@ export default function LoginForm() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(event) => setRememberMe(event.target.checked)}
-                    className="h-4 w-4 accent-zinc-950"
+                    className="h-4 w-4 accent-brand-violet"
                   />
                   <span className="text-sm text-zinc-600">Remember me</span>
                 </label>
@@ -204,14 +207,17 @@ export default function LoginForm() {
                 </div>
               )}
 
-              <button
+              <Button
                 type="submit"
+                variant="primary"
+                size="lg"
+                block
                 disabled={loading}
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="font-black"
               >
                 {loading ? "Signing in..." : "Sign in"}
                 {!loading && <ArrowRight size={17} />}
-              </button>
+              </Button>
             </form>
 
             <div className="mt-8 border-t border-zinc-100 pt-6">
@@ -229,7 +235,7 @@ export default function LoginForm() {
 
 function FeatureStat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
+    <div className="rounded-2xl border border-brand-violet/25 bg-zinc-900/60 p-4">
       <p className="text-xl font-bold text-white">{value}</p>
       <p className="mt-1 text-xs text-zinc-500">{label}</p>
     </div>

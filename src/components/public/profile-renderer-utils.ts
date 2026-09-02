@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 
+import { resolveLinkGeo } from "@/features/links/link-geo";
+
 import type {
     LinkCardAspectRatio,
     LinkCardBackgroundType,
@@ -20,21 +22,34 @@ export function resolveLinkUrl(
     link: PublicProfileLink,
     visitor?: VisitorLocation,
 ) {
-    if (!visitor) {
-        return link.url;
-    }
+    return resolveLinkGeo(link, visitor?.countryCode).url;
+}
 
-    const destination =
-        link.geoDestinations?.find(
-            (route) =>
-                route.countryCode.toUpperCase() ===
-                visitor.countryCode.toUpperCase(),
-        );
+export function resolveLinkForVisitor(
+    link: PublicProfileLink,
+    visitor?: VisitorLocation,
+): PublicProfileLink | null {
+    const resolution = resolveLinkGeo(link, visitor?.countryCode);
+    if (!resolution.visible) return null;
+    return resolution.url === link.url ? link : { ...link, url: resolution.url };
+}
 
-    return (
-        destination?.url ||
-        link.url
-    );
+/*
+|--------------------------------------------------------------------------
+| PAGE RESPONSIVE VARIABLES
+|--------------------------------------------------------------------------
+*/
+
+export function getPageStyleVariables(profile: PublicProfileData): CSSProperties {
+    const page = profile.appearance.page;
+    return {
+        "--linkzzz-page-padding": `${page?.horizontalPadding ?? 20}px`,
+        "--linkzzz-mobile-padding": `${page?.mobileHorizontalPadding ?? 14}px`,
+        "--linkzzz-section-spacing": `${page?.sectionSpacing ?? 20}px`,
+        "--linkzzz-mobile-section-spacing": `${page?.mobileSectionSpacing ?? 14}px`,
+        "--linkzzz-heading-weight": String(profile.appearance.headingWeight ?? 900),
+        "--linkzzz-heading-letter-spacing": `${profile.appearance.headingLetterSpacing ?? -0.025}em`,
+    } as CSSProperties;
 }
 
 /*
@@ -54,7 +69,7 @@ export function getPageBackground(
         "gradient"
     ) {
         return `linear-gradient(
-      135deg,
+      ${appearance.gradientAngle ?? 135}deg,
       ${appearance.gradientFrom},
       ${appearance.gradientTo}
     )`;

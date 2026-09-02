@@ -1,7 +1,8 @@
 import { AlertTriangle, CalendarDays, CheckCircle2, Clock3, PauseCircle, PlayCircle } from "lucide-react";
 
 import type { AdminPlan, AdminUserModel } from "@/features/admin/admin-types";
-import { formatAdminDate, getPlanLimit } from "@/features/admin/subscription-rules";
+import { PLAN_CATALOG, PLAN_ORDER } from "@/features/plans/plan-catalog";
+import { formatAdminDate, getExpiryLabel, getPlanLimit, getPlanUsageLabel } from "@/features/admin/subscription-rules";
 
 export default function SubscriptionControls({
   user,
@@ -28,7 +29,7 @@ export default function SubscriptionControls({
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <DataBox icon={CalendarDays} label="Period start" value={formatAdminDate(user.periodStart)} />
-          <DataBox icon={Clock3} label="Period end" value={formatAdminDate(user.periodEnd)} />
+          <DataBox icon={Clock3} label="Period end" value={`${formatAdminDate(user.periodEnd)} · ${getExpiryLabel(user.periodEnd)}`} />
         </div>
 
         <div className="mt-6">
@@ -71,17 +72,27 @@ export default function SubscriptionControls({
 
       <section className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
         <h2 className="text-lg font-semibold text-zinc-950">Plan</h2>
-        <p className="mt-1 text-sm text-zinc-500">Change the link limit without deleting existing links.</p>
+        <p className="mt-1 text-sm text-zinc-500">Change Smart Link capacity without deleting existing content.</p>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <PlanOption name="Premium" description="Up to 40 links" selected={user.plan === "PREMIUM"} onClick={() => onRequestPlanChange("PREMIUM")} />
-          <PlanOption name="Premium Plus" description="Up to 100 links" selected={user.plan === "PREMIUM_PLUS"} onClick={() => onRequestPlanChange("PREMIUM_PLUS")} />
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {PLAN_ORDER.map((planId) => {
+            const plan = PLAN_CATALOG[planId];
+            return (
+              <PlanOption
+                key={planId}
+                name={plan.name}
+                description={`${plan.smartLinkDisplay} Smart Links · ${plan.pageLinkLimit} page links`}
+                selected={user.plan === planId}
+                onClick={() => onRequestPlanChange(planId)}
+              />
+            );
+          })}
         </div>
 
         <div className="mt-6">
           <div className="flex items-center justify-between gap-4">
-            <p className="text-sm font-semibold text-zinc-800">Link usage</p>
-            <p className={`text-sm font-bold ${overLimit ? "text-red-600" : "text-zinc-950"}`}>{user.linksUsed} / {maxLinks}</p>
+            <p className="text-sm font-semibold text-zinc-800">Smart Link usage</p>
+            <p className={`text-sm font-bold ${overLimit ? "text-red-600" : "text-zinc-950"}`}>{getPlanUsageLabel(user.plan, user.linksUsed)}</p>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100">
             <div className={`h-full rounded-full ${overLimit ? "bg-red-600" : "bg-zinc-950"}`} style={{ width: `${usagePercentage}%` }} />
@@ -89,7 +100,7 @@ export default function SubscriptionControls({
           {overLimit && (
             <div className="mt-4 flex items-start gap-3 rounded-xl bg-red-50 p-4">
               <AlertTriangle size={18} className="mt-0.5 shrink-0 text-red-600" />
-              <p className="text-sm leading-6 text-red-700">Existing links stay intact, but new links are blocked until usage falls back to the plan limit.</p>
+              <p className="text-sm leading-6 text-red-700">Existing Smart Links stay intact, but new Smart Links are blocked until usage falls back to the plan limit.</p>
             </div>
           )}
         </div>

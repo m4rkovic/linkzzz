@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Link2, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { KeyRound, Mail, ShieldCheck, UserRound } from "lucide-react";
 
 import ChangePasswordModal from "@/components/account/change-password-modal";
-import CustomDomainsCard from "@/components/account/custom-domains-card";
 import SubscriptionCard from "@/components/account/subscription-card";
 import UsageCard from "@/components/account/usage-card";
 import {
@@ -20,12 +19,11 @@ export default function AccountDashboard({ account }: { account: AccountSummary 
     <div className="w-full min-w-0 max-w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-950">Account</h1>
-        <p className="mt-1 text-sm text-zinc-500">View your account, subscription and security information.</p>
+        <p className="mt-1 text-sm text-zinc-500">View your account, plan and security information.</p>
       </div>
 
       <SubscriptionCard account={account} />
       <UsageCard used={account.linksUsed} limit={maxLinks} />
-      <CustomDomainsCard />
 
       <section className="min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
         <h2 className="text-lg font-semibold text-zinc-950">Account information</h2>
@@ -34,7 +32,6 @@ export default function AccountDashboard({ account }: { account: AccountSummary 
         <div className="mt-6 divide-y divide-zinc-100">
           <AccountRow icon={UserRound} label="Username" value={account.username} />
           <AccountRow icon={Mail} label="Email" value={account.email} />
-          <AccountRow icon={Link2} label="Public profile" value={`linkzzz.com/${account.slug}`} />
         </div>
       </section>
 

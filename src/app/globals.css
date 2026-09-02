@@ -3,11 +3,23 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --linkzzz-lime: #c8ff4d;
+  --linkzzz-lime-strong: #a9e524;
+  --linkzzz-lime-soft: #f3ffd8;
+  --linkzzz-violet: #8e7dff;
+  --linkzzz-violet-strong: #6f5ce7;
+  --linkzzz-violet-soft: #efecff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand-lime: var(--linkzzz-lime);
+  --color-brand-lime-strong: var(--linkzzz-lime-strong);
+  --color-brand-lime-soft: var(--linkzzz-lime-soft);
+  --color-brand-violet: var(--linkzzz-violet);
+  --color-brand-violet-strong: var(--linkzzz-violet-strong);
+  --color-brand-violet-soft: var(--linkzzz-violet-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -44,4 +56,113 @@ textarea,
 select,
 button {
   max-width: 100%;
+}
+
+::selection {
+  background: var(--linkzzz-violet);
+  color: #ffffff;
+}
+
+
+@keyframes linkzzz-focus-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  15% { transform: translateX(-5px) rotate(-0.5deg); }
+  30% { transform: translateX(5px) rotate(0.5deg); }
+  45% { transform: translateX(-4px) rotate(-0.35deg); }
+  60% { transform: translateX(4px) rotate(0.35deg); }
+  75% { transform: translateX(-2px); }
+}
+
+@keyframes linkzzz-focus-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--linkzzz-focus-color, #fff) 0%, transparent); }
+  35% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--linkzzz-focus-color, #fff) 75%, transparent), 0 0 32px color-mix(in srgb, var(--linkzzz-focus-color, #fff) 70%, transparent); }
+  70% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--linkzzz-focus-color, #fff) 35%, transparent), 0 0 18px color-mix(in srgb, var(--linkzzz-focus-color, #fff) 40%, transparent); }
+}
+
+.linkzzz-focus-shake {
+  animation: linkzzz-focus-shake 680ms cubic-bezier(.36,.07,.19,.97) var(--linkzzz-focus-delay, 0ms) 2;
+}
+
+.linkzzz-focus-glow {
+  animation: linkzzz-focus-glow 1200ms ease-in-out var(--linkzzz-focus-delay, 0ms) 3;
+}
+
+.linkzzz-focus-glow.linkzzz-focus-shake {
+  animation:
+    linkzzz-focus-shake 680ms cubic-bezier(.36,.07,.19,.97) var(--linkzzz-focus-delay, 0ms) 2,
+    linkzzz-focus-glow 1200ms ease-in-out var(--linkzzz-focus-delay, 0ms) 3;
+}
+
+.linkzzz-focus-dim {
+  opacity: 0.46;
+  filter: saturate(0.72) brightness(0.82);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linkzzz-focus-shake,
+  .linkzzz-focus-glow,
+  .linkzzz-focus-glow.linkzzz-focus-shake {
+    animation: none;
+  }
+}
+
+/* Phase 13: public page appearance variables */
+.linkzzz-public-page h1,
+.linkzzz-public-page h2,
+.linkzzz-public-page h3 {
+  font-weight: var(--linkzzz-heading-weight, 900) !important;
+  letter-spacing: var(--linkzzz-heading-letter-spacing, -0.025em) !important;
+}
+
+.linkzzz-page-horizontal {
+  padding-left: var(--linkzzz-mobile-padding, 14px);
+  padding-right: var(--linkzzz-mobile-padding, 14px);
+}
+
+.linkzzz-hero-contained {
+  margin-left: var(--linkzzz-mobile-padding, 14px);
+  margin-right: var(--linkzzz-mobile-padding, 14px);
+}
+
+.linkzzz-section-gap-top {
+  margin-top: var(--linkzzz-mobile-section-spacing, 14px);
+}
+
+.linkzzz-footer-gap {
+  margin-top: max(30px, var(--linkzzz-mobile-section-spacing, 14px));
+}
+
+.linkzzz-block-stack {
+  display: grid;
+  gap: var(--linkzzz-mobile-section-spacing, 14px);
+}
+
+@media (min-width: 640px) {
+  .linkzzz-page-horizontal {
+    padding-left: var(--linkzzz-page-padding, 20px);
+    padding-right: var(--linkzzz-page-padding, 20px);
+  }
+
+  .linkzzz-hero-contained {
+    margin-left: var(--linkzzz-page-padding, 20px);
+    margin-right: var(--linkzzz-page-padding, 20px);
+  }
+
+  .linkzzz-section-gap-top {
+    margin-top: var(--linkzzz-section-spacing, 20px);
+  }
+
+  .linkzzz-footer-gap {
+    margin-top: max(30px, var(--linkzzz-section-spacing, 20px));
+  }
+
+  .linkzzz-block-stack {
+    gap: var(--linkzzz-section-spacing, 20px);
+  }
+}
+
+/* R1.4: consistent keyboard focus fallback for native and custom controls. */
+:where(a, button, input, textarea, select, summary):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--linkzzz-violet-strong) 48%, transparent);
+  outline-offset: 2px;
 }

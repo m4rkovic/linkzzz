@@ -20,20 +20,19 @@ const BENTO_ROW_HEIGHT =
 
 export function BentoGrid({
     gap,
+    mobileColumns = 2,
     children,
 }: {
     gap: number;
+
+    mobileColumns?: 1 | 2;
 
     children: ReactNode;
 }) {
     return (
         <div
+            className={mobileColumns === 1 ? "grid grid-cols-1 sm:grid-cols-2" : "grid grid-cols-2"}
             style={{
-                display: "grid",
-
-                gridTemplateColumns:
-                    "repeat(2, minmax(0, 1fr))",
-
                 gridAutoRows: `${BENTO_ROW_HEIGHT}px`,
 
                 gridAutoFlow:
@@ -146,7 +145,7 @@ export function BentoGridItem({
         <div
             className={
                 columnSpan === 2
-                    ? "col-span-2"
+                    ? "col-span-full"
                     : "col-span-1"
             }
             style={{

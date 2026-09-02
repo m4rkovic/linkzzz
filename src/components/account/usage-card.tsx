@@ -12,9 +12,9 @@ export default function UsageCard({
     <section className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-zinc-950">Link usage</h2>
+          <h2 className="text-lg font-semibold text-zinc-950">Smart Link usage</h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Your current plan allows up to {limit} active links.
+            Your current plan allows up to {limit} Smart Links.
           </p>
         </div>
 
@@ -32,7 +32,7 @@ export default function UsageCard({
 
       {overLimit && (
         <p className="mt-4 rounded-xl bg-red-50 p-4 text-sm leading-6 text-red-700">
-          You are currently over the plan limit. Existing links stay intact, but new links stay blocked until usage falls below the limit.
+          Existing Smart Links stay intact, but creating new Smart Links is blocked until usage falls below the plan limit.
         </p>
       )}
     </section>

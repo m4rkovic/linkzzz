@@ -1,0 +1,14 @@
+export { PrismaAnalyticsRepository } from "./analytics-repository";
+export { PrismaAssetRepository } from "./asset-repository";
+export { PrismaAuditRepository } from "./audit-repository";
+export { PrismaCustomDomainRepository } from "./custom-domain-repository";
+export { PrismaCustomerProvisioningRepository } from "./customer-provisioning-repository";
+export { PrismaLeadSubmissionRepository } from "./lead-submission-repository";
+export { PrismaPasswordCredentialRepository } from "./password-credential-repository";
+export { PrismaProfileRepository } from "./profile-repository";
+export { PrismaSessionRepository } from "./session-repository";
+export { PrismaSmartLinkRepository } from "./smart-link-repository";
+export { PrismaSubscriptionHistoryRepository } from "./subscription-history-repository";
+export { PrismaSubscriptionRepository } from "./subscription-repository";
+export { PrismaUserRepository } from "./user-repository";
+

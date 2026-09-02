@@ -1,275 +1,221 @@
 "use client";
 
-import {
-    Globe2,
-    Plus,
-    Trash2,
-} from "lucide-react";
+import { Eye, EyeOff, Globe2, Plus, Route, Trash2 } from "lucide-react";
 
+import { DestinationPicker } from "@/components/destinations/destination-picker";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/form-control";
+import {
+  LINK_GEO_COUNTRIES,
+  createLinkGeoRule,
+} from "@/features/links/link-geo";
 import type {
-    GeoDestination,
+  LinkGeoConfig,
+  LinkGeoRule,
+  LinkGeoRuleAction,
 } from "@/types/profile";
 
-const countries = [
-    { code: "RS", name: "Serbia" },
-    { code: "DE", name: "Germany" },
-    { code: "AT", name: "Austria" },
-    { code: "CH", name: "Switzerland" },
-    { code: "GB", name: "United Kingdom" },
-    { code: "US", name: "United States" },
-
-    { code: "HR", name: "Croatia" },
-    { code: "BA", name: "Bosnia and Herzegovina" },
-    { code: "ME", name: "Montenegro" },
-    { code: "MK", name: "North Macedonia" },
-    { code: "SI", name: "Slovenia" },
-
-    { code: "AL", name: "Albania" },
-    { code: "BG", name: "Bulgaria" },
-    { code: "RO", name: "Romania" },
-    { code: "HU", name: "Hungary" },
-
-    { code: "FR", name: "France" },
-    { code: "IT", name: "Italy" },
-    { code: "ES", name: "Spain" },
-    { code: "PT", name: "Portugal" },
-
-    { code: "NL", name: "Netherlands" },
-    { code: "BE", name: "Belgium" },
-
-    { code: "SE", name: "Sweden" },
-    { code: "NO", name: "Norway" },
-    { code: "DK", name: "Denmark" },
-    { code: "FI", name: "Finland" },
-
-    { code: "PL", name: "Poland" },
-    { code: "CZ", name: "Czechia" },
-    { code: "SK", name: "Slovakia" },
-
-    { code: "GR", name: "Greece" },
-    { code: "TR", name: "Türkiye" },
-
-    { code: "CA", name: "Canada" },
-    { code: "AU", name: "Australia" },
-    { code: "JP", name: "Japan" },
-];
-
-type GeoRoutingEditorProps = {
-    destinations: GeoDestination[];
-
-    onChange: (
-        destinations: GeoDestination[],
-    ) => void;
-};
-
 export default function GeoRoutingEditor({
-    destinations,
-    onChange,
-}: GeoRoutingEditorProps) {
-    function addDestination() {
-        const firstAvailable =
-            countries.find(
-                (country) =>
-                    !destinations.some(
-                        (destination) =>
-                            destination.countryCode ===
-                            country.code,
-                    ),
-            );
+  geo,
+  onChange,
+}: {
+  geo: LinkGeoConfig;
+  onChange: (geo: LinkGeoConfig) => void;
+}) {
+  function updateRule(id: string, patch: Partial<LinkGeoRule>) {
+    onChange({
+      ...geo,
+      rules: geo.rules.map((rule) =>
+        rule.id === id ? { ...rule, ...patch } : rule,
+      ),
+    });
+  }
 
-        if (!firstAvailable) {
-            return;
-        }
+  function addRule() {
+    const rule = createLinkGeoRule(geo.rules);
+    if (!rule) return;
+    onChange({ ...geo, rules: [...geo.rules, rule] });
+  }
 
-        onChange([
-            ...destinations,
+  function changeCountry(id: string, countryCode: string) {
+    const country = LINK_GEO_COUNTRIES.find((item) => item.code === countryCode);
+    if (!country) return;
+    updateRule(id, {
+      countryCode: country.code,
+      countryName: country.name,
+    });
+  }
 
-            {
-                id: Date.now().toString(),
+  function changeAction(id: string, action: LinkGeoRuleAction) {
+    const rule = geo.rules.find((item) => item.id === id);
+    if (!rule) return;
+    updateRule(id, {
+      action,
+      destination:
+        action === "REDIRECT"
+          ? rule.destination ?? { provider: "CUSTOM", value: "", url: "" }
+          : undefined,
+    });
+  }
 
-                countryCode:
-                    firstAvailable.code,
-
-                countryName:
-                    firstAvailable.name,
-
-                url: "https://",
-            },
-        ]);
-    }
-
-    function changeCountry(
-        id: string,
-        countryCode: string,
-    ) {
-        const country =
-            countries.find(
-                (item) =>
-                    item.code ===
-                    countryCode,
-            );
-
-        if (!country) {
-            return;
-        }
-
-        onChange(
-            destinations.map(
-                (destination) =>
-                    destination.id === id
-                        ? {
-                            ...destination,
-
-                            countryCode:
-                                country.code,
-
-                            countryName:
-                                country.name,
-                        }
-                        : destination,
-            ),
-        );
-    }
-
-    function changeUrl(
-        id: string,
-        url: string,
-    ) {
-        onChange(
-            destinations.map(
-                (destination) =>
-                    destination.id === id
-                        ? {
-                            ...destination,
-                            url,
-                        }
-                        : destination,
-            ),
-        );
-    }
-
-    function removeDestination(
-        id: string,
-    ) {
-        onChange(
-            destinations.filter(
-                (destination) =>
-                    destination.id !== id,
-            ),
-        );
-    }
-
-    return (
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-zinc-600">
-                        <Globe2 size={17} />
-                    </div>
-
-                    <div>
-                        <p className="text-sm font-semibold text-zinc-900">
-                            Geo routing
-                        </p>
-
-                        <p className="mt-1 text-xs leading-5 text-zinc-500">
-                            Send visitors from specific
-                            countries to different URLs.
-                        </p>
-                    </div>
-                </div>
-
-                <button
-                    type="button"
-                    onClick={addDestination}
-                    className="flex min-h-10 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-                >
-                    <Plus size={15} />
-
-                    Add country
-                </button>
-            </div>
-
-            {destinations.length > 0 && (
-                <div className="mt-4 space-y-3">
-                    {destinations.map(
-                        (destination) => (
-                            <div
-                                key={destination.id}
-                                className="rounded-xl border border-zinc-200 bg-white p-3"
-                            >
-                                <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)_40px]">
-                                    <select
-                                        value={
-                                            destination.countryCode
-                                        }
-                                        onChange={(event) =>
-                                            changeCountry(
-                                                destination.id,
-                                                event.target.value,
-                                            )
-                                        }
-                                        className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-800 outline-none focus:border-zinc-400"
-                                    >
-                                        {countries.map(
-                                            (country) => (
-                                                <option
-                                                    key={country.code}
-                                                    value={country.code}
-                                                    disabled={destinations.some(
-                                                        (existing) =>
-                                                            existing.id !==
-                                                            destination.id &&
-                                                            existing.countryCode ===
-                                                            country.code,
-                                                    )}
-                                                >
-                                                    {country.name}
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
-
-                                    <input
-                                        type="text"
-                                        value={
-                                            destination.url
-                                        }
-                                        onChange={(event) =>
-                                            changeUrl(
-                                                destination.id,
-                                                event.target.value,
-                                            )
-                                        }
-                                        placeholder="https://..."
-                                        className="h-11 min-w-0 rounded-xl border border-zinc-200 px-3 text-sm text-zinc-900 outline-none focus:border-zinc-400"
-                                    />
-
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            removeDestination(
-                                                destination.id,
-                                            )
-                                        }
-                                        className="flex h-11 w-full items-center justify-center rounded-xl text-zinc-400 transition hover:bg-red-50 hover:text-red-600"
-                                        aria-label="Remove geo destination"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                        ),
-                    )}
-                </div>
-            )}
-
-            {destinations.length === 0 && (
-                <p className="mt-4 text-xs text-zinc-400">
-                    No country-specific routes.
-                    Everyone currently uses the default URL.
-                </p>
-            )}
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-brand-violet-strong shadow-sm ring-1 ring-zinc-200">
+            <Globe2 size={18} />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-zinc-950">Per-card Geo</p>
+            <p className="mt-1 max-w-xl text-xs leading-5 text-zinc-500">
+              Show, hide or reroute this card by visitor country. Rules are enforced on the server too, not just in preview.
+            </p>
+          </div>
         </div>
-    );
+
+        <button
+          type="button"
+          aria-pressed={geo.enabled}
+          onClick={() => onChange({ ...geo, enabled: !geo.enabled })}
+          className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 ${
+            geo.enabled
+              ? "bg-brand-violet-strong text-white"
+              : "border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100"
+          }`}
+        >
+          {geo.enabled ? <Eye size={15} /> : <EyeOff size={15} />}
+          {geo.enabled ? "Geo enabled" : "Geo disabled"}
+        </button>
+      </div>
+
+      {geo.enabled && (
+        <div className="mt-5 space-y-4">
+          <label className="block rounded-xl border border-zinc-200 bg-white p-4">
+            <span className="text-xs font-bold uppercase tracking-[0.12em] text-zinc-400">Fallback</span>
+            <span className="mt-1 block text-sm font-semibold text-zinc-900">Visitors without a matching country rule</span>
+            <div className="mt-3 max-w-sm">
+              <Select
+                value={geo.fallback}
+                onChange={(event) =>
+                  onChange({
+                    ...geo,
+                    fallback: event.target.value === "HIDE" ? "HIDE" : "SHOW",
+                  })
+                }
+              >
+                <option value="SHOW">Show card with default destination</option>
+                <option value="HIDE">Hide card</option>
+              </Select>
+            </div>
+            <span className="mt-2 block text-xs leading-5 text-zinc-400">
+              Use Hide as the fallback to make a country whitelist. Add explicit Show rules for the countries that may see the card.
+            </span>
+          </label>
+
+          <div className="space-y-3">
+            {geo.rules.map((rule, index) => (
+              <div key={rule.id} className="rounded-2xl border border-zinc-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-zinc-400">Country rule {index + 1}</p>
+                    <p className="mt-1 text-sm font-semibold text-zinc-900">{rule.countryName}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Remove Geo rule ${index + 1}`}
+                    onClick={() =>
+                      onChange({
+                        ...geo,
+                        rules: geo.rules.filter((item) => item.id !== rule.id),
+                      })
+                    }
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-semibold text-zinc-600">Country</span>
+                    <Select
+                      value={rule.countryCode}
+                      onChange={(event) => changeCountry(rule.id, event.target.value)}
+                    >
+                      {!LINK_GEO_COUNTRIES.some((country) => country.code === rule.countryCode.toUpperCase()) && (
+                        <option value={rule.countryCode}>{rule.countryName}</option>
+                      )}
+                      {LINK_GEO_COUNTRIES.map((country) => (
+                        <option
+                          key={country.code}
+                          value={country.code}
+                          disabled={geo.rules.some(
+                            (existing) =>
+                              existing.id !== rule.id &&
+                              existing.countryCode.toUpperCase() === country.code,
+                          )}
+                        >
+                          {country.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-semibold text-zinc-600">Action</span>
+                    <Select
+                      value={rule.action}
+                      onChange={(event) =>
+                        changeAction(rule.id, event.target.value as LinkGeoRuleAction)
+                      }
+                    >
+                      <option value="SHOW">Show default card</option>
+                      <option value="HIDE">Hide card</option>
+                      <option value="REDIRECT">Use another destination</option>
+                    </Select>
+                  </label>
+                </div>
+
+                {rule.action === "REDIRECT" && (
+                  <DestinationPicker
+                    value={rule.destination ?? { provider: "CUSTOM", value: "", url: "" }}
+                    onChange={(destination) => updateRule(rule.id, { destination })}
+                    title={`${rule.countryName} destination`}
+                    compact
+                    showFallback={false}
+                    showLabel={false}
+                  />
+                )}
+
+                {rule.action !== "REDIRECT" && (
+                  <div className="mt-3 flex items-start gap-2 rounded-xl bg-zinc-50 px-3 py-2.5 text-xs leading-5 text-zinc-500">
+                    {rule.action === "HIDE" ? <EyeOff size={14} className="mt-0.5 shrink-0" /> : <Eye size={14} className="mt-0.5 shrink-0" />}
+                    {rule.action === "HIDE"
+                      ? "Visitors from this country will not receive this card at all. Direct outbound access is rejected too."
+                      : "Visitors from this country see the card and use its normal destination."}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <Button
+            variant="secondary"
+            onClick={addRule}
+            disabled={geo.rules.length >= LINK_GEO_COUNTRIES.length}
+          >
+            <Plus size={16} /> Add country rule
+          </Button>
+
+          {geo.rules.length === 0 && (
+            <div className="flex items-start gap-2 rounded-xl border border-dashed border-zinc-300 bg-white px-4 py-3 text-xs leading-5 text-zinc-500">
+              <Route size={15} className="mt-0.5 shrink-0" />
+              No country rules yet. The fallback above currently controls every visitor.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

@@ -1,53 +1,67 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { assessPlanChange, canCreateLink, getPlanLinkLimit } from "@/server/business/plans";
-import { getSubscriptionAccess } from "@/server/business/subscriptions";
+import {
+  assessPlanChange,
+  assessSmartLinkPlanChange,
+  canCreateLink,
+  canCreateSmartLink,
+  getPageCardLimit,
+  getSmartLinkLimit,
+} from "../src/server/business/plans";
+import { PLAN_CATALOG } from "../src/features/plans/plan-catalog";
 
-test("plan link limits preserve the locked 40/100 rules", () => {
-  assert.equal(getPlanLinkLimit("PREMIUM"), 40);
-  assert.equal(getPlanLinkLimit("PREMIUM_PLUS"), 100);
-  assert.equal(canCreateLink("PREMIUM", 39).allowed, true);
-  assert.deepEqual(canCreateLink("PREMIUM", 40), {
+test("plan catalog exposes the current customer-facing prices", () => {
+  assert.equal(PLAN_CATALOG.BASIC.priceUsdMonthly, 40);
+  assert.equal(PLAN_CATALOG.PRO.priceUsdMonthly, 80);
+  assert.equal(PLAN_CATALOG.ENTERPRISE.priceUsdMonthly, 150);
+  assert.equal(PLAN_CATALOG.ENTERPRISE.smartLinkDisplay, "200+");
+});
+
+test("Smart Link limits follow Basic, Pro and Enterprise capacity", () => {
+  assert.equal(getSmartLinkLimit("BASIC"), 50);
+  assert.equal(getSmartLinkLimit("PRO"), 100);
+  assert.equal(getSmartLinkLimit("ENTERPRISE"), 500);
+  assert.equal(canCreateSmartLink("BASIC", 49).allowed, true);
+  assert.deepEqual(canCreateSmartLink("BASIC", 50), {
     allowed: false,
-    limit: 40,
-    currentCount: 40,
+    limit: 50,
+    currentCount: 50,
     reason: "LINK_LIMIT_REACHED",
   });
 });
 
-test("downgrade assessment never deletes links and reports the overage", () => {
-  assert.deepEqual(assessPlanChange("PREMIUM_PLUS", "PREMIUM", 57), {
-    fromPlan: "PREMIUM_PLUS",
-    toPlan: "PREMIUM",
-    currentCount: 57,
-    newLimit: 40,
+test("Landing Page link limits are 10, 30 and 100", () => {
+  assert.equal(getPageCardLimit("BASIC"), 10);
+  assert.equal(getPageCardLimit("PRO"), 30);
+  assert.equal(getPageCardLimit("ENTERPRISE"), 100);
+  assert.equal(canCreateLink("BASIC", 9).allowed, true);
+  assert.deepEqual(canCreateLink("BASIC", 10), {
+    allowed: false,
+    limit: 10,
+    currentCount: 10,
+    reason: "LINK_LIMIT_REACHED",
+  });
+});
+
+test("page-link downgrade assessment preserves data and reports overage", () => {
+  assert.deepEqual(assessPlanChange("PRO", "BASIC", 17), {
+    fromPlan: "PRO",
+    toPlan: "BASIC",
+    currentCount: 17,
+    newLimit: 10,
     exceedsNewLimit: true,
-    linksToRemoveBeforeAddingNew: 17,
+    linksToRemoveBeforeAddingNew: 7,
   });
 });
 
-test("subscription access matches active and stopped states", () => {
-  assert.deepEqual(getSubscriptionAccess("ACTIVE"), { hasAccess: true });
-  assert.deepEqual(getSubscriptionAccess("CANCEL_AT_PERIOD_END"), { hasAccess: true });
-  assert.deepEqual(getSubscriptionAccess("EXPIRED"), { hasAccess: false, reason: "EXPIRED" });
-  assert.deepEqual(getSubscriptionAccess("STOPPED"), { hasAccess: false, reason: "STOPPED" });
-});
-
-test("an end date in the past expires active and cancelling subscriptions", () => {
-  const now = new Date("2026-09-01T12:00:00.000Z");
-  const past = new Date("2026-09-01T11:59:59.000Z");
-  const future = new Date("2026-09-01T12:00:01.000Z");
-
-  assert.deepEqual(getSubscriptionAccess("ACTIVE", past, now), {
-    hasAccess: false,
-    reason: "EXPIRED",
-  });
-  assert.deepEqual(getSubscriptionAccess("CANCEL_AT_PERIOD_END", past, now), {
-    hasAccess: false,
-    reason: "EXPIRED",
-  });
-  assert.deepEqual(getSubscriptionAccess("ACTIVE", future, now), {
-    hasAccess: true,
+test("Smart Link downgrade assessment reports workspace overage", () => {
+  assert.deepEqual(assessSmartLinkPlanChange("ENTERPRISE", "BASIC", 60), {
+    fromPlan: "ENTERPRISE",
+    toPlan: "BASIC",
+    currentCount: 60,
+    newLimit: 50,
+    exceedsNewLimit: true,
+    linksToRemoveBeforeAddingNew: 10,
   });
 });

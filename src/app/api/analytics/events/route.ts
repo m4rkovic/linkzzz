@@ -4,7 +4,7 @@ import { getServerDependencies } from "@/server/persistence/dependencies";
 import { getRequestIp } from "@/server/security/request";
 import { ANALYTICS_EVENT_RATE_LIMIT, checkRateLimit } from "@/server/security/rate-limit";
 
-const EVENT_TYPES = new Set(["PAGE_VIEW", "LINK_CLICK", "SOCIAL_CLICK"]);
+const EVENT_TYPES = new Set(["PAGE_VIEW", "LINK_CLICK", "SOCIAL_CLICK", "DEEPLINK_FALLBACK"]);
 const MAX_ANALYTICS_BODY_BYTES = 4_096;
 
 export async function POST(request: NextRequest) {
@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
   if (!dependencies.analytics) return new NextResponse(null, { status: 204 });
   const userAgent = request.headers.get("user-agent") ?? "";
   const accepted = await dependencies.analytics.createForSlug(input.slug, {
-    type: input.type as "PAGE_VIEW" | "LINK_CLICK" | "SOCIAL_CLICK",
-    linkId: input.type === "LINK_CLICK" ? (input.linkId as string | undefined) : null,
+    type: input.type as "PAGE_VIEW" | "LINK_CLICK" | "SOCIAL_CLICK" | "DEEPLINK_FALLBACK",
+    pageCardId: input.type === "LINK_CLICK" ? (input.linkId as string | undefined) : null,
     visitorId: typeof input.visitorId === "string" ? input.visitorId.slice(0, 100) : null,
     referrer: request.headers.get("referer")?.slice(0, 1000) ?? null,
     countryCode: getVisitorCountryCode(request.headers),

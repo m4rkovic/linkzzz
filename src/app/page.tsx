@@ -1,49 +1,70 @@
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
-import { isIP } from "node:net";
-import Dashboard from "../app/dashboard/page";
+import { notFound, redirect } from "next/navigation";
+import DeeplinkHelper from "@/components/public/deeplink-helper";
+import LandingPage from "@/components/landing/landing-page";
+import { recordSmartLinkRuntimeEvent, shouldRecordBlockedAutomation } from "@/server/analytics/runtime-analytics";
 import PublicProfile from "@/components/public/public-profile";
+import TrafficShieldPreview from "@/components/public/traffic-shield-preview";
 import { resolveActiveCustomDomain } from "@/server/domains/custom-domain-service";
+import { getRequestHostname, isApplicationHostname } from "@/server/domains/host-routing";
 import {
   getVisitorCountryCode,
   resolvePublicProfileGeoRouting,
 } from "@/server/geo/geo-routing";
 import { getPublicProfileBySlug } from "@/server/profile/profile-service";
+import { resolveSmartLink } from "@/server/smart-links/redirect-resolver";
+import { getSmartLinkRequestContext } from "@/server/smart-links/request-context";
+import { withSmartLinkOutboundRoutes } from "@/server/smart-links/outbound-routing";
+import { getPublicSmartLinkBySlug } from "@/server/smart-links/smart-link-service";
 
 export default async function Home() {
   const requestHeaders = await headers();
-  const host = normalizeHost(requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"));
-  if (host && !isApplicationHost(host)) {
+  const host = getRequestHostname(requestHeaders);
+  if (host && !isApplicationHostname(host)) {
     const slug = await resolveActiveCustomDomain(host);
     if (!slug) notFound();
+    const smartLink = await getPublicSmartLinkBySlug(slug);
+    if (!smartLink) notFound();
+    const context = getSmartLinkRequestContext(requestHeaders);
+    const resolution = resolveSmartLink(smartLink, context);
+    await recordSmartLinkRuntimeEvent({ smartLink, headers: requestHeaders, context, type: "SMART_LINK_VIEW" });
+    if (resolution.type === "BLOCK" && shouldRecordBlockedAutomation(context)) {
+      await recordSmartLinkRuntimeEvent({ smartLink, headers: requestHeaders, context, type: "BLOCKED_AUTOMATED_REQUEST" });
+    }
+    if (resolution.type === "DEEPLINK_HELPER") {
+      await recordSmartLinkRuntimeEvent({ smartLink, headers: requestHeaders, context, type: "DEEPLINK_ATTEMPT" });
+    }
+    if (resolution.type === "NOT_FOUND" || resolution.type === "BLOCK") notFound();
+    if (resolution.type === "CRAWLER_PREVIEW") return <TrafficShieldPreview />;
+    if (resolution.type === "REDIRECT") redirect(resolution.url);
+    if (resolution.type === "DEEPLINK_HELPER") {
+      return (
+        <DeeplinkHelper
+          slug={smartLink.slug}
+          tracking={smartLink.tracking}
+          mode={resolution.mode}
+          providerName={resolution.providerName}
+          appUrl={resolution.appUrl}
+          fallbackUrl={resolution.fallbackUrl}
+          browser={resolution.browser}
+          platform={resolution.platform}
+          longPressHelper={resolution.longPressHelper}
+          autoAttempt={resolution.autoAttempt}
+        />
+      );
+    }
     const profile = await getPublicProfileBySlug(slug);
     if (!profile) notFound();
     const countryCode = getVisitorCountryCode(requestHeaders);
+    const routedProfile = resolvePublicProfileGeoRouting(profile, countryCode);
     return (
       <PublicProfile
-        initialProfile={resolvePublicProfileGeoRouting(profile, countryCode)}
+        initialProfile={withSmartLinkOutboundRoutes(routedProfile, smartLink.slug)}
+        tracking={smartLink.tracking}
+        initialNowMs={Date.now()}
       />
     );
   }
 
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <Dashboard />
-    </div>
-  );
-}
-
-function normalizeHost(value: string | null) {
-  if (!value) return null;
-  const first = value.split(",")[0]?.trim().toLowerCase() ?? "";
-  return first.startsWith("[") ? first.slice(1, first.indexOf("]")) : first.split(":")[0];
-}
-
-function isApplicationHost(host: string) {
-  if (host === "localhost" || host.endsWith(".localhost") || isIP(host)) return true;
-  const configured = (process.env.LINKZZZ_APP_HOSTS ?? "linkzzz.com,www.linkzzz.com")
-    .split(",")
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean);
-  return configured.includes(host);
+  return <LandingPage />;
 }

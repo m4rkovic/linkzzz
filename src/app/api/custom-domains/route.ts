@@ -11,15 +11,17 @@ export async function GET(request: NextRequest) {
   const rateLimit = await checkRateLimit(`${getRequestIp(request)}:${session.user.id}`, CUSTOM_DOMAIN_RATE_LIMIT);
   if (!rateLimit.available) return NextResponse.json({ error: "Request protection is temporarily unavailable." }, { status: 503 });
   if (!rateLimit.allowed) return NextResponse.json({ error: "Too many domain operations. Try again later.", retryAfterMs: rateLimit.retryAfterMs }, { status: 429 });
-  const domains = await listCustomDomains(session.user.id);
+  const smartLinkId = request.nextUrl.searchParams.get("smartLinkId")?.trim();
+  if (!smartLinkId) return NextResponse.json({ error: "smartLinkId is required." }, { status: 400 });
+  const domains = await listCustomDomains(session.user.id, smartLinkId);
   return NextResponse.json({ domains: domains.map((domain) => ({ ...domain, dns: customDomainDnsInstructions(domain) })) });
 }
 
 export async function POST(request: NextRequest) {
   const prepared = await prepareWrite(request);
   if (prepared instanceof NextResponse) return prepared;
-  const domain = await addCustomDomain(prepared.userId, prepared.domain).catch(toError);
-  if (domain instanceof Error) return NextResponse.json({ error: domain.message }, { status: domain.message.includes("already") ? 409 : 400 });
+  const domain = await addCustomDomain(prepared.userId, prepared.smartLinkId, prepared.domain).catch(toError);
+  if (domain instanceof Error) return NextResponse.json({ error: domain.message }, { status: domain.message.includes("already") ? 409 : domain.message.includes("not found") ? 404 : 400 });
   return NextResponse.json({ domain: { ...domain, dns: customDomainDnsInstructions(domain) } }, { status: 201 });
 }
 
@@ -27,16 +29,22 @@ export async function PATCH(request: NextRequest) {
   const prepared = await prepareWrite(request);
   if (prepared instanceof NextResponse) return prepared;
   const action = prepared.action;
-  const operation = action === "VERIFY" ? verifyCustomDomain(prepared.userId, prepared.domain) : action === "ACTIVATE" ? setCustomDomainActive(prepared.userId, prepared.domain, true) : action === "DISABLE" ? setCustomDomainActive(prepared.userId, prepared.domain, false) : Promise.reject(new Error("Invalid domain action."));
+  const operation = action === "VERIFY"
+    ? verifyCustomDomain(prepared.userId, prepared.smartLinkId, prepared.domain)
+    : action === "ACTIVATE"
+      ? setCustomDomainActive(prepared.userId, prepared.smartLinkId, prepared.domain, true)
+      : action === "DISABLE"
+        ? setCustomDomainActive(prepared.userId, prepared.smartLinkId, prepared.domain, false)
+        : Promise.reject(new Error("Invalid domain action."));
   const domain = await operation.catch(toError);
-  if (domain instanceof Error) return NextResponse.json({ error: domain.message }, { status: 400 });
+  if (domain instanceof Error) return NextResponse.json({ error: domain.message }, { status: domain.message.includes("not found") ? 404 : 400 });
   return NextResponse.json({ domain: { ...domain, dns: customDomainDnsInstructions(domain) } });
 }
 
 export async function DELETE(request: NextRequest) {
   const prepared = await prepareWrite(request);
   if (prepared instanceof NextResponse) return prepared;
-  const result = await removeCustomDomain(prepared.userId, prepared.domain).then(() => null).catch(toError);
+  const result = await removeCustomDomain(prepared.userId, prepared.smartLinkId, prepared.domain).then(() => null).catch(toError);
   if (result instanceof Error) return NextResponse.json({ error: result.message }, { status: 404 });
   return new NextResponse(null, { status: 204 });
 }
@@ -48,9 +56,10 @@ async function prepareWrite(request: NextRequest) {
   const rateLimit = await checkRateLimit(`${getRequestIp(request)}:${session.user.id}`, CUSTOM_DOMAIN_RATE_LIMIT);
   if (!rateLimit.available) return NextResponse.json({ error: "Request protection is temporarily unavailable." }, { status: 503 });
   if (!rateLimit.allowed) return NextResponse.json({ error: "Too many domain operations. Try again later.", retryAfterMs: rateLimit.retryAfterMs }, { status: 429 });
-  const body = await request.json().catch(() => null) as { domain?: unknown; action?: unknown } | null;
+  const body = await request.json().catch(() => null) as { smartLinkId?: unknown; domain?: unknown; action?: unknown } | null;
+  if (typeof body?.smartLinkId !== "string" || !body.smartLinkId.trim()) return NextResponse.json({ error: "smartLinkId is required." }, { status: 400 });
   if (typeof body?.domain !== "string") return NextResponse.json({ error: "Domain is required." }, { status: 400 });
-  return { userId: session.user.id, domain: body.domain, action: body.action };
+  return { userId: session.user.id, smartLinkId: body.smartLinkId.trim(), domain: body.domain, action: body.action };
 }
 
 async function customerSession(request: NextRequest) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
     Eye,
     EyeOff,
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { useProfile } from "@/features/profile/profile-context";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 import type {
     ProfileStat,
@@ -20,6 +22,8 @@ export default function ProfileStatsEditor() {
         profile,
         setProfile,
     } = useProfile();
+
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     const stats =
         profile.stats ?? [];
@@ -103,15 +107,6 @@ export default function ProfileStatsEditor() {
     function deleteStat(
         id: string,
     ) {
-        const confirmed =
-            window.confirm(
-                "Delete this profile stat?",
-            );
-
-        if (!confirmed) {
-            return;
-        }
-
         updateStats(
             (current) =>
                 current.filter(
@@ -119,6 +114,7 @@ export default function ProfileStatsEditor() {
                         stat.id !== id,
                 ),
         );
+        setPendingDeleteId(null);
     }
 
     return (
@@ -278,11 +274,7 @@ export default function ProfileStatsEditor() {
 
                                         <button
                                             type="button"
-                                            onClick={() =>
-                                                deleteStat(
-                                                    stat.id,
-                                                )
-                                            }
+                                            onClick={() => setPendingDeleteId(stat.id)}
                                             title="Delete"
                                             aria-label="Delete stat"
                                             className="flex h-11 w-11 items-center justify-center rounded-xl text-zinc-400 transition hover:bg-red-50 hover:text-red-600"
@@ -306,6 +298,16 @@ export default function ProfileStatsEditor() {
                     )}
                 </div>
             )}
+
+            <ConfirmDialog
+                open={Boolean(pendingDeleteId)}
+                title="Delete profile stat?"
+                description="This stat will be removed from the Page. Save the Page to persist the change."
+                confirmLabel="Delete stat"
+                destructive
+                onClose={() => setPendingDeleteId(null)}
+                onConfirm={() => pendingDeleteId && deleteStat(pendingDeleteId)}
+            />
         </section>
     );
 }

@@ -13,6 +13,7 @@ import ProfileStatsEditor from "@/components/profile/profile-stats-editor";
 import SocialLinksEditor from "@/components/profile/social-links-editor";
 import ProfilePreviewFrame from "@/components/ui/profile-preview-frame";
 import UserContentImage from "@/components/ui/user-content-image";
+import { useToast } from "@/components/ui/toast";
 import { useProfile } from "@/features/profile/profile-context";
 
 import type {
@@ -26,8 +27,9 @@ const mockVisitor: VisitorLocation = {
   flag: "🇷🇸",
 };
 
-export default function ProfileEditor() {
-  const { profile, setProfile, saveProfile, saving } = useProfile();
+export default function ProfileEditor({ smartLinkScoped = false }: { smartLinkScoped?: boolean }) {
+  const { profile, setProfile, saveProfile, saving, dirty } = useProfile();
+  const { pushToast } = useToast();
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
 
@@ -79,17 +81,19 @@ export default function ProfileEditor() {
 
     if (!result.ok) {
       setSaveError(result.error);
+      pushToast({ title: "Profile save failed", description: result.error, tone: "error" });
       return;
     }
 
     setSaved(true);
+    pushToast({ title: "Profile saved", tone: "success" });
     window.setTimeout(() => setSaved(false), 1600);
   }
 
   return (
     <div className="grid w-full min-w-0 max-w-full gap-6 2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8">
       <div className="min-w-0 space-y-6">
-        <ProfilePublishingSection />
+        {!smartLinkScoped && <ProfilePublishingSection />}
 
         <section className="w-full min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-4 sm:p-6">
           <div>
@@ -172,33 +176,35 @@ export default function ProfileEditor() {
               </div>
             </div>
 
-            <div>
-              <label
-                htmlFor="profile-slug"
-                className="flex items-center gap-2 text-sm font-medium text-zinc-900"
-              >
-                <Link2 size={15} className="text-zinc-400" />
-                Profile URL
-              </label>
+            {!smartLinkScoped && (
+              <div>
+                <label
+                  htmlFor="profile-slug"
+                  className="flex items-center gap-2 text-sm font-medium text-zinc-900"
+                >
+                  <Link2 size={15} className="text-zinc-400" />
+                  Profile URL
+                </label>
 
-              <div className="mt-2 flex overflow-hidden rounded-xl border border-zinc-200 bg-white focus-within:border-zinc-400">
-                <span className="hidden items-center border-r border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-500 sm:flex">
-                  linkzzz.com/
-                </span>
+                <div className="mt-2 flex overflow-hidden rounded-xl border border-zinc-200 bg-white focus-within:border-zinc-400">
+                  <span className="hidden items-center border-r border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-500 sm:flex">
+                    linkzzz.com/
+                  </span>
 
-                <input
-                  id="profile-slug"
-                  type="text"
-                  value={profile.slug}
-                  onChange={(event) => handleSlugChange(event.target.value)}
-                  className="min-w-0 flex-1 px-4 py-3 text-sm text-zinc-950 outline-none"
-                />
+                  <input
+                    id="profile-slug"
+                    type="text"
+                    value={profile.slug}
+                    onChange={(event) => handleSlugChange(event.target.value)}
+                    className="min-w-0 flex-1 px-4 py-3 text-sm text-zinc-950 outline-none"
+                  />
+                </div>
+
+                <p className="mt-2 break-all text-xs text-zinc-400 sm:hidden">
+                  linkzzz.com/{profile.slug}
+                </p>
               </div>
-
-              <p className="mt-2 break-all text-xs text-zinc-400 sm:hidden">
-                linkzzz.com/{profile.slug}
-              </p>
-            </div>
+            )}
 
             <div>
               <div className="flex items-center justify-between gap-4">
@@ -247,8 +253,8 @@ export default function ProfileEditor() {
           <button
             type="button"
             onClick={saveChanges}
-            disabled={saving}
-            className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800"
+            disabled={saving || !dirty}
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Save size={17} />
             {saving ? "Saving..." : "Save changes"}

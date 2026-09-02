@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { isPlanId } from "@/features/plans/plan-catalog";
 import { getCurrentSession } from "@/server/auth/current-session";
 import { requireAdmin } from "@/server/auth/guards";
 import { createAdminUser, listAdminUsers } from "@/server/admin/admin-service";
@@ -63,7 +64,7 @@ function isCreateUserBody(value: unknown): value is Parameters<typeof createAdmi
     typeof body.email === "string" &&
     typeof body.slug === "string" &&
     typeof body.password === "string" &&
-    (body.plan === "PREMIUM" || body.plan === "PREMIUM_PLUS") &&
+    isPlanId(body.plan) &&
     typeof body.periodStart === "string" &&
     typeof body.periodEnd === "string" &&
     typeof body.autoRenew === "boolean" &&

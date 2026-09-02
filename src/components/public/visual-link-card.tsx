@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { ExternalLink } from "lucide-react";
 
 import { ClassicLinkButton } from "@/components/public/classic-profile-renderer";
@@ -38,6 +39,9 @@ export function VisualLinkCard({
     visitor,
     isPreview,
     onClick,
+    focused = false,
+    dimmed = false,
+    disabled = false,
 }: {
     profile: PublicProfileData;
 
@@ -48,6 +52,12 @@ export function VisualLinkCard({
     isPreview: boolean;
 
     onClick: () => void;
+
+    focused?: boolean;
+
+    dimmed?: boolean;
+
+    disabled?: boolean;
 }) {
     const appearance =
         profile.appearance;
@@ -79,6 +89,9 @@ export function VisualLinkCard({
                     onClick={
                         onClick
                     }
+                    focused={focused}
+                    dimmed={dimmed}
+                    disabled={disabled}
                 />
             </div>
         );
@@ -135,8 +148,9 @@ export function VisualLinkCard({
 
     const borderWidth =
         custom?.borderWidth ??
-        cards?.borderWidth ??
-        1;
+        (backgroundType === "image"
+            ? 0
+            : cards?.borderWidth ?? 1);
 
     const borderColor =
         custom?.borderColor ??
@@ -188,6 +202,19 @@ export function VisualLinkCard({
         custom?.platformBadgeTextColor ??
         "#09090b";
 
+    const promoBadgeText = link.customStyle?.badgeText?.trim() ?? "";
+    const promoBadgeBackground = link.customStyle?.badgeBackgroundColor ?? "#ffffff";
+    const promoBadgeColor = link.customStyle?.badgeTextColor ?? "#09090b";
+    const ctaText = link.customStyle?.ctaText?.trim() ?? "";
+    const ctaStyle = link.customStyle?.ctaStyle ?? "none";
+    const ctaBackground = link.customStyle?.ctaBackgroundColor ?? "#ffffff";
+    const ctaColor = link.customStyle?.ctaTextColor ?? "#09090b";
+    const contentPadding = custom?.contentPadding ?? 20;
+    const titleSize = custom?.titleSize ?? (layout === "featured" ? Math.max(cards?.titleSize ?? 20, 24) : cards?.titleSize ?? 20);
+    const descriptionSize = custom?.descriptionSize ?? 13;
+    const descriptionColor = custom?.descriptionColor ?? textColor;
+    const imageScale = Math.max(100, Math.min(125, custom?.imageScale ?? 100));
+
     const Icon =
         link.icon;
 
@@ -197,20 +224,33 @@ export function VisualLinkCard({
             visitor,
         );
 
+    const focusEffect = link.customStyle?.focusEffect ?? "none";
+    const focusColor = link.customStyle?.focusColor ?? "#ffffff";
+    const focusDelayMs = Math.max(0, link.customStyle?.focusDelayMs ?? 0);
+    const focusClass = focused
+        ? focusEffect === "glow-shake"
+            ? "linkzzz-focus-glow linkzzz-focus-shake"
+            : focusEffect === "glow"
+                ? "linkzzz-focus-glow"
+                : focusEffect === "shake"
+                    ? "linkzzz-focus-shake"
+                    : ""
+        : "";
+
     return (
         <a
             href={
-                isPreview
+                isPreview || disabled
                     ? undefined
                     : resolvedUrl
             }
             target={
-                isPreview
+                isPreview || disabled
                     ? undefined
                     : "_blank"
             }
             rel={
-                isPreview
+                isPreview || disabled
                     ? undefined
                     : "noopener noreferrer"
             }
@@ -218,19 +258,22 @@ export function VisualLinkCard({
                 event,
             ) => {
                 if (
-                    isPreview
+                    isPreview || disabled
                 ) {
                     event.preventDefault();
 
                     return;
                 }
 
-                onClick();
+                if (!link.sensitiveContent?.enabled) {
+                    onClick();
+                }
             }}
-            className={`group relative block w-full overflow-hidden ${getHoverClass(
+            aria-disabled={disabled || undefined}
+            className={`group relative block w-full overflow-hidden ${disabled ? "cursor-not-allowed opacity-60" : getHoverClass(
                 cards?.hoverEffect ??
                 "lift",
-            )}`}
+            )} ${focusClass} ${dimmed ? "linkzzz-focus-dim" : ""}`}
             style={{
                 height:
                     aspectRatio ===
@@ -268,8 +311,10 @@ export function VisualLinkCard({
                     ),
 
                 transition:
-                    "transform 180ms ease, filter 180ms ease, box-shadow 180ms ease",
-            }}
+                    "transform 180ms ease, filter 180ms ease, box-shadow 180ms ease, opacity 220ms ease",
+                "--linkzzz-focus-color": focusColor,
+                "--linkzzz-focus-delay": `${focusDelayMs}ms`,
+            } as CSSProperties}
         >
             {/* IMAGE */}
             {backgroundType ===
@@ -283,7 +328,7 @@ export function VisualLinkCard({
                             link.imageAlt ??
                             link.title
                         }
-                        className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-[1.025]"
+                        className="absolute inset-0 h-full w-full transition-transform duration-500"
                         style={{
                             objectFit:
                                 link.imageFit ??
@@ -295,6 +340,8 @@ export function VisualLinkCard({
                                     link.imagePosition ??
                                     "center",
                                 ),
+
+                            transform: `scale(${imageScale / 100})`,
                         }}
                     />
                 )}
@@ -395,14 +442,35 @@ export function VisualLinkCard({
                     </div>
                 )}
 
+            {disabled && (
+                <div className={`absolute right-3 top-3 z-30 rounded-full bg-black/70 px-2.5 py-1 font-black uppercase tracking-[0.08em] text-white backdrop-blur ${isPreview ? "text-[8px]" : "text-[10px]"}`}>
+                    Expired
+                </div>
+            )}
+
+            {/* PROMOTIONAL BADGE */}
+            {promoBadgeText && (
+                <div
+                    className={`absolute z-20 max-w-[65%] truncate font-bold uppercase tracking-[0.08em] ${isPreview ? "top-3 px-2 py-1 text-[8px]" : "top-4 px-2.5 py-1.5 text-[10px]"} ${badgePosition === "top-left" && (link.showPlatformIcon ?? true) && Icon ? (isPreview ? "right-3" : "right-4") : (isPreview ? "left-3" : "left-4")}`}
+                    style={{
+                        borderRadius: "999px",
+                        backgroundColor: promoBadgeBackground,
+                        color: promoBadgeColor,
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.16)",
+                    }}
+                >
+                    {promoBadgeText}
+                </div>
+            )}
+
             {/* CARD CONTENT */}
             <div
-                className={`absolute inset-0 z-10 flex ${isPreview
-                    ? "p-3"
-                    : "p-4 sm:p-5"
-                    } ${getTitlePositionClass(
-                        titlePosition,
-                    )}`}
+                className={`absolute inset-0 z-10 flex ${getTitlePositionClass(
+                    titlePosition,
+                )}`}
+                style={{
+                    padding: `${isPreview ? Math.max(10, Math.round(contentPadding * 0.72)) : contentPadding}px`,
+                }}
             >
                 <div
                     className={
@@ -423,14 +491,8 @@ export function VisualLinkCard({
                                         textColor,
 
                                     fontSize: `${isPreview
-                                        ? Math.max(
-                                            (cards?.titleSize ??
-                                                20) *
-                                            0.72,
-                                            12,
-                                        )
-                                        : cards?.titleSize ??
-                                        20
+                                        ? Math.max(titleSize * 0.72, 12)
+                                        : titleSize
                                         }px`,
                                 }}
                             >
@@ -442,16 +504,11 @@ export function VisualLinkCard({
                         false) &&
                         link.description && (
                             <p
-                                className={`mt-1 line-clamp-2 ${isPreview
-                                    ? "text-[10px]"
-                                    : "text-xs sm:text-sm"
-                                    }`}
+                                className="mt-1 line-clamp-2"
                                 style={{
-                                    color:
-                                        textColor,
-
-                                    opacity:
-                                        0.78,
+                                    color: descriptionColor,
+                                    opacity: 0.88,
+                                    fontSize: `${isPreview ? Math.max(descriptionSize * 0.74, 9) : descriptionSize}px`,
                                 }}
                             >
                                 {
@@ -459,11 +516,27 @@ export function VisualLinkCard({
                                 }
                             </p>
                         )}
+
+                    {ctaStyle !== "none" && ctaText && (
+                        <span
+                            className={`mt-3 inline-flex items-center justify-center font-bold ${ctaStyle === "solid" ? "w-full" : ""} ${isPreview ? "min-h-7 px-3 text-[9px]" : "min-h-9 px-4 text-xs"}`}
+                            style={{
+                                borderRadius: ctaStyle === "pill" ? "999px" : "12px",
+                                backgroundColor: ctaStyle === "glass" ? "rgba(255,255,255,0.16)" : ctaBackground,
+                                color: ctaStyle === "glass" ? textColor : ctaColor,
+                                border: ctaStyle === "glass" ? "1px solid rgba(255,255,255,0.24)" : "none",
+                                backdropFilter: ctaStyle === "glass" ? "blur(12px)" : undefined,
+                                boxShadow: ctaStyle === "solid" ? "0 8px 24px rgba(0,0,0,0.18)" : "none",
+                            }}
+                        >
+                            {ctaText}
+                        </span>
+                    )}
                 </div>
             </div>
 
             {/* EXTERNAL LINK */}
-            {!isPreview && (
+            {!isPreview && !disabled && (
                 <div
                     className={`absolute z-20 opacity-0 transition-opacity group-hover:opacity-100 ${badgePosition ===
                         "top-right"

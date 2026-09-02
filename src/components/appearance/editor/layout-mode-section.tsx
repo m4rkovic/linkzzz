@@ -8,7 +8,7 @@ export default function LayoutModeSection({ value, onChange }: {
   onChange: (value: ProfileLayoutMode) => void;
 }) {
   return (
-    <AppearanceSection icon={MonitorSmartphone} title="Profile layout" description="Choose the overall structure of your public profile.">
+    <AppearanceSection icon={MonitorSmartphone} title="Page layout" description="Choose the overall structure of this Landing Page.">
       <div className="grid gap-3 sm:grid-cols-2">
         <LayoutModeCard title="Classic" description="The original Linkzzz layout with clean buttons." selected={value === "classic"} onClick={() => onChange("classic")}>
           <ClassicLayoutPreview />

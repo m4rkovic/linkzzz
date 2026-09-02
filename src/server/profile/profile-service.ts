@@ -1,11 +1,17 @@
 import "server-only";
 
 import { defaultAppearance } from "@/config/profile-defaults";
-import { getPlanLinkLimit } from "@/server/business/plans";
+import { getPageCardLimit } from "@/server/business/plans";
+import { getPlanDefinition } from "@/features/plans/plan-catalog";
 import { getSubscriptionAccess } from "@/server/business/subscriptions";
-import { getAssetStorage } from "@/server/assets/storage-factory";
 import type { AuthenticatedSession } from "@/server/auth/auth-service";
 import { getServerDependencies } from "@/server/persistence/dependencies";
+import {
+  cleanupReplacedProfileAssets,
+  cleanupReplacedSmartLinkAssets,
+  collectProfileAssetReferences,
+  preserveUnpersistedProfileMedia,
+} from "@/server/profile/profile-media";
 import { validateProfilePayload } from "@/server/profile/profile-validation";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 
@@ -48,6 +54,7 @@ export async function getOrCreateVersionedProfileForUser(
     stats: [],
     socials: [],
     links: [],
+    contentBlocks: [],
     appearance: structuredClone(defaultAppearance),
   };
 
@@ -89,6 +96,179 @@ export async function getPublicProfileBySlug(
   return record.profile;
 }
 
+export async function getVersionedPageForSmartLink(
+  session: AuthenticatedSession,
+  smartLinkId: string,
+) {
+  if (session.user.role !== "CUSTOMER") return null;
+  const dependencies = await getServerDependencies();
+  const smartLink = await dependencies.smartLinks.findByIdForUser(
+    smartLinkId,
+    session.user.id,
+  );
+  if (!smartLink || smartLink.type !== "LANDING_PAGE") return null;
+  return dependencies.profiles.findVersionedBySmartLinkIdForUser(
+    smartLinkId,
+    session.user.id,
+  );
+}
+
+export async function updateOwnSmartLinkPage(
+  session: AuthenticatedSession,
+  smartLinkId: string,
+  payload: unknown,
+  expectedRevision: number,
+): Promise<UpdateProfileResult> {
+  if (session.user.role !== "CUSTOMER") {
+    return {
+      ok: false,
+      code: "INVALID_PROFILE",
+      message: "Customer account required.",
+    };
+  }
+
+  const dependencies = await getServerDependencies();
+  const smartLink = await dependencies.smartLinks.findByIdForUser(
+    smartLinkId,
+    session.user.id,
+  );
+  if (!smartLink || smartLink.type !== "LANDING_PAGE") {
+    return {
+      ok: false,
+      code: "INVALID_PROFILE",
+      message: "Landing Page link not found.",
+    };
+  }
+  if (smartLink.status === "DISABLED") {
+    return {
+      ok: false,
+      code: "PROFILE_DISABLED",
+      message: "This link is disabled by an administrator.",
+    };
+  }
+
+  const currentRecord =
+    await dependencies.profiles.findVersionedBySmartLinkIdForUser(
+      smartLinkId,
+      session.user.id,
+    );
+  if (!currentRecord) {
+    return {
+      ok: false,
+      code: "INVALID_PROFILE",
+      message: "Landing page content was not found.",
+    };
+  }
+
+  // The Page endpoint owns page content only. Slug and publish status belong to
+  // the parent SmartLink and are deliberately preserved here even if a stale
+  // client sends different values.
+  const normalizedPayload =
+    payload && typeof payload === "object" && !Array.isArray(payload)
+      ? {
+          ...(payload as Record<string, unknown>),
+          slug: smartLink.slug,
+          status: smartLink.status,
+        }
+      : payload;
+
+  const validation = validateProfilePayload(normalizedPayload);
+  if (!validation.ok) {
+    return {
+      ok: false,
+      code: "INVALID_PROFILE",
+      message: validation.error,
+    };
+  }
+
+  const current = currentRecord.profile;
+  const incoming = validation.value;
+  const assetReferences = collectProfileAssetReferences(incoming);
+  if (assetReferences.length) {
+    if (!dependencies.assets) {
+      return {
+        ok: false,
+        code: "INVALID_PROFILE",
+        message: "Asset persistence is unavailable.",
+      };
+    }
+    const ownedAssets = await dependencies.assets.findByIdsForSmartLink(
+      session.user.id,
+      smartLinkId,
+      [...new Set(assetReferences.map((reference) => reference.id))],
+    );
+    const ownedById = new Map(ownedAssets.map((asset) => [asset.id, asset]));
+    if (
+      assetReferences.some(
+        (reference) => ownedById.get(reference.id)?.type !== reference.type,
+      )
+    ) {
+      return {
+        ok: false,
+        code: "INVALID_PROFILE",
+        message: "One or more page images do not belong to this link.",
+      };
+    }
+  }
+
+  const subscription = await dependencies.subscriptions.findByUserId(
+    session.user.id,
+  );
+  if (!subscription) {
+    return {
+      ok: false,
+      code: "SUBSCRIPTION_MISSING",
+      message: "Subscription information is missing.",
+    };
+  }
+
+  const previousCount = current.links.length;
+  const nextCount = incoming.links.length;
+  const linkLimit = getPageCardLimit(subscription.plan);
+  if (nextCount > previousCount && nextCount > linkLimit) {
+    return {
+      ok: false,
+      code: "LINK_LIMIT_REACHED",
+      message: `Your ${getPlanDefinition(subscription.plan).name} plan allows up to ${linkLimit} links on one Landing Page.`,
+    };
+  }
+
+  const next = preserveUnpersistedProfileMedia(incoming, current);
+  const writeResult = await dependencies.profiles.updateForSmartLinkIfRevision(
+    smartLinkId,
+    session.user.id,
+    next,
+    expectedRevision,
+  );
+  if (!writeResult.ok) {
+    return {
+      ok: false,
+      code: "PROFILE_CONFLICT",
+      message:
+        "This page changed in another tab. Reload the page before saving again.",
+    };
+  }
+
+  const { profile: saved, revision } = writeResult;
+  await cleanupReplacedSmartLinkAssets(
+    session.user.id,
+    smartLinkId,
+    current,
+    saved,
+    dependencies,
+  );
+
+  await dependencies.audit.write({
+    actorUserId: session.user.id,
+    targetUserId: session.user.id,
+    action: "PROFILE_UPDATED",
+    resourceType: "PROFILE",
+    resourceId: smartLinkId,
+  });
+
+  return { ok: true, profile: saved, revision };
+}
+
 export async function updateOwnProfile(
   session: AuthenticatedSession,
   payload: unknown,
@@ -110,7 +290,7 @@ export async function updateOwnProfile(
   const current = currentRecord?.profile ?? null;
   const incoming = validation.value;
 
-  const assetReferences = collectAssetReferences(incoming);
+  const assetReferences = collectProfileAssetReferences(incoming);
   if (assetReferences.length) {
     if (!dependencies.assets) {
       return {
@@ -175,17 +355,17 @@ export async function updateOwnProfile(
 
   const previousCount = current?.links.length ?? 0;
   const nextCount = incoming.links.length;
-  const linkLimit = getPlanLinkLimit(subscription.plan);
+  const linkLimit = getPageCardLimit(subscription.plan);
 
   if (nextCount > previousCount && nextCount > linkLimit) {
     return {
       ok: false,
       code: "LINK_LIMIT_REACHED",
-      message: `Your ${subscription.plan} plan allows up to ${linkLimit} links.`,
+      message: `Your ${getPlanDefinition(subscription.plan).name} plan allows up to ${linkLimit} links on one Landing Page.`,
     };
   }
 
-  const next = preserveUnpersistedMedia(incoming, current);
+  const next = preserveUnpersistedProfileMedia(incoming, current);
   const writeResult = await dependencies.profiles.updateIfRevision(
     session.user.id,
     next,
@@ -200,7 +380,7 @@ export async function updateOwnProfile(
     };
   }
   const { profile: saved, revision } = writeResult;
-  await cleanupReplacedAssets(session.user.id, current, saved, dependencies);
+  await cleanupReplacedProfileAssets(session.user.id, current, saved, dependencies);
 
   if (current?.slug !== saved.slug) {
     await dependencies.audit.write({
@@ -238,83 +418,4 @@ export async function updateOwnProfile(
   });
 
   return { ok: true, profile: saved, revision };
-}
-
-function collectAssetReferences(profile: PersistedProfileData) {
-  const references: Array<{
-    id: string;
-    type: "AVATAR" | "COVER" | "LINK_IMAGE";
-  }> = [];
-  if (profile.avatarAssetId) {
-    references.push({ id: profile.avatarAssetId, type: "AVATAR" });
-  }
-  if (profile.coverAssetId) {
-    references.push({ id: profile.coverAssetId, type: "COVER" });
-  }
-  for (const link of profile.links) {
-    if (link.imageAssetId) {
-      references.push({ id: link.imageAssetId, type: "LINK_IMAGE" });
-    }
-  }
-  return references;
-}
-
-async function cleanupReplacedAssets(
-  userId: string,
-  previous: PersistedProfileData | null,
-  next: PersistedProfileData,
-  dependencies: Awaited<ReturnType<typeof getServerDependencies>>,
-) {
-  if (!previous || !dependencies.assets) return;
-  const previousIds = new Set(
-    collectAssetReferences(previous).map((reference) => reference.id),
-  );
-  const nextIds = new Set(
-    collectAssetReferences(next).map((reference) => reference.id),
-  );
-  const candidates = [...previousIds].filter((id) => !nextIds.has(id));
-  if (!candidates.length) return;
-
-  const removed = await dependencies.assets.deleteUnusedForUser(
-    userId,
-    candidates,
-  );
-  if (!removed.length) return;
-
-  try {
-    const storage = await getAssetStorage();
-    await Promise.allSettled(
-      removed.map((asset) => storage.remove(asset.storageKey)),
-    );
-  } catch {
-    // The database no longer references these files. A storage sweep may retry later.
-  }
-}
-
-function preserveUnpersistedMedia(
-  incoming: PersistedProfileData,
-  current: PersistedProfileData | null,
-): PersistedProfileData {
-  const currentLinks = new Map(current?.links.map((link) => [link.id, link]));
-
-  return {
-    ...incoming,
-    avatarUrl: resolveMediaUrl(incoming.avatarUrl, current?.avatarUrl),
-    coverImageUrl: resolveMediaUrl(incoming.coverImageUrl, current?.coverImageUrl),
-    links: incoming.links.map((link) => ({
-      ...link,
-      imageUrl: resolveMediaUrl(
-        link.imageUrl,
-        currentLinks.get(link.id)?.imageUrl,
-      ),
-    })),
-  };
-}
-
-function resolveMediaUrl(
-  incoming: string | undefined,
-  current: string | undefined,
-) {
-  if (incoming?.startsWith("blob:")) return current;
-  return incoming;
 }

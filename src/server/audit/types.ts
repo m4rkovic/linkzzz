@@ -21,6 +21,12 @@ export type AuditAction =
   | "USER_DELETED"
   | "CUSTOM_DOMAIN_ADDED"
   | "CUSTOM_DOMAIN_VERIFIED"
+  | "CUSTOM_DOMAIN_ACTIVATED"
+  | "CUSTOM_DOMAIN_DISABLED"
+  | "SMART_LINK_DUPLICATED"
+  | "SMART_LINK_DELETED"
+  | "SMART_LINK_DISABLED"
+  | "SMART_LINK_ENABLED"
   | "CUSTOM_DOMAIN_REMOVED";
 
 export type AuditResourceType =
@@ -28,6 +34,7 @@ export type AuditResourceType =
   | "PROFILE"
   | "SUBSCRIPTION"
   | "SESSION"
+  | "SMART_LINK"
   | "CUSTOM_DOMAIN";
 
 export type AuditEventInput = {

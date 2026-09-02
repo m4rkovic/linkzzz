@@ -273,3 +273,8 @@ export const CUSTOM_DOMAIN_RATE_LIMIT: RateLimitPolicy = {
   limit: 30,
   windowMs: 15 * 60 * 1_000,
 };
+
+export const LEAD_CAPTURE_RATE_LIMIT: RateLimitPolicy = {
+  limit: 12,
+  windowMs: 15 * 60 * 1_000,
+};

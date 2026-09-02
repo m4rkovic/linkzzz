@@ -1,9 +1,8 @@
 # Linkzzz server boundary
 
 The application backend is implemented behind repository and service contracts.
-Prisma/PostgreSQL is the only application runtime persistence adapter. The old
-JSON implementation remains in `persistence/json` as legacy reference code and
-is not imported by the application dependency factory.
+Prisma/PostgreSQL is the only application runtime persistence adapter. Legacy
+JSON persistence has been removed; new repositories must target Prisma only.
 
 Current rules:
 

@@ -1,4 +1,9 @@
-export type AccountPlan = "PREMIUM" | "PREMIUM_PLUS";
+import {
+  getPlanDefinition,
+  type PlanId,
+} from "@/features/plans/plan-catalog";
+
+export type AccountPlan = PlanId;
 
 export type AccountSubscriptionStatus =
   | "ACTIVE"
@@ -20,5 +25,5 @@ export type AccountSummary = {
 };
 
 export function getAccountPlanLimit(plan: AccountPlan) {
-  return plan === "PREMIUM_PLUS" ? 100 : 40;
+  return getPlanDefinition(plan).smartLinkLimit;
 }

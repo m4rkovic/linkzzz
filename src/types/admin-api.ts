@@ -1,23 +1,31 @@
 import type { AccountStatus } from "@/server/types/auth";
 import type { Plan } from "@/server/business/plans";
 import type { SubscriptionStatus } from "@/server/business/subscriptions";
-import type { ProfileStatus } from "@/types/profile";
+import type { SmartLinkStatus, SmartLinkType } from "@/types/smart-link";
+
+export type AdminSmartLinkSnapshot = {
+  id: string;
+  title: string;
+  slug: string;
+  type: SmartLinkType;
+  status: SmartLinkStatus;
+  updatedAt: string;
+};
 
 export type AdminUserSnapshot = {
   id: string;
   displayName: string;
   username: string;
   email: string;
-  slug: string;
   initials: string;
   plan: Plan;
   subscriptionStatus: SubscriptionStatus;
   accountStatus: AccountStatus;
-  profileStatus: ProfileStatus;
   autoRenew: boolean;
   periodStart: string;
   periodEnd: string;
   linksUsed: number;
+  smartLinks: AdminSmartLinkSnapshot[];
 };
 
 export type AdminHistorySnapshot = {
@@ -27,7 +35,11 @@ export type AdminHistorySnapshot = {
   description: string;
 };
 
-export type AdminUserListItem = AdminUserSnapshot;
+export type AdminUserListItem = Omit<AdminUserSnapshot, "smartLinks"> & {
+  publishedLinks: number;
+  draftLinks: number;
+  disabledLinks: number;
+};
 
 export type AdminUserAction =
   | { type: "RENEW"; months: 1 | 3 | 6 | 12 }
@@ -35,8 +47,7 @@ export type AdminUserAction =
   | { type: "RESUME_RENEWAL" }
   | { type: "STOP_IMMEDIATELY" }
   | { type: "CHANGE_PLAN"; plan: Plan }
-  | { type: "SET_PROFILE_STATUS"; status: "PUBLISHED" | "DISABLED" }
-  | { type: "CHANGE_SLUG"; slug: string }
+  | { type: "SET_SMART_LINK_STATUS"; smartLinkId: string; status: "PUBLISHED" | "DISABLED" }
   | { type: "SUSPEND"; reason?: string }
   | { type: "REACTIVATE" }
   | { type: "RESET_PASSWORD" };

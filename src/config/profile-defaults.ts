@@ -13,10 +13,16 @@ export const defaultAppearance: ProfileAppearance = {
   backgroundColor: "#111214",
   gradientFrom: "#111214",
   gradientTo: "#18181b",
+  gradientAngle: 135,
+  backgroundEffect: "soft-glow",
+  backgroundEffectColor: "#ffffff",
+  backgroundEffectIntensity: 0.2,
 
   primaryTextColor: "#ffffff",
   secondaryTextColor: "#a1a1aa",
   fontFamily: "Inter, Arial, sans-serif",
+  headingWeight: 900,
+  headingLetterSpacing: -0.025,
 
   buttonStyle: "glass",
   buttonBackgroundColor: "#18181b",
@@ -29,7 +35,14 @@ export const defaultAppearance: ProfileAppearance = {
   page: {
     maxWidth: 760,
     horizontalPadding: 20,
+    mobileHorizontalPadding: 14,
     sectionSpacing: 20,
+    mobileSectionSpacing: 14,
+    verticalPadding: 28,
+    mobileColumns: 2,
+    sectionBackgroundColor: "#ffffff",
+    sectionBorderColor: "#ffffff",
+    sectionSurfaceOpacity: 0.08,
   },
 
   hero: {

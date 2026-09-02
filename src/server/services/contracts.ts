@@ -3,6 +3,7 @@ import type { Plan } from "@/server/business/plans";
 import type { SubscriptionStatus } from "@/server/business/subscriptions";
 import type { AccountStatus, UserRole } from "@/server/types/auth";
 import type { PersistedProfileData } from "@/types/persisted-profile";
+import type { SmartLinkEditableData, SmartLinkRecord } from "@/types/smart-link";
 
 export type UserRecord = {
   id: string;
@@ -44,6 +45,8 @@ export interface SubscriptionRepository {
 
 
 export interface ProfileRepository {
+  // Legacy single-page compatibility methods. New SmartLink editor code must use
+  // the smartLinkId-scoped methods below.
   findByUserId(userId: string): Promise<PersistedProfileData | null>;
   findVersionedByUserId(userId: string): Promise<VersionedProfileRecord | null>;
   findBySlug(slug: string): Promise<{ userId: string; profile: PersistedProfileData } | null>;
@@ -53,6 +56,55 @@ export interface ProfileRepository {
     profile: PersistedProfileData,
     expectedRevision: number,
   ): Promise<ConditionalProfileWriteResult>;
+
+  findVersionedBySmartLinkIdForUser(
+    smartLinkId: string,
+    userId: string,
+  ): Promise<VersionedProfileRecord | null>;
+  updateForSmartLinkIfRevision(
+    smartLinkId: string,
+    userId: string,
+    profile: PersistedProfileData,
+    expectedRevision: number,
+  ): Promise<ConditionalProfileWriteResult>;
+}
+
+export type CreateSmartLinkRecord = Omit<
+  SmartLinkRecord,
+  "id" | "revision" | "createdAt" | "updatedAt"
+>;
+
+export type ConditionalSmartLinkWriteResult =
+  | { ok: true; smartLink: SmartLinkRecord }
+  | { ok: false; reason: "REVISION_CONFLICT" };
+
+export type DeleteSmartLinkResult =
+  | { ok: true; storageKeysToRemove: string[] }
+  | { ok: false; reason: "REVISION_CONFLICT" | "NOT_FOUND" };
+
+export interface SmartLinkRepository {
+  listForUser(userId: string): Promise<SmartLinkRecord[]>;
+  countForUser(userId: string): Promise<number>;
+  findByIdForUser(id: string, userId: string): Promise<SmartLinkRecord | null>;
+  findBySlug(slug: string): Promise<SmartLinkRecord | null>;
+  create(record: CreateSmartLinkRecord): Promise<SmartLinkRecord>;
+  updateIfRevision(
+    id: string,
+    userId: string,
+    editable: SmartLinkEditableData,
+    expectedRevision: number,
+  ): Promise<ConditionalSmartLinkWriteResult>;
+  duplicateForUser(
+    id: string,
+    userId: string,
+    title: string,
+    slug: string,
+  ): Promise<SmartLinkRecord | null>;
+  deleteIfRevision(
+    id: string,
+    userId: string,
+    expectedRevision: number,
+  ): Promise<DeleteSmartLinkResult>;
 }
 
 export type VersionedProfileRecord = {
@@ -102,9 +154,16 @@ export interface SubscriptionHistoryRepository {
 
 export type AnalyticsEventRecord = {
   id?: string;
-  profileId: string;
-  linkId?: string | null;
-  type: "PAGE_VIEW" | "LINK_CLICK" | "SOCIAL_CLICK";
+  smartLinkId: string;
+  pageCardId?: string | null;
+  type:
+    | "PAGE_VIEW"
+    | "LINK_CLICK"
+    | "SOCIAL_CLICK"
+    | "SMART_LINK_VIEW"
+    | "DEEPLINK_ATTEMPT"
+    | "DEEPLINK_FALLBACK"
+    | "BLOCKED_AUTOMATED_REQUEST";
   visitorId?: string | null;
   referrer?: string | null;
   countryCode?: string | null;
@@ -117,19 +176,45 @@ export type AnalyticsEventRecord = {
   createdAt?: Date;
 };
 
+export type AnalyticsSmartLinkRecord = Pick<
+  SmartLinkRecord,
+  "id" | "title" | "slug" | "type" | "status"
+> & {
+  pageCards: Array<{
+    id: string;
+    title: string;
+    url: string;
+  }>;
+};
+
 export interface AnalyticsRepository {
   create(event: AnalyticsEventRecord): Promise<AnalyticsEventRecord>;
   createForSlug(
     slug: string,
-    event: Omit<AnalyticsEventRecord, "profileId">,
+    event: Omit<AnalyticsEventRecord, "smartLinkId">,
   ): Promise<boolean>;
   listForUser(userId: string): Promise<AnalyticsEventRecord[]>;
-  listForProfile(profileId: string, from?: Date): Promise<AnalyticsEventRecord[]>;
+  listForSmartLink(smartLinkId: string, from?: Date): Promise<AnalyticsEventRecord[]>;
+  listSmartLinksForUser(userId: string): Promise<AnalyticsSmartLinkRecord[]>;
+}
+
+
+export type LeadSubmissionRecord = {
+  id?: string;
+  smartLinkId: string;
+  blockId: string;
+  email: string;
+  createdAt?: Date;
+};
+
+export interface LeadSubmissionRepository {
+  create(record: LeadSubmissionRecord): Promise<LeadSubmissionRecord>;
+  listForSmartLink(smartLinkId: string): Promise<LeadSubmissionRecord[]>;
 }
 
 export type AssetRecord = {
   id?: string;
-  profileId: string;
+  smartLinkId: string;
   type: "AVATAR" | "COVER" | "LINK_IMAGE";
   fileName: string;
   storageKey: string;
@@ -142,15 +227,30 @@ export type AssetRecord = {
 export interface AssetRepository {
   findById(id: string): Promise<AssetRecord | null>;
   findByIdsForUser(userId: string, ids: string[]): Promise<AssetRecord[]>;
+  findByIdsForSmartLink(
+    userId: string,
+    smartLinkId: string,
+    ids: string[],
+  ): Promise<AssetRecord[]>;
   create(asset: AssetRecord): Promise<AssetRecord>;
-  createForUser(userId: string, asset: Omit<AssetRecord, "profileId">): Promise<AssetRecord>;
+  createForUser(userId: string, asset: Omit<AssetRecord, "smartLinkId">): Promise<AssetRecord>;
+  createForSmartLink(
+    userId: string,
+    smartLinkId: string,
+    asset: Omit<AssetRecord, "smartLinkId">,
+  ): Promise<AssetRecord>;
   delete(id: string): Promise<void>;
   deleteUnusedForUser(userId: string, ids: string[]): Promise<AssetRecord[]>;
+  deleteUnusedForSmartLink(
+    userId: string,
+    smartLinkId: string,
+    ids: string[],
+  ): Promise<AssetRecord[]>;
 }
 
 export type CustomDomainRecord = {
   id?: string;
-  profileId: string;
+  smartLinkId: string;
   domain: string;
   status: "PENDING" | "VERIFIED" | "ACTIVE" | "DISABLED";
   verificationToken: string;
@@ -161,10 +261,11 @@ export interface CustomDomainRepository {
   findByDomain(domain: string): Promise<CustomDomainRecord | null>;
   findActiveSlugByDomain(domain: string): Promise<string | null>;
   listForUser(userId: string): Promise<CustomDomainRecord[]>;
-  createForUser(userId: string, domain: string, verificationToken: string): Promise<CustomDomainRecord>;
+  listForSmartLink(userId: string, smartLinkId: string): Promise<CustomDomainRecord[]>;
+  createForSmartLink(userId: string, smartLinkId: string, domain: string, verificationToken: string): Promise<CustomDomainRecord>;
   upsert(record: CustomDomainRecord): Promise<CustomDomainRecord>;
-  setStatusForUser(userId: string, domain: string, status: CustomDomainRecord["status"], verifiedAt?: Date | null): Promise<CustomDomainRecord | null>;
-  deleteForUser(userId: string, domain: string): Promise<boolean>;
+  setStatusForSmartLink(userId: string, smartLinkId: string, domain: string, status: CustomDomainRecord["status"], verifiedAt?: Date | null): Promise<CustomDomainRecord | null>;
+  deleteForSmartLink(userId: string, smartLinkId: string, domain: string): Promise<boolean>;
 }
 
 export type ProvisionCustomerInput = {
@@ -184,12 +285,14 @@ export interface CustomerProvisioningRepository {
 export type ServerDependencies = {
   users: UserRepository;
   subscriptions: SubscriptionRepository;
+  smartLinks: SmartLinkRepository;
   profiles: ProfileRepository;
   passwords: PasswordCredentialRepository;
   sessions: SessionRepository;
   audit: AuditWriter & { listForUser(userId: string): Promise<import("@/server/audit/types").AuditEventRecord[]> };
   subscriptionHistory?: SubscriptionHistoryRepository;
   analytics?: AnalyticsRepository;
+  leadSubmissions?: LeadSubmissionRepository;
   assets?: AssetRepository;
   customDomains?: CustomDomainRepository;
   customerProvisioning: CustomerProvisioningRepository;

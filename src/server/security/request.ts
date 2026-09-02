@@ -17,10 +17,11 @@ export function getRequestRateLimitKey(request: NextRequest) {
 }
 
 export function hasValidRequestOrigin(request: NextRequest) {
+  const trustProxyHeaders = process.env.LINKZZZ_TRUST_PROXY_HEADERS === "1";
   return isSameOriginRequest({
     origin: request.headers.get("origin"),
     host: request.headers.get("host"),
-    forwardedHost: request.headers.get("x-forwarded-host"),
-    forwardedProto: request.headers.get("x-forwarded-proto"),
+    forwardedHost: trustProxyHeaders ? request.headers.get("x-forwarded-host") : null,
+    forwardedProto: trustProxyHeaders ? request.headers.get("x-forwarded-proto") : null,
   });
 }

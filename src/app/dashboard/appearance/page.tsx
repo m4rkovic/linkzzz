@@ -1,19 +1,16 @@
-import AppearanceEditor from "@/components/appearance/appearance-editor";
+import { redirect } from "next/navigation";
 
-export default function AppearancePage() {
-    return (
-        <div className="mx-auto w-full min-w-0 max-w-7xl">
-            <div className="mb-5 min-w-0 sm:mb-6">
-                <h1 className="text-xl font-bold tracking-tight text-zinc-950 sm:text-2xl">
-                    Appearance
-                </h1>
+import { getCurrentSession } from "@/server/auth/current-session";
+import { getServerDependencies } from "@/server/persistence/dependencies";
 
-                <p className="mt-1 text-sm text-zinc-500">
-                    Customize how your public profile looks.
-                </p>
-            </div>
+export default async function LegacyAppearancePage() {
+  const session = await getCurrentSession();
+  if (!session) redirect("/login");
 
-            <AppearanceEditor />
-        </div>
-    );
+  const dependencies = await getServerDependencies();
+  const links = await dependencies.smartLinks.listForUser(session.user.id);
+  const landingPage = links.find((link) => link.type === "LANDING_PAGE");
+
+  if (!landingPage) redirect("/dashboard/links");
+  redirect(`/dashboard/links/${landingPage.id}?section=Page&page=Appearance`);
 }

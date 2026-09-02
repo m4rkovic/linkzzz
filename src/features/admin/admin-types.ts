@@ -1,4 +1,7 @@
-export type AdminPlan = "PREMIUM" | "PREMIUM_PLUS";
+import type { PlanId } from "@/features/plans/plan-catalog";
+import type { SmartLinkStatus, SmartLinkType } from "@/types/smart-link";
+
+export type AdminPlan = PlanId;
 
 export type AdminSubscriptionStatus =
   | "ACTIVE"
@@ -8,13 +11,20 @@ export type AdminSubscriptionStatus =
 
 export type AdminAccountStatus = "ACTIVE" | "SUSPENDED" | "DISABLED";
 
-export type AdminProfileStatus = "PUBLISHED" | "DRAFT" | "DISABLED";
-
 export type AdminHistoryItem = {
   id: string | number;
   date: string;
   title: string;
+  slug: string;
   description: string;
+};
+
+export type AdminSmartLinkModel = {
+  id: string;
+  title: string;
+  type: SmartLinkType;
+  status: SmartLinkStatus;
+  updatedAt: Date;
 };
 
 export type AdminUserModel = {
@@ -22,14 +32,13 @@ export type AdminUserModel = {
   displayName: string;
   username: string;
   email: string;
-  slug: string;
   initials: string;
   plan: AdminPlan;
   subscriptionStatus: AdminSubscriptionStatus;
   accountStatus: AdminAccountStatus;
-  profileStatus: AdminProfileStatus;
   autoRenew: boolean;
   periodStart: Date;
   periodEnd: Date;
   linksUsed: number;
+  smartLinks: AdminSmartLinkModel[];
 };

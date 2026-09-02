@@ -1,3 +1,4 @@
+import { resolveLinkGeo } from "@/features/links/link-geo";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 
 type RequestHeaders = Pick<Headers, "get">;
@@ -23,22 +24,20 @@ export function resolvePublicProfileGeoRouting(
 
   return {
     ...profile,
-    links: profile.links.map((link) => {
-      const destination = normalizedCountryCode
-        ? link.geoDestinations.find(
-            (candidate) =>
-              normalizeCountryCode(candidate.countryCode) ===
-              normalizedCountryCode,
-          )
-        : undefined;
+    links: profile.links.flatMap((link) => {
+      const resolution = resolveLinkGeo(link, normalizedCountryCode);
+      if (!resolution.visible) return [];
 
-      return {
-        ...link,
-        url: destination?.url ?? link.url,
-        // Country-specific alternatives are server-side routing configuration,
-        // not public data required by the rendered page.
-        geoDestinations: [],
-      };
+      return [
+        {
+          ...link,
+          url: resolution.url,
+          // Country rules are runtime configuration. Do not send the complete
+          // routing table to visitors after the server has resolved it.
+          geo: undefined,
+          geoDestinations: [],
+        },
+      ];
     }),
   };
 }

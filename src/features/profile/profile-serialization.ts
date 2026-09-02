@@ -15,6 +15,15 @@ export function hydrateProfile(
   return {
     ...profile,
     stats: profile.stats?.map((stat) => ({ ...stat })),
+    contentBlocks: (profile.contentBlocks ?? []).map(cloneContentBlock),
+    engagement: profile.engagement
+      ? {
+          ...profile.engagement,
+          campaign: profile.engagement.campaign
+            ? { ...profile.engagement.campaign }
+            : undefined,
+        }
+      : undefined,
     socials: profile.socials.map((social) => ({
       ...social,
       icon: getPlatformIcon(social.platform ?? "custom"),
@@ -26,6 +35,24 @@ export function hydrateProfile(
         ...destination,
       })),
       customStyle: link.customStyle ? { ...link.customStyle } : undefined,
+      availability: link.availability ? { ...link.availability } : undefined,
+      sensitiveContent: link.sensitiveContent ? { ...link.sensitiveContent } : undefined,
+      geo: link.geo
+        ? {
+            ...link.geo,
+            rules: link.geo.rules.map((rule) => ({
+              ...rule,
+              destination: rule.destination
+                ? {
+                    ...rule.destination,
+                    deeplinkOverrides: rule.destination.deeplinkOverrides
+                      ? { ...rule.destination.deeplinkOverrides }
+                      : undefined,
+                  }
+                : undefined,
+            })),
+          }
+        : undefined,
     })),
     appearance: {
       ...profile.appearance,
@@ -43,4 +70,10 @@ export function hydrateProfile(
         : undefined,
     },
   };
+}
+
+function cloneContentBlock(block: PublicProfileData["contentBlocks"][number]) {
+  return block.type === "GALLERY"
+    ? { ...block, images: block.images.map((image) => ({ ...image })) }
+    : { ...block };
 }

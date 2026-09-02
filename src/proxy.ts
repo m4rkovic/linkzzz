@@ -21,7 +21,20 @@ export function proxy(request: NextRequest) {
   });
   response.headers.set("Content-Security-Policy", contentSecurityPolicy);
 
+  if (process.env.NODE_ENV === "production" && isConfiguredApplicationHost(request.nextUrl.hostname)) {
+    response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+  }
+
   return response;
+}
+
+function isConfiguredApplicationHost(hostname: string) {
+  const normalized = hostname.trim().toLowerCase().replace(/\.$/, "");
+  const configured = (process.env.LINKZZZ_APP_HOSTS ?? "linkzzz.com,www.linkzzz.com")
+    .split(",")
+    .map((value) => value.trim().toLowerCase().replace(/\.$/, ""))
+    .filter(Boolean);
+  return configured.includes(normalized);
 }
 
 export const config = {
