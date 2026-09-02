@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     !(file instanceof File) ||
     typeof type !== "string" ||
     !TYPES.has(type) ||
-    (smartLinkId !== null && (typeof smartLinkId !== "string" || smartLinkId.length < 1 || smartLinkId.length > 100))
+    typeof smartLinkId !== "string" || smartLinkId.length < 1 || smartLinkId.length > 100
   ) return NextResponse.json({ error: "Invalid upload." }, { status: 400 });
   if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) return NextResponse.json({ error: "Image must be smaller than 8 MB." }, { status: 413 });
 
@@ -52,9 +52,7 @@ export async function POST(request: NextRequest) {
       width: null,
       height: null,
     };
-    const asset = typeof smartLinkId === "string"
-      ? await repositories.assets.createForSmartLink(session.user.id, smartLinkId, assetInput)
-      : await repositories.assets.createForUser(session.user.id, assetInput);
+    const asset = await repositories.assets.createForSmartLink(session.user.id, smartLinkId, assetInput);
     return NextResponse.json({ assetId: asset.id, url: stored.publicUrl });
   } catch {
     await storage.remove(stored.storageKey);
@@ -94,20 +92,15 @@ export async function DELETE(request: NextRequest) {
   if (!repositories.assets) {
     return NextResponse.json({ error: "Asset persistence is unavailable." }, { status: 503 });
   }
-  if (
-    body.smartLinkId !== undefined &&
-    (typeof body.smartLinkId !== "string" || body.smartLinkId.length < 1 || body.smartLinkId.length > 100)
-  ) {
+  if (typeof body.smartLinkId !== "string" || body.smartLinkId.length < 1 || body.smartLinkId.length > 100) {
     return NextResponse.json({ error: "Invalid SmartLink asset scope." }, { status: 400 });
   }
   const assetIds = [...new Set(body.assetIds as string[])];
-  const removed = typeof body.smartLinkId === "string"
-    ? await repositories.assets.deleteUnusedForSmartLink(
-        session.user.id,
-        body.smartLinkId,
-        assetIds,
-      )
-    : await repositories.assets.deleteUnusedForUser(session.user.id, assetIds);
+  const removed = await repositories.assets.deleteUnusedForSmartLink(
+    session.user.id,
+    body.smartLinkId,
+    assetIds,
+  );
   const storage = await getAssetStorage();
   await Promise.allSettled(
     removed.map((asset) => storage.remove(asset.storageKey)),

@@ -83,3 +83,18 @@ function createProfile() {
     appearance: structuredClone(defaultAppearance),
   } satisfies PersistedProfileData;
 }
+
+test("visitor geo headers are ignored unless proxy headers are trusted", async () => {
+  const { getVisitorCountryCode } = await import("@/server/geo/geo-routing");
+  const previous = process.env.LINKZZZ_TRUST_PROXY_HEADERS;
+  const headers = new Headers({ "cf-ipcountry": "RS", "x-vercel-ip-country": "DE" });
+  try {
+    process.env.LINKZZZ_TRUST_PROXY_HEADERS = "0";
+    assert.equal(getVisitorCountryCode(headers), null);
+    process.env.LINKZZZ_TRUST_PROXY_HEADERS = "1";
+    assert.equal(getVisitorCountryCode(headers), "DE");
+  } finally {
+    if (previous === undefined) delete process.env.LINKZZZ_TRUST_PROXY_HEADERS;
+    else process.env.LINKZZZ_TRUST_PROXY_HEADERS = previous;
+  }
+});

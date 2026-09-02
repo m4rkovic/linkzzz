@@ -10,6 +10,8 @@ const reservedSlugs = new Set([
   "support",
   "static",
   "uploads",
+  "change-password",
+  "_next",
 ]);
 
 export function normalizeSlug(value: string) {

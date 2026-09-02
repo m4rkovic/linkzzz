@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useRef, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Eye, EyeOff, KeyRound, X } from "lucide-react";
 
 import { getPasswordRules, isStrongEnough } from "@/features/account/password-validation";
+import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 
 type ChangePasswordResponse = {
   ok?: boolean;
@@ -30,6 +31,8 @@ export default function ChangePasswordModal({
   const [loading, setLoading] = useState(false);
 
   const rules = useMemo(() => getPasswordRules(newPassword), [newPassword]);
+  const firstInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useDialogFocus<HTMLDivElement>({ open, onClose: forced ? undefined : resetAndClose, closeOnEscape: !forced && !loading, initialFocusRef: firstInputRef });
 
   if (!open) {
     return null;
@@ -110,7 +113,7 @@ export default function ChangePasswordModal({
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="presentation">
-      <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:max-w-lg sm:rounded-3xl" role="dialog" aria-modal="true" aria-labelledby="change-password-title">
+      <div ref={dialogRef} className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:max-w-lg sm:rounded-3xl" role="dialog" aria-modal="true" aria-labelledby="change-password-title">
         <div className="flex items-start justify-between gap-4 border-b border-zinc-100 p-5 sm:p-6">
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
@@ -143,7 +146,7 @@ export default function ChangePasswordModal({
             </div>
           ) : (
             <>
-              <PasswordInput label="Current password" value={currentPassword} onChange={setCurrentPassword} visible={showPasswords} autoComplete="current-password" />
+              <PasswordInput inputRef={firstInputRef} label="Current password" value={currentPassword} onChange={setCurrentPassword} visible={showPasswords} autoComplete="current-password" />
               <PasswordInput label="New password" value={newPassword} onChange={setNewPassword} visible={showPasswords} autoComplete="new-password" />
               <PasswordInput label="Confirm new password" value={confirmPassword} onChange={setConfirmPassword} visible={showPasswords} autoComplete="new-password" />
 
@@ -186,18 +189,21 @@ function PasswordInput({
   onChange,
   visible,
   autoComplete,
+  inputRef,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   visible: boolean;
   autoComplete: string;
+  inputRef?: RefObject<HTMLInputElement | null>;
 }) {
   return (
     <label className="block">
       <span className="text-sm font-semibold text-zinc-800">{label}</span>
       <div className="relative mt-2">
         <input
+          ref={inputRef}
           type={visible ? "text" : "password"}
           value={value}
           onChange={(event) => onChange(event.target.value)}

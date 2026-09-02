@@ -11,7 +11,6 @@ import LinkEditorForm from "./editor/link-editor-form";
 import CampaignEditor from "./campaign-editor";
 import VisitorMessagingEditor from "./visitor-messaging-editor";
 import SortableLinkCard from "./editor/sortable-link-card";
-import { MAX_LINKS } from "@/features/links/link-config";
 import { useLinksEditor } from "@/features/links/use-links-editor";
 
 const mockVisitor: VisitorLocation = { countryCode: "RS", countryName: "Serbia", flag: "🇷🇸" };
@@ -27,12 +26,12 @@ export default function LinksEditor() {
   return (
     <div className="grid w-full min-w-0 max-w-full gap-6 2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8">
       <div className="min-w-0 space-y-6">
-        <LinksSummary count={editor.links.length} usagePercentage={editor.usagePercentage} visual={editor.profile.appearance.layoutMode === "visual"} />
+        <LinksSummary count={editor.links.length} limit={editor.limit} usagePercentage={editor.usagePercentage} visual={editor.profile.appearance.layoutMode === "visual"} />
         <CampaignEditor />
         <VisitorMessagingEditor />
 
         {!editor.creatingNew && !editor.editingId && (
-          <button type="button" onClick={editor.beginCreate} disabled={editor.links.length >= MAX_LINKS} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40">
+          <button type="button" onClick={editor.beginCreate} disabled={editor.links.length >= editor.limit} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40">
             <Plus size={18} /> Add link
           </button>
         )}
@@ -98,12 +97,12 @@ export default function LinksEditor() {
   );
 }
 
-function LinksSummary({ count, usagePercentage, visual }: { count: number; usagePercentage: number; visual: boolean }) {
+function LinksSummary({ count, limit, usagePercentage, visual }: { count: number; limit: number; usagePercentage: number; visual: boolean }) {
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div><h2 className="text-lg font-semibold text-zinc-950">Links</h2><p className="mt-1 text-sm text-zinc-500">Build buttons, image cards and featured content.</p></div>
-        <span className="shrink-0 text-sm font-bold text-zinc-950">{count} / {MAX_LINKS}</span>
+        <span className="shrink-0 text-sm font-bold text-zinc-950">{count} / {limit}</span>
       </div>
       <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-100"><div className="h-full rounded-full bg-zinc-950" style={{ width: `${usagePercentage}%` }} /></div>
       <div className="mt-4 flex flex-wrap items-center gap-2">

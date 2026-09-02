@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Menu, Plus } from "lucide-react";
+import { Menu, Plus } from "lucide-react";
 
 type AdminTopbarProps = {
   onMenuClick: () => void;
@@ -40,13 +40,6 @@ export default function AdminTopbar({ onMenuClick }: AdminTopbarProps) {
           <span className="hidden sm:inline">Create user</span>
         </Link>
 
-        <button
-          type="button"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 transition hover:bg-zinc-50"
-          aria-label="Notifications"
-        >
-          <Bell size={18} />
-        </button>
       </div>
     </header>
   );

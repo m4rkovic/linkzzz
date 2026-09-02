@@ -8,6 +8,8 @@ const ISO_COUNTRY_CODE = /^[A-Z]{2}$/;
 const UNKNOWN_COUNTRY_CODES = new Set(["XX"]);
 
 export function getVisitorCountryCode(headers: RequestHeaders) {
+  if (process.env.LINKZZZ_TRUST_PROXY_HEADERS !== "1") return null;
+
   for (const header of COUNTRY_HEADERS) {
     const countryCode = normalizeCountryCode(headers.get(header));
     if (countryCode) return countryCode;

@@ -1,9 +1,11 @@
 export default function UsageCard({
   used,
   limit,
+  displayLimit,
 }: {
   used: number;
   limit: number;
+  displayLimit: string;
 }) {
   const percentage = Math.min((used / limit) * 100, 100);
   const overLimit = used > limit;
@@ -14,12 +16,12 @@ export default function UsageCard({
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-zinc-950">Smart Link usage</h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Your current plan allows up to {limit} Smart Links.
+            Your current plan includes {displayLimit} Smart Links.
           </p>
         </div>
 
         <p className={`text-sm font-bold ${overLimit ? "text-red-600" : "text-zinc-950"}`}>
-          {used} / {limit}
+          {used} / {displayLimit}
         </p>
       </div>
 

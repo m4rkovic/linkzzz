@@ -48,11 +48,13 @@ export default function SmartLinkEditor({
   initialPage,
   initialSection = "Link",
   initialPageSection = "Profile",
+  pageLinkLimit,
 }: {
   initialSmartLink: SerializableSmartLink;
   initialPage?: InitialPage;
   initialSection?: EditorSection;
   initialPageSection?: PageSection;
+  pageLinkLimit: number;
 }) {
   const [activeSection, setActiveSection] = useState<EditorSection>(initialSection);
   const [pageSection, setPageSection] = useState<PageSection>(initialPageSection);
@@ -244,6 +246,7 @@ export default function SmartLinkEditor({
                 initialRevision={initialPage.revision}
                 saveEndpoint={`/api/smart-links/${initialSmartLink.id}/page`}
                 assetSmartLinkId={initialSmartLink.id}
+                pageLinkLimit={pageLinkLimit}
               >
                 <PageDirtyObserver onChange={setPageDirty} />
                 <PageWorkspace

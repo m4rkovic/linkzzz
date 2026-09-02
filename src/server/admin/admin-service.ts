@@ -120,6 +120,9 @@ export async function createAdminUser(
   const passwordValidation = validatePassword(input.password);
   if (!passwordValidation.ok) throw new Error(passwordValidation.error);
 
+  const displayName = input.displayName.trim();
+  if (displayName.length > 60) throw new Error("Display name cannot exceed 60 characters.");
+
   const email = input.email.trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Enter a valid email address.");
 
@@ -134,7 +137,7 @@ export async function createAdminUser(
   const passwordHash = await passwordHasher.hash(input.password);
   const profile: PersistedProfileData = {
     slug: slugValidation.value,
-    displayName: input.displayName.trim() || usernameValidation.value,
+    displayName: displayName || usernameValidation.value,
     username: usernameValidation.value,
     bio: "",
     status: "DRAFT",

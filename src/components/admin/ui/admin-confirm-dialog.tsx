@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, X } from "lucide-react";
+import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 
 export default function AdminConfirmDialog({
   open,
@@ -19,11 +20,12 @@ export default function AdminConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const dialogRef = useDialogFocus<HTMLDivElement>({ open, onClose: onCancel });
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="w-full rounded-t-3xl bg-white shadow-2xl sm:max-w-md sm:rounded-3xl" role="dialog" aria-modal="true" aria-labelledby="admin-confirm-title">
+      <div ref={dialogRef} className="w-full rounded-t-3xl bg-white shadow-2xl sm:max-w-md sm:rounded-3xl" role="dialog" aria-modal="true" aria-labelledby="admin-confirm-title">
         <div className="flex items-start justify-between gap-4 p-5 sm:p-6">
           <div className="flex items-start gap-3">
             <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${danger ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>

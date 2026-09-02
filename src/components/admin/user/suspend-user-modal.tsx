@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { ShieldAlert, X } from "lucide-react";
+import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 
 export default function SuspendUserModal({
   open,
@@ -13,6 +14,7 @@ export default function SuspendUserModal({
   onSuspend: (reason: string) => void;
 }) {
   const [reason, setReason] = useState("");
+  const dialogRef = useDialogFocus<HTMLDivElement>({ open, onClose: close });
 
   if (!open) return null;
 
@@ -29,7 +31,7 @@ export default function SuspendUserModal({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="w-full rounded-t-3xl bg-white shadow-2xl sm:max-w-md sm:rounded-3xl" role="dialog" aria-modal="true" aria-labelledby="suspend-user-title">
+      <div ref={dialogRef} className="w-full rounded-t-3xl bg-white shadow-2xl sm:max-w-md sm:rounded-3xl" role="dialog" aria-modal="true" aria-labelledby="suspend-user-title">
         <div className="flex items-start justify-between gap-4 border-b border-zinc-100 p-5 sm:p-6">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600"><ShieldAlert size={18} /></div>
@@ -47,7 +49,7 @@ export default function SuspendUserModal({
             <textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={4} placeholder="Internal reason for suspension..." className="mt-2 w-full resize-none rounded-xl border border-zinc-200 p-3 text-sm text-zinc-900 outline-none focus:border-zinc-400" />
           </label>
 
-          <div className="rounded-xl bg-red-50 p-4 text-sm leading-6 text-red-700">The public profile will be disabled while the account is suspended. Profile data, links and analytics are preserved.</div>
+          <div className="rounded-xl bg-red-50 p-4 text-sm leading-6 text-red-700">Public Smart Link access is blocked while the account is suspended. Smart Link configuration, page content and analytics are preserved.</div>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={close} className="min-h-11 rounded-xl border border-zinc-200 px-4 text-sm font-semibold text-zinc-700">Cancel</button>

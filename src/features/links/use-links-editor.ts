@@ -7,7 +7,6 @@ import { useProfile } from "@/features/profile/profile-context";
 import { useToast } from "@/components/ui/toast";
 import type { PublicProfileData, PublicProfileLink } from "@/types/profile";
 import type { LinkDraft } from "@/features/links/link-editor-types";
-import { MAX_LINKS } from "@/features/links/link-config";
 import { sanitizeEngagementForLinks } from "@/features/engagement/profile-engagement";
 import {
   applyDraftToLink,
@@ -20,7 +19,7 @@ import {
 } from "@/features/links/link-editor-model";
 
 export function useLinksEditor() {
-  const { profile, setProfile, saveProfile, saving } = useProfile();
+  const { profile, setProfile, saveProfile, saving, pageLinkLimit } = useProfile();
   const { pushToast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
@@ -79,7 +78,7 @@ export function useLinksEditor() {
   }
 
   function beginCreate() {
-    if (links.length >= MAX_LINKS || saving) return;
+    if (links.length >= pageLinkLimit || saving) return;
     setEditingId(null);
     setCreatingNew(true);
     setError("");
@@ -198,7 +197,8 @@ export function useLinksEditor() {
     draft,
     setDraft,
     saving,
-    usagePercentage: Math.min((links.length / MAX_LINKS) * 100, 100),
+    limit: pageLinkLimit,
+    usagePercentage: pageLinkLimit > 0 ? Math.min((links.length / pageLinkLimit) * 100, 100) : 100,
     beginCreate,
     beginEdit,
     cancelEditor,

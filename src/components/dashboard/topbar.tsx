@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 
 type TopbarProps = {
   onMenuClick: () => void;
@@ -36,13 +36,6 @@ export default function Topbar({ onMenuClick, username }: TopbarProps) {
       </div>
 
       <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-950"
-          aria-label="Notifications"
-        >
-          <Bell size={18} />
-        </button>
         <div className="hidden min-w-0 text-right md:block">
           <p className="truncate text-sm font-semibold text-zinc-900">@{username}</p>
           <p className="truncate text-xs text-zinc-500">Linkzzz workspace</p>

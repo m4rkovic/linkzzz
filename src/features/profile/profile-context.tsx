@@ -29,6 +29,7 @@ type ProfileContextValue = {
   saveProfile: (profileOverride?: PublicProfileData) => Promise<SaveProfileResult>;
   saving: boolean;
   dirty: boolean;
+  pageLinkLimit: number;
 };
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
@@ -37,14 +38,16 @@ export function ProfileProvider({
   children,
   initialProfile,
   initialRevision,
-  saveEndpoint = "/api/profile",
+  saveEndpoint,
   assetSmartLinkId,
+  pageLinkLimit,
 }: {
   children: ReactNode;
   initialProfile: PersistedProfileData;
   initialRevision: number;
-  saveEndpoint?: string;
+  saveEndpoint: string;
   assetSmartLinkId?: string;
+  pageLinkLimit: number;
 }) {
   const hydratedInitialProfile = useMemo(
     () => hydrateProfile(initialProfile),
@@ -136,7 +139,7 @@ export function ProfileProvider({
 
   return (
     <ProfileContext.Provider
-      value={{ profile, setProfile, saveProfile, saving, dirty }}
+      value={{ profile, setProfile, saveProfile, saving, dirty, pageLinkLimit }}
     >
       {children}
     </ProfileContext.Provider>

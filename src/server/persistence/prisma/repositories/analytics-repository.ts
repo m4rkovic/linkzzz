@@ -28,9 +28,18 @@ export class PrismaAnalyticsRepository implements AnalyticsRepository {
         status: true,
         trackingConfig: true,
         page: { select: { id: true } },
+        user: {
+          select: {
+            accountStatus: true,
+            subscription: { select: { status: true, endsAt: true } },
+          },
+        },
       },
     });
     if (!smartLink || smartLink.status !== "PUBLISHED") return false;
+    if (smartLink.user.accountStatus !== "ACTIVE") return false;
+    const subscription = smartLink.user.subscription;
+    if (!subscription || !["ACTIVE", "CANCEL_AT_PERIOD_END"].includes(subscription.status) || subscription.endsAt.getTime() <= Date.now()) return false;
 
     const tracking = smartLink.trackingConfig as { internalAnalytics?: unknown } | null;
     if (tracking?.internalAnalytics === false) return false;

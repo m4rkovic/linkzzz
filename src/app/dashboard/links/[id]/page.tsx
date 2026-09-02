@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import SmartLinkEditor from "@/components/smart-links/smart-link-editor";
 import { getCurrentSession } from "@/server/auth/current-session";
 import { getVersionedPageForSmartLink } from "@/server/profile/profile-service";
+import { getPageCardLimit } from "@/server/business/plans";
+import { getServerDependencies } from "@/server/persistence/dependencies";
 import { getOwnSmartLink } from "@/server/smart-links/smart-link-service";
 
 type SmartLinkEditorPageProps = {
@@ -28,6 +30,9 @@ export default async function SmartLinkEditorPage({ params, searchParams }: Smar
   const page = smartLink.type === "LANDING_PAGE"
     ? await getVersionedPageForSmartLink(session, smartLink.id)
     : undefined;
+  const dependencies = await getServerDependencies();
+  const subscription = await dependencies.subscriptions.findByUserId(session.user.id);
+  const pageLinkLimit = subscription ? getPageCardLimit(subscription.plan) : 0;
   if (smartLink.type === "LANDING_PAGE" && !page) notFound();
 
   const requestedSection = editorSections.has(query.section as EditorSection)
@@ -50,6 +55,7 @@ export default async function SmartLinkEditorPage({ params, searchParams }: Smar
       initialPage={page ?? undefined}
       initialSection={initialSection}
       initialPageSection={initialPageSection}
+      pageLinkLimit={pageLinkLimit}
     />
   );
 }

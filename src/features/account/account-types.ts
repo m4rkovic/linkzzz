@@ -12,10 +12,8 @@ export type AccountSubscriptionStatus =
   | "STOPPED";
 
 export type AccountSummary = {
-  displayName: string;
   username: string;
   email: string;
-  slug: string;
   plan: AccountPlan;
   subscriptionStatus: AccountSubscriptionStatus;
   periodLabel: string;
@@ -23,7 +21,3 @@ export type AccountSummary = {
   autoRenew: boolean;
   linksUsed: number;
 };
-
-export function getAccountPlanLimit(plan: AccountPlan) {
-  return getPlanDefinition(plan).smartLinkLimit;
-}

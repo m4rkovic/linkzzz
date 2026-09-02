@@ -21,14 +21,13 @@ export async function getAccountSummary(
   userId: string,
 ): Promise<AccountSummary | null> {
   const dependencies = await getServerDependencies();
-  const [user, subscription, profile, smartLinkCount] = await Promise.all([
+  const [user, subscription, smartLinkCount] = await Promise.all([
     dependencies.users.findById(userId),
     dependencies.subscriptions.findByUserId(userId),
-    dependencies.profiles.findByUserId(userId),
     dependencies.smartLinks.countForUser(userId),
   ]);
 
-  if (!user || !subscription || !profile) return null;
+  if (!user || !subscription) return null;
 
   const expiresAt = subscription.expiresAt;
   const effectiveStatus =
@@ -39,10 +38,8 @@ export async function getAccountSummary(
       : subscription.status;
 
   return {
-    displayName: profile.displayName || user.username,
     username: user.username,
     email: user.email,
-    slug: profile.slug,
     plan: subscription.plan,
     subscriptionStatus: effectiveStatus,
     periodLabel: expiresAt

@@ -3,11 +3,10 @@ import type { NextRequest } from "next/server";
 import { isSameOriginRequest } from "@/server/security/origin";
 
 export function getRequestIp(request: NextRequest) {
-  const forwarded = request.headers.get("x-forwarded-for");
+  if (process.env.LINKZZZ_TRUST_PROXY_HEADERS !== "1") return "unknown";
 
-  if (forwarded) {
-    return forwarded.split(",")[0]?.trim() || "unknown";
-  }
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
 
   return request.headers.get("x-real-ip")?.trim() || "unknown";
 }

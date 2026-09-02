@@ -12,6 +12,8 @@ export const RESERVED_SLUGS = new Set([
   "support",
   "static",
   "uploads",
+  "change-password",
+  "_next",
 ]);
 
 export const SLUG_PATTERN = /^[a-z0-9_-]+$/;

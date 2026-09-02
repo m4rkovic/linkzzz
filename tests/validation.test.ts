@@ -23,5 +23,8 @@ test("slug validation normalizes valid values and rejects reserved routes", () =
     value: "sky-hook",
   });
   assert.equal(validateSlug("admin").ok, false);
+  assert.equal(validateSlug("change-password").ok, false);
+  assert.equal(validateSlug("_next").ok, false);
+  assert.deepEqual(validateSlug("creator_name_with_underscore"), { ok: true, value: "creator_name_with_underscore" });
   assert.equal(validateSlug("not valid").ok, false);
 });

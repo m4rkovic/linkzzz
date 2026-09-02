@@ -19,7 +19,7 @@ type SidebarProps = {
 
 const navigation = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Links", href: "/dashboard/links", icon: Link2 },
+  { name: "Smart Links", href: "/dashboard/links", icon: Link2 },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Plans", href: "/dashboard/plans", icon: CreditCard },
 ];
