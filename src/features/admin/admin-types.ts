@@ -39,6 +39,6 @@ export type AdminUserModel = {
   autoRenew: boolean;
   periodStart: Date;
   periodEnd: Date;
-  linksUsed: number;
+  smartLinksUsed: number;
   smartLinks: AdminSmartLinkModel[];
 };
