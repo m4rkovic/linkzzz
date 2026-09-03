@@ -57,13 +57,30 @@ export type AdminOverviewSnapshot = {
 
 export async function listAdminUsers(): Promise<AdminUserListItem[]> {
   const dependencies = await getServerDependencies();
-  const users = await dependencies.users.list();
-  const customers = users.filter((user) => user.role === "CUSTOMER");
-
-  const snapshots = await Promise.all(
-    customers.map((user) => buildAdminUserSnapshot(user.id, user)),
+  const customers = await dependencies.adminRead.listCustomers();
+  return customers.map(({ user, displayName, subscription, smartLinks }) =>
+    toAdminUserListItem({
+      id: user.id,
+      displayName,
+      username: user.username,
+      email: user.email,
+      initials: createInitials(displayName),
+      plan: subscription.plan,
+      subscriptionStatus: normalizeExpiredStatus(
+        subscription.status,
+        subscription.expiresAt,
+      ),
+      accountStatus: user.accountStatus,
+      autoRenew: subscription.autoRenew,
+      periodStart: subscription.startedAt.toISOString(),
+      periodEnd: (subscription.expiresAt ?? subscription.startedAt).toISOString(),
+      linksUsed: smartLinks.length,
+      smartLinks: smartLinks.map((smartLink) => ({
+        ...smartLink,
+        updatedAt: smartLink.updatedAt.toISOString(),
+      })),
+    }),
   );
-  return snapshots.map(toAdminUserListItem);
 }
 
 export async function getAdminOverview(): Promise<AdminOverviewSnapshot> {

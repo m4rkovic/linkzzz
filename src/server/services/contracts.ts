@@ -43,6 +43,22 @@ export interface SubscriptionRepository {
   upsert(record: SubscriptionRecord): Promise<SubscriptionRecord>;
 }
 
+export type AdminCustomerReadRecord = {
+  user: UserRecord;
+  displayName: string;
+  subscription: SubscriptionRecord;
+  smartLinks: Array<
+    Pick<
+      SmartLinkRecord,
+      "id" | "title" | "slug" | "type" | "status" | "updatedAt"
+    >
+  >;
+};
+
+export interface AdminReadRepository {
+  listCustomers(): Promise<AdminCustomerReadRecord[]>;
+}
+
 
 export interface ProfileRepository {
   // Legacy single-page compatibility methods. New SmartLink editor code must use
@@ -187,6 +203,16 @@ export type AnalyticsSmartLinkRecord = Pick<
   }>;
 };
 
+export type AnalyticsDashboardSummary = {
+  links: Array<{
+    smartLinkId: string;
+    smartViews: number;
+    legacyViews: number;
+    clicks: number;
+  }>;
+  uniqueVisitors: number;
+};
+
 export interface AnalyticsRepository {
   create(event: AnalyticsEventRecord): Promise<AnalyticsEventRecord>;
   createForSlug(
@@ -194,6 +220,7 @@ export interface AnalyticsRepository {
     event: Omit<AnalyticsEventRecord, "smartLinkId">,
   ): Promise<boolean>;
   listForUser(userId: string): Promise<AnalyticsEventRecord[]>;
+  summarizeDashboard(userId: string): Promise<AnalyticsDashboardSummary>;
   listForSmartLink(smartLinkId: string, from?: Date): Promise<AnalyticsEventRecord[]>;
   listSmartLinksForUser(userId: string): Promise<AnalyticsSmartLinkRecord[]>;
 }
@@ -283,6 +310,7 @@ export interface CustomerProvisioningRepository {
 }
 
 export type ServerDependencies = {
+  adminRead: AdminReadRepository;
   users: UserRepository;
   subscriptions: SubscriptionRepository;
   smartLinks: SmartLinkRepository;

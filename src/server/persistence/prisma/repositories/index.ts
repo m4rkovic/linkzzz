@@ -1,4 +1,5 @@
 export { PrismaAnalyticsRepository } from "./analytics-repository";
+export { PrismaAdminReadRepository } from "./admin-read-repository";
 export { PrismaAssetRepository } from "./asset-repository";
 export { PrismaAuditRepository } from "./audit-repository";
 export { PrismaCustomDomainRepository } from "./custom-domain-repository";
@@ -11,4 +12,3 @@ export { PrismaSmartLinkRepository } from "./smart-link-repository";
 export { PrismaSubscriptionHistoryRepository } from "./subscription-history-repository";
 export { PrismaSubscriptionRepository } from "./subscription-repository";
 export { PrismaUserRepository } from "./user-repository";
-

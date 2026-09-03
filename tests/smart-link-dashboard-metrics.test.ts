@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildSmartLinkDashboardMetrics } from "../src/features/smart-links/dashboard-metrics";
+import {
+  buildSmartLinkDashboardMetrics,
+  buildSmartLinkDashboardMetricsFromCounts,
+} from "../src/features/smart-links/dashboard-metrics";
 
 test("dashboard metrics prefer authoritative SmartLink views over legacy page views", () => {
   const metrics = buildSmartLinkDashboardMetrics([
@@ -32,4 +35,24 @@ test("dashboard metrics ignore bot traffic after analytics repositories expose S
   ]);
 
   assert.deepEqual(metrics.get("a"), { views: 1, clicks: 0 });
+});
+
+test("database summaries preserve SmartLink-over-legacy view precedence", () => {
+  const metrics = buildSmartLinkDashboardMetricsFromCounts([
+    {
+      smartLinkId: "current",
+      smartViews: 4,
+      legacyViews: 9,
+      clicks: 3,
+    },
+    {
+      smartLinkId: "legacy",
+      smartViews: 0,
+      legacyViews: 7,
+      clicks: 2,
+    },
+  ]);
+
+  assert.deepEqual(metrics.get("current"), { views: 4, clicks: 3 });
+  assert.deepEqual(metrics.get("legacy"), { views: 7, clicks: 2 });
 });

@@ -24,6 +24,14 @@ if ($updated.Contains("Premium Plus")) {
   $changes += "plan terminology"
 }
 
+if ($updated.Contains('getByLabel("Default URL")')) {
+  $updated = $updated.Replace(
+    'getByLabel("Default URL")',
+    'getByLabel("Destination URL", { exact: true })'
+  )
+  $changes += "current destination field label"
+}
+
 $signInAgain = 'await page.getByRole("button", { name: "Sign in again" }).click();'
 $loginWait = 'await expect(page).toHaveURL(/\/login(?:\?|$)/);'
 

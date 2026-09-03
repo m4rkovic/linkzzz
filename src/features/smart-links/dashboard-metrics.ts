@@ -16,6 +16,13 @@ export type SmartLinkDashboardMetric = {
   clicks: number;
 };
 
+export type SmartLinkDashboardCount = {
+  smartLinkId: string;
+  smartViews: number;
+  legacyViews: number;
+  clicks: number;
+};
+
 export function buildSmartLinkDashboardMetrics(
   events: SmartLinkDashboardEvent[],
 ): Map<string, SmartLinkDashboardMetric> {
@@ -42,6 +49,20 @@ export function buildSmartLinkDashboardMetrics(
       {
         views: value.smartViews || value.legacyViews,
         clicks: value.clicks,
+      },
+    ]),
+  );
+}
+
+export function buildSmartLinkDashboardMetricsFromCounts(
+  counts: SmartLinkDashboardCount[],
+): Map<string, SmartLinkDashboardMetric> {
+  return new Map(
+    counts.map((count) => [
+      count.smartLinkId,
+      {
+        views: count.smartViews || count.legacyViews,
+        clicks: count.clicks,
       },
     ]),
   );

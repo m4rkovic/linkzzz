@@ -1,3 +1,5 @@
+import { normalizePostgresConnectionString } from "./postgres-connection-string";
+
 export type Environment = Record<string, string | undefined>;
 
 export function validateProductionEnvironment(environment: Environment) {
@@ -83,9 +85,22 @@ function validateDatabaseUrl(value: string | undefined, errors: string[]) {
   if (!value?.trim()) return;
 
   try {
-    const protocol = new URL(value).protocol;
+    const parsed = new URL(value);
+    const protocol = parsed.protocol;
     if (protocol !== "postgresql:" && protocol !== "postgres:") {
       errors.push("DATABASE_URL must be a PostgreSQL connection URL.");
+      return;
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]") {
+      errors.push("DATABASE_URL must point to a shared PostgreSQL host in production, not localhost.");
+      return;
+    }
+
+    const normalized = new URL(normalizePostgresConnectionString(value));
+    if (normalized.searchParams.get("sslmode")?.toLowerCase() !== "verify-full") {
+      errors.push("DATABASE_URL must use sslmode=verify-full in production.");
     }
   } catch {
     errors.push("DATABASE_URL must be a valid PostgreSQL connection URL.");

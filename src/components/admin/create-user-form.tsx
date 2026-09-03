@@ -8,7 +8,7 @@ import { cardClassName } from "@/components/ui/card";
 import { controlClassName } from "@/components/ui/form-control";
 import { useHydrated } from "@/components/ui/use-hydrated";
 import type { AdminPlan as Plan } from "@/features/admin/admin-types";
-import { getPlanDefinition } from "@/features/plans/plan-catalog";
+import { getPlanDefinition, PLAN_ORDER } from "@/features/plans/plan-catalog";
 
 const inputClass = controlClassName("h-12 px-4 shadow-sm");
 function addMonthsClampedDateInput(value: string, months: number) {
@@ -65,7 +65,20 @@ export default function CreateUserForm({ initialDate }: CreateUserFormProps) {
           </FormSection>
 
           <FormSection icon={CalendarDays} title="Plan & subscription" description="Choose access limits and the initial service period.">
-            <div className="grid gap-3 sm:grid-cols-3"><PlanButton selected={plan === "BASIC"} title="Basic" detail="50 Smart Links · 10 page links" onClick={() => setPlan("BASIC")} /><PlanButton selected={plan === "PRO"} title="Pro" detail="100 Smart Links · 30 page links" onClick={() => setPlan("PRO")} /><PlanButton selected={plan === "ENTERPRISE"} title="Enterprise" detail="200+ Smart Links · 100 page links" onClick={() => setPlan("ENTERPRISE")} /></div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {PLAN_ORDER.map((planId) => {
+                const option = getPlanDefinition(planId);
+                return (
+                  <PlanButton
+                    key={planId}
+                    selected={plan === planId}
+                    title={option.name}
+                    detail={`${option.smartLinkDisplay} Smart Links · ${option.pageLinkLimit} page links`}
+                    onClick={() => setPlan(planId)}
+                  />
+                );
+              })}
+            </div>
             <div className="mt-5 grid gap-5 sm:grid-cols-2"><Field label="Start date"><input type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); if (event.target.value) setExpiryDate(addMonthsClampedDateInput(event.target.value, 1)); }} className={inputClass} required /></Field><Field label="Expiry date"><input type="date" value={expiryDate} min={startDate} onChange={(event) => setExpiryDate(event.target.value)} className={inputClass} required /></Field></div>
             <Toggle checked={autoRenew} onChange={setAutoRenew} title="Automatic renewal" description="Keep renewal enabled for this subscription." icon={RefreshCw} />
           </FormSection>

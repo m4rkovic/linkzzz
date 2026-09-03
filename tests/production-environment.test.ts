@@ -7,7 +7,7 @@ import {
 } from "../src/server/config/production-environment";
 
 const completeEnvironment = {
-  DATABASE_URL: "postgresql://linkzzz:secret@db.example.com:5432/linkzzz",
+  DATABASE_URL: "postgresql://linkzzz:secret@db.example.com:5432/linkzzz?sslmode=verify-full",
   RATE_LIMIT_BACKEND: "upstash",
   UPSTASH_REDIS_REST_URL: "https://redis.example.com",
   UPSTASH_REDIS_REST_TOKEN: "redis-token",
@@ -66,4 +66,31 @@ test("production environment rejects weak analytics salt", () => {
     LINKZZZ_ANALYTICS_HASH_SALT: "too-short",
   });
   assert.ok(errors.includes("LINKZZZ_ANALYTICS_HASH_SALT must be at least 32 characters."));
+});
+
+test("production environment accepts legacy strict SSL aliases that runtime upgrades", () => {
+  const errors = validateProductionEnvironment({
+    ...completeEnvironment,
+    DATABASE_URL: "postgresql://linkzzz:secret@db.example.com/linkzzz?sslmode=require",
+  });
+
+  assert.deepEqual(errors, []);
+});
+
+test("production environment rejects localhost and missing certificate verification", () => {
+  const localErrors = validateProductionEnvironment({
+    ...completeEnvironment,
+    DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/linkzzz",
+  });
+  const insecureErrors = validateProductionEnvironment({
+    ...completeEnvironment,
+    DATABASE_URL: "postgresql://linkzzz:secret@db.example.com/linkzzz",
+  });
+
+  assert.ok(localErrors.includes(
+    "DATABASE_URL must point to a shared PostgreSQL host in production, not localhost.",
+  ));
+  assert.ok(insecureErrors.includes(
+    "DATABASE_URL must use sslmode=verify-full in production.",
+  ));
 });

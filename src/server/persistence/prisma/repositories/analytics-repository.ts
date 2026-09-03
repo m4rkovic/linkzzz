@@ -3,6 +3,7 @@ import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type {
   AnalyticsEventRecord,
+  AnalyticsDashboardSummary,
   AnalyticsRepository,
   AnalyticsSmartLinkRecord,
 } from "@/server/services/contracts";
@@ -61,6 +62,46 @@ export class PrismaAnalyticsRepository implements AnalyticsRepository {
       where: { smartLink: { userId } },
       orderBy: { createdAt: "asc" },
     });
+  }
+
+  async summarizeDashboard(userId: string): Promise<AnalyticsDashboardSummary> {
+    type LinkCountRow = {
+      smartLinkId: string;
+      smartViews: number;
+      legacyViews: number;
+      clicks: number;
+    };
+    type UniqueCountRow = { count: number };
+
+    const [links, unique] = await Promise.all([
+      this.db.$queryRaw<LinkCountRow[]>`
+        SELECT
+          event."smartLinkId" AS "smartLinkId",
+          COUNT(*) FILTER (WHERE event."type" = 'SMART_LINK_VIEW')::int AS "smartViews",
+          COUNT(*) FILTER (WHERE event."type" = 'PAGE_VIEW')::int AS "legacyViews",
+          COUNT(*) FILTER (WHERE event."type" IN ('LINK_CLICK', 'SOCIAL_CLICK'))::int AS "clicks"
+        FROM "AnalyticsEvent" AS event
+        INNER JOIN "SmartLink" AS link ON link."id" = event."smartLinkId"
+        WHERE link."userId" = ${userId}
+          AND event."isBot" = FALSE
+          AND event."type" IN ('SMART_LINK_VIEW', 'PAGE_VIEW', 'LINK_CLICK', 'SOCIAL_CLICK')
+        GROUP BY event."smartLinkId"
+      `,
+      this.db.$queryRaw<UniqueCountRow[]>`
+        SELECT COUNT(DISTINCT event."visitorId")::int AS "count"
+        FROM "AnalyticsEvent" AS event
+        INNER JOIN "SmartLink" AS link ON link."id" = event."smartLinkId"
+        WHERE link."userId" = ${userId}
+          AND event."isBot" = FALSE
+          AND event."visitorId" IS NOT NULL
+          AND event."type" IN ('SMART_LINK_VIEW', 'PAGE_VIEW')
+      `,
+    ]);
+
+    return {
+      links,
+      uniqueVisitors: unique[0]?.count ?? 0,
+    };
   }
 
   async listForSmartLink(smartLinkId: string, from?: Date) {

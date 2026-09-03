@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import SmartLinksManager from "@/components/smart-links/smart-links-manager";
-import { buildSmartLinkDashboardMetrics } from "@/features/smart-links/dashboard-metrics";
+import { buildSmartLinkDashboardMetricsFromCounts } from "@/features/smart-links/dashboard-metrics";
 import { getCurrentSession } from "@/server/auth/current-session";
 import { getSmartLinkLimit } from "@/server/business/plans";
 import { getServerDependencies } from "@/server/persistence/dependencies";
@@ -11,13 +11,14 @@ export default async function SmartLinksPage() {
   if (!session) redirect("/login");
 
   const dependencies = await getServerDependencies();
-  const [smartLinks, subscription, analyticsEvents] = await Promise.all([
+  const [smartLinks, subscription, analyticsSummary] = await Promise.all([
     dependencies.smartLinks.listForUser(session.user.id),
     dependencies.subscriptions.findByUserId(session.user.id),
-    dependencies.analytics?.listForUser(session.user.id) ?? Promise.resolve([]),
+    dependencies.analytics?.summarizeDashboard(session.user.id) ??
+      Promise.resolve({ links: [], uniqueVisitors: 0 }),
   ]);
   const limit = subscription ? getSmartLinkLimit(subscription.plan) : 0;
-  const metrics = buildSmartLinkDashboardMetrics(analyticsEvents);
+  const metrics = buildSmartLinkDashboardMetricsFromCounts(analyticsSummary.links);
 
   return (
     <SmartLinksManager

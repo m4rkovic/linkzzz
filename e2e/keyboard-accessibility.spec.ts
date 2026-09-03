@@ -1,6 +1,5 @@
-import { expect, test } from "@playwright/test";
-
 import { loginAsCustomer, openAppearanceEditor } from "./helpers";
+import { expect, test } from "./test";
 
 // These tests are read-only (dialogs are cancelled, appearance reset is not confirmed),
 // so they can safely run in parallel browser contexts.
@@ -18,7 +17,7 @@ test.describe("R1.4 keyboard and focus checks", () => {
     skipMobileKeyboard(testInfo);
     await context.clearCookies();
     await page.goto("/login");
-    await expect(page.locator('form[data-hydrated="true"]')).toBeVisible();
+    await expect(page.getByLabel("Username or email")).toBeEnabled();
 
     await page.keyboard.press("Tab");
     await expect(page.getByLabel("Username or email")).toBeFocused();

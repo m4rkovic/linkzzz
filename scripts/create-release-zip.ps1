@@ -50,6 +50,10 @@ function Is-ExcludedPath([string]$relativePath) {
     return $true
   }
 
+  if ($fileName -like "*.tsbuildinfo") {
+    return $true
+  }
+
   return $false
 }
 

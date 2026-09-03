@@ -1,7 +1,23 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import localFont from "next/font/local";
 import { connection } from "next/server";
 import "./globals.css";
+
+// Next already ships these Geist assets with the pinned framework version.
+// Loading them locally keeps builds offline and screenshot metrics identical on
+// Windows, Linux and CI instead of falling back to different system fonts.
+const geistSans = localFont({
+  src: "../../node_modules/next/dist/next-devtools/server/font/geist-latin.woff2",
+  variable: "--font-geist-sans",
+  weight: "100 900",
+});
+
+const geistMono = localFont({
+  src: "../../node_modules/next/dist/next-devtools/server/font/geist-mono-latin.woff2",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -28,7 +44,10 @@ export default async function RootLayout({
   await connection();
 
   return (
-    <html lang="en" className="h-full antialiased">
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

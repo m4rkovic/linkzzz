@@ -3,11 +3,9 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { defaultAppearance } from "../src/config/profile-defaults";
 import { passwordHasher } from "../src/server/auth/password-hasher";
+import { requireDatabaseConnectionString } from "../src/server/config/postgres-connection-string";
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("DATABASE_URL is required to seed the database.");
-}
+const connectionString = requireDatabaseConnectionString();
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),

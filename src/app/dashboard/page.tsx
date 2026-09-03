@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { getPlanDefinition } from "@/features/plans/plan-catalog";
-import { buildSmartLinkDashboardMetrics } from "@/features/smart-links/dashboard-metrics";
+import { buildSmartLinkDashboardMetricsFromCounts } from "@/features/smart-links/dashboard-metrics";
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
 import { cardClassName } from "@/components/ui/card";
@@ -26,22 +26,17 @@ export default async function DashboardPage() {
   if (session.user.role !== "CUSTOMER") redirect("/admin");
 
   const dependencies = await getServerDependencies();
-  const [links, subscription, events] = await Promise.all([
+  const [links, subscription, analyticsSummary] = await Promise.all([
     dependencies.smartLinks.listForUser(session.user.id),
     dependencies.subscriptions.findByUserId(session.user.id),
-    dependencies.analytics?.listForUser(session.user.id) ?? Promise.resolve([]),
+    dependencies.analytics?.summarizeDashboard(session.user.id) ??
+      Promise.resolve({ links: [], uniqueVisitors: 0 }),
   ]);
 
-  const metrics = buildSmartLinkDashboardMetrics(events);
+  const metrics = buildSmartLinkDashboardMetricsFromCounts(analyticsSummary.links);
   const views = [...metrics.values()].reduce((sum, item) => sum + item.views, 0);
   const clicks = [...metrics.values()].reduce((sum, item) => sum + item.clicks, 0);
-  const visitorIds = new Set(
-    events
-      .filter((event) => !event.isBot && (event.type === "SMART_LINK_VIEW" || event.type === "PAGE_VIEW"))
-      .map((event) => event.visitorId)
-      .filter((value): value is string => Boolean(value)),
-  );
-  const uniqueVisitors = visitorIds.size;
+  const uniqueVisitors = analyticsSummary.uniqueVisitors;
   const published = links.filter((link) => link.status === "PUBLISHED").length;
   const ctr = views > 0 ? (clicks / views) * 100 : 0;
   const recentLinks = [...links]
