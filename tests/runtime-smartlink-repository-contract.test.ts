@@ -5,7 +5,7 @@ import type { RuntimeSmartLinkRepository } from "../src/server/persistence/depen
 
 type ForbiddenRuntimeMethod = Extract<
   keyof RuntimeSmartLinkRepository,
-  "create" | "duplicateForUser" | "deleteIfRevision" | "countForUser"
+  "create" | "duplicateForUser" | "deleteIfRevision"
 >;
 
 type AssertNever<T extends never> = T;
@@ -13,9 +13,10 @@ type RuntimeSmartLinkRepositoryMustNotExposeBypasses = AssertNever<ForbiddenRunt
 
 void (0 as unknown as RuntimeSmartLinkRepositoryMustNotExposeBypasses);
 
-test("runtime SmartLink repository exposes only guarded mutation paths", () => {
+test("runtime SmartLink repository exposes reads plus guarded mutation paths", () => {
   const allowedMethods: Array<keyof RuntimeSmartLinkRepository> = [
     "listForUser",
+    "countForUser",
     "findByIdForUser",
     "findBySlug",
     "createWithinLimit",
@@ -25,6 +26,7 @@ test("runtime SmartLink repository exposes only guarded mutation paths", () => {
 
   assert.deepEqual(allowedMethods, [
     "listForUser",
+    "countForUser",
     "findByIdForUser",
     "findBySlug",
     "createWithinLimit",
