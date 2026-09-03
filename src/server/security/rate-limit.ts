@@ -254,6 +254,11 @@ export const LOGIN_RATE_LIMIT: RateLimitPolicy = {
   windowMs: 15 * 60 * 1_000,
 };
 
+export const SMART_LINK_CREATE_RATE_LIMIT: RateLimitPolicy = {
+  limit: 10,
+  windowMs: 60 * 1_000,
+};
+
 export const SENSITIVE_ACTION_RATE_LIMIT: RateLimitPolicy = {
   limit: 20,
   windowMs: 15 * 60 * 1_000,
