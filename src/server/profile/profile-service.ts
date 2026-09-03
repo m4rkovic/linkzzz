@@ -1,7 +1,7 @@
 import "server-only";
 
 import { defaultAppearance } from "@/config/profile-defaults";
-import { getPageCardLimit } from "@/server/business/plans";
+import { canSavePageCards } from "@/server/business/plans";
 import { getPlanDefinition } from "@/features/plans/plan-catalog";
 import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import type { AuthenticatedSession } from "@/server/auth/auth-service";
@@ -222,14 +222,16 @@ export async function updateOwnSmartLinkPage(
     };
   }
 
-  const previousCount = current.links.length;
-  const nextCount = incoming.links.length;
-  const linkLimit = getPageCardLimit(subscription.plan);
-  if (nextCount > previousCount && nextCount > linkLimit) {
+  const pageCardDecision = canSavePageCards(
+    subscription.plan,
+    current.links.length,
+    incoming.links.length,
+  );
+  if (!pageCardDecision.allowed) {
     return {
       ok: false,
       code: "LINK_LIMIT_REACHED",
-      message: `Your ${getPlanDefinition(subscription.plan).name} plan allows up to ${linkLimit} links on one Landing Page.`,
+      message: `Your ${getPlanDefinition(subscription.plan).name} plan allows up to ${pageCardDecision.limit} links on one Landing Page.`,
     };
   }
 
@@ -353,15 +355,16 @@ export async function updateOwnProfile(
     };
   }
 
-  const previousCount = current?.links.length ?? 0;
-  const nextCount = incoming.links.length;
-  const linkLimit = getPageCardLimit(subscription.plan);
-
-  if (nextCount > previousCount && nextCount > linkLimit) {
+  const pageCardDecision = canSavePageCards(
+    subscription.plan,
+    current?.links.length ?? 0,
+    incoming.links.length,
+  );
+  if (!pageCardDecision.allowed) {
     return {
       ok: false,
       code: "LINK_LIMIT_REACHED",
-      message: `Your ${getPlanDefinition(subscription.plan).name} plan allows up to ${linkLimit} links on one Landing Page.`,
+      message: `Your ${getPlanDefinition(subscription.plan).name} plan allows up to ${pageCardDecision.limit} links on one Landing Page.`,
     };
   }
 
