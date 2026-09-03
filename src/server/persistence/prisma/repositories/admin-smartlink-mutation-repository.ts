@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { AdminError } from "@/server/admin/admin-errors";
 import { getEffectiveSubscriptionStatus } from "@/server/business/subscriptions";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
@@ -23,12 +24,15 @@ export class PrismaAdminSmartLinkMutationRepository
 
       const user = await tx.user.findUnique({ where: { id: userId } });
       if (!user || user.role !== "CUSTOMER") {
-        throw new Error("Customer not found.");
+        throw new AdminError("CUSTOMER_NOT_FOUND", "Customer not found.");
       }
 
       const subscription = await tx.subscription.findUnique({ where: { userId } });
       if (!subscription) {
-        throw new Error("Customer subscription is missing.");
+        throw new AdminError(
+          "SUBSCRIPTION_MISSING",
+          "Customer subscription is missing.",
+        );
       }
 
       const smartLink = await tx.smartLink.findFirst({
@@ -42,11 +46,14 @@ export class PrismaAdminSmartLinkMutationRepository
         },
       });
       if (!smartLink) {
-        throw new Error("Smart Link not found.");
+        throw new AdminError("SMART_LINK_NOT_FOUND", "Smart Link not found.");
       }
 
       if (action.status === "DISABLED" && smartLink.status !== "PUBLISHED") {
-        throw new Error("Only published Smart Links can be disabled by an administrator.");
+        throw new AdminError(
+          "SMART_LINK_INVALID_STATE",
+          "Only published Smart Links can be disabled by an administrator.",
+        );
       }
 
       if (action.status === "PUBLISHED") {
@@ -60,12 +67,16 @@ export class PrismaAdminSmartLinkMutationRepository
           effectiveSubscriptionStatus !== "STOPPED";
 
         if (!accessActive) {
-          throw new Error(
+          throw new AdminError(
+            "SMART_LINK_ACCESS_BLOCKED",
             "Restore the customer account and subscription before enabling this Smart Link.",
           );
         }
         if (smartLink.status !== "DISABLED") {
-          throw new Error("Only administrator-disabled Smart Links can be restored.");
+          throw new AdminError(
+            "SMART_LINK_INVALID_STATE",
+            "Only administrator-disabled Smart Links can be restored.",
+          );
         }
       }
 
@@ -83,7 +94,8 @@ export class PrismaAdminSmartLinkMutationRepository
         },
       });
       if (write.count !== 1) {
-        throw new Error(
+        throw new AdminError(
+          "SMART_LINK_CONFLICT",
           "Smart Link changed while the admin action was being applied. Try again.",
         );
       }

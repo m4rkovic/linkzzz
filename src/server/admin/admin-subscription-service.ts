@@ -1,7 +1,8 @@
 import "server-only";
 
-import type { AuthenticatedSession } from "@/server/auth/auth-service";
+import { AdminError } from "@/server/admin/admin-errors";
 import { getAdminUser } from "@/server/admin/admin-service";
+import type { AuthenticatedSession } from "@/server/auth/auth-service";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import type { AdminSubscriptionMutation } from "@/server/services/contracts";
 import type { AdminUserAction } from "@/types/admin-api";
@@ -30,6 +31,8 @@ export async function performAdminSubscriptionAction(
   await dependencies.adminSubscriptions.apply(admin.user.id, userId, action);
 
   const result = await getAdminUser(userId);
-  if (!result) throw new Error("Customer not found.");
+  if (!result) {
+    throw new AdminError("CUSTOMER_NOT_FOUND", "Customer not found.");
+  }
   return result;
 }

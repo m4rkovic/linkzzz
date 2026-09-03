@@ -6,6 +6,10 @@ import {
   performAdminAccountAction,
 } from "@/server/admin/admin-account-service";
 import {
+  adminErrorStatus,
+  isAdminError,
+} from "@/server/admin/admin-errors";
+import {
   isAdminSmartLinkAction,
   performAdminSmartLinkAction,
 } from "@/server/admin/admin-smartlink-service";
@@ -23,27 +27,44 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   if (!hasValidRequestOrigin(request)) {
-    return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+    return NextResponse.json(
+      { error: "Invalid request origin.", code: "INVALID_REQUEST_ORIGIN" },
+      { status: 403 },
+    );
   }
 
   const session = await getCurrentSession();
   try {
     requireAdmin(session?.principal);
   } catch {
-    return NextResponse.json({ error: "Administrator access required." }, { status: 403 });
+    return NextResponse.json(
+      { error: "Administrator access required.", code: "ADMIN_ACCESS_REQUIRED" },
+      { status: 403 },
+    );
   }
 
-  if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  if (!session) {
+    return NextResponse.json(
+      { error: "Authentication required.", code: "AUTHENTICATION_REQUIRED" },
+      { status: 401 },
+    );
+  }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid request body.", code: "INVALID_REQUEST_BODY" },
+      { status: 400 },
+    );
   }
 
   if (!isAdminUserAction(body)) {
-    return NextResponse.json({ error: "Invalid admin action." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid admin action.", code: "INVALID_ADMIN_ACTION" },
+      { status: 400 },
+    );
   }
 
   const { id } = await context.params;
@@ -57,13 +78,28 @@ export async function POST(
           : null;
 
     if (!result) {
-      return NextResponse.json({ error: "Invalid admin action." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid admin action.", code: "INVALID_ADMIN_ACTION" },
+        { status: 400 },
+      );
     }
     return NextResponse.json(result);
   } catch (error) {
+    if (isAdminError(error)) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: adminErrorStatus(error.code) },
+      );
+    }
+
+    console.error("Admin action failed.", {
+      targetUserId: id,
+      action: body.type,
+      error,
+    });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Admin action failed." },
-      { status: 400 },
+      { error: "Admin action failed.", code: "ADMIN_ACTION_FAILED" },
+      { status: 500 },
     );
   }
 }

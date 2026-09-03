@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { AdminError } from "@/server/admin/admin-errors";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
 import type {
@@ -22,7 +23,7 @@ export class PrismaAdminAccountMutationRepository
 
       const user = await tx.user.findUnique({ where: { id: userId } });
       if (!user || user.role !== "CUSTOMER") {
-        throw new Error("Customer not found.");
+        throw new AdminError("CUSTOMER_NOT_FOUND", "Customer not found.");
       }
 
       switch (action.type) {
@@ -48,7 +49,10 @@ export class PrismaAdminAccountMutationRepository
         case "REACTIVATE": {
           const subscription = await tx.subscription.findUnique({ where: { userId } });
           if (!subscription) {
-            throw new Error("Customer subscription is missing.");
+            throw new AdminError(
+              "SUBSCRIPTION_MISSING",
+              "Customer subscription is missing.",
+            );
           }
 
           const now = new Date();
@@ -57,7 +61,10 @@ export class PrismaAdminAccountMutationRepository
             subscription.status === "EXPIRED" ||
             subscription.endsAt.getTime() <= now.getTime()
           ) {
-            throw new Error("Renew the subscription before reactivating this account.");
+            throw new AdminError(
+              "SUBSCRIPTION_REACTIVATION_REQUIRED",
+              "Renew the subscription before reactivating this account.",
+            );
           }
 
           await tx.user.update({
