@@ -138,6 +138,45 @@ test("customer publishes a Landing Page that records a public view", async ({
   }
 });
 
+test("mobile publish is blocked while Landing Page edits are unsaved", async ({
+  page,
+  context,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-390", "Mobile-only regression coverage.");
+  const customer = createUniqueCustomer("mobile publish");
+
+  try {
+    await loginAsAdmin(page);
+    await createCustomerViaAdminApi(page, customer);
+    await context.clearCookies();
+    await loginViaApi(page, customer.username, customer.password, "CUSTOMER");
+
+    await page.goto("/dashboard/links");
+    const landingPage = page
+      .getByRole("article")
+      .filter({
+        has: page.getByRole("heading", {
+          name: customer.displayName,
+          exact: true,
+        }),
+      });
+    await landingPage.getByRole("link", { name: /Edit/ }).click();
+
+    const editorNavigation = page.locator('nav[data-editor-navigation="compact"]');
+    await expect(editorNavigation).toBeVisible();
+    await editorNavigation.getByRole("button", { name: "Page", exact: true }).click();
+    await page.getByLabel("Display name").fill(`${customer.displayName} edited`);
+    await expect(
+      page.getByText("Page content has unsaved changes. Save them inside the Page section before publishing."),
+    ).toBeVisible();
+
+    await editorNavigation.getByRole("button", { name: "Smart Link", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Publish", exact: true })).toBeDisabled();
+  } finally {
+    await removeTestCustomer(customer.username);
+  }
+});
+
 async function loginFromUi(page: Page, identifier: string, password: string) {
   await page.goto("/login");
   await expect(page.getByLabel("Username or email")).toBeEnabled();
