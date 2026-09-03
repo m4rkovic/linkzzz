@@ -98,12 +98,24 @@ export type DeleteSmartLinkResult =
   | { ok: true; storageKeysToRemove: string[] }
   | { ok: false; reason: "REVISION_CONFLICT" | "NOT_FOUND" };
 
+export type CreateSmartLinkWithinLimitResult =
+  | { ok: true; smartLink: SmartLinkRecord }
+  | { ok: false; reason: "LIMIT_REACHED" };
+
+export type DuplicateSmartLinkWithinLimitResult =
+  | { ok: true; smartLink: SmartLinkRecord }
+  | { ok: false; reason: "LIMIT_REACHED" | "NOT_FOUND" };
+
 export interface SmartLinkRepository {
   listForUser(userId: string): Promise<SmartLinkRecord[]>;
   countForUser(userId: string): Promise<number>;
   findByIdForUser(id: string, userId: string): Promise<SmartLinkRecord | null>;
   findBySlug(slug: string): Promise<SmartLinkRecord | null>;
   create(record: CreateSmartLinkRecord): Promise<SmartLinkRecord>;
+  createWithinLimit(
+    record: CreateSmartLinkRecord,
+    limit: number,
+  ): Promise<CreateSmartLinkWithinLimitResult>;
   updateIfRevision(
     id: string,
     userId: string,
@@ -116,6 +128,13 @@ export interface SmartLinkRepository {
     title: string,
     slug: string,
   ): Promise<SmartLinkRecord | null>;
+  duplicateForUserWithinLimit(
+    id: string,
+    userId: string,
+    title: string,
+    slug: string,
+    limit: number,
+  ): Promise<DuplicateSmartLinkWithinLimitResult>;
   deleteIfRevision(
     id: string,
     userId: string,
