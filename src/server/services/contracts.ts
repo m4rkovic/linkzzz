@@ -59,7 +59,6 @@ export interface AdminReadRepository {
   listCustomers(): Promise<AdminCustomerReadRecord[]>;
 }
 
-
 export interface ProfileRepository {
   // Legacy single-page compatibility methods. New SmartLink editor code must use
   // the smartLinkId-scoped methods below.
@@ -98,13 +97,18 @@ export type DeleteSmartLinkResult =
   | { ok: true; storageKeysToRemove: string[] }
   | { ok: false; reason: "REVISION_CONFLICT" | "NOT_FOUND" };
 
+type SmartLinkQuotaRejection =
+  | { ok: false; reason: "SUBSCRIPTION_INACTIVE" }
+  | { ok: false; reason: "LIMIT_REACHED"; plan: Plan; limit: number };
+
 export type CreateSmartLinkWithinLimitResult =
   | { ok: true; smartLink: SmartLinkRecord }
-  | { ok: false; reason: "LIMIT_REACHED" };
+  | SmartLinkQuotaRejection;
 
 export type DuplicateSmartLinkWithinLimitResult =
   | { ok: true; smartLink: SmartLinkRecord }
-  | { ok: false; reason: "LIMIT_REACHED" | "NOT_FOUND" };
+  | SmartLinkQuotaRejection
+  | { ok: false; reason: "NOT_FOUND" | "SMART_LINK_DISABLED" };
 
 export interface SmartLinkRepository {
   listForUser(userId: string): Promise<SmartLinkRecord[]>;
@@ -112,10 +116,7 @@ export interface SmartLinkRepository {
   findByIdForUser(id: string, userId: string): Promise<SmartLinkRecord | null>;
   findBySlug(slug: string): Promise<SmartLinkRecord | null>;
   create(record: CreateSmartLinkRecord): Promise<SmartLinkRecord>;
-  createWithinLimit(
-    record: CreateSmartLinkRecord,
-    limit: number,
-  ): Promise<CreateSmartLinkWithinLimitResult>;
+  createWithinLimit(record: CreateSmartLinkRecord): Promise<CreateSmartLinkWithinLimitResult>;
   updateIfRevision(
     id: string,
     userId: string,
@@ -133,7 +134,6 @@ export interface SmartLinkRepository {
     userId: string,
     title: string,
     slug: string,
-    limit: number,
   ): Promise<DuplicateSmartLinkWithinLimitResult>;
   deleteIfRevision(
     id: string,
@@ -243,7 +243,6 @@ export interface AnalyticsRepository {
   listForSmartLink(smartLinkId: string, from?: Date): Promise<AnalyticsEventRecord[]>;
   listSmartLinksForUser(userId: string): Promise<AnalyticsSmartLinkRecord[]>;
 }
-
 
 export type LeadSubmissionRecord = {
   id?: string;
