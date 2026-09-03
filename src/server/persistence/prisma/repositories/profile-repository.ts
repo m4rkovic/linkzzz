@@ -1,10 +1,10 @@
 import "server-only";
 
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import { writePageChildren } from "@/server/persistence/prisma/repositories/page-children-writer";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import type { ProfileRepository } from "@/server/services/contracts";
 import type { PersistedProfileData } from "@/types/persisted-profile";
-import { linkGeoToLegacyDestinations } from "@/features/links/link-geo";
 
 type PageGraph = Prisma.PageGetPayload<{ include: { smartLink: true; cards: { include: { geoDestinations: true } }; socials: true; stats: true } }>;
 function profileData(row: PageGraph): PersistedProfileData {
@@ -281,119 +281,3 @@ function persistedAppearance(data: PersistedProfileData) {
     __engagement: data.engagement ?? null,
   };
 }
-
-async function writePageChildren(
-  tx: Prisma.TransactionClient,
-  pageId: string,
-  data: PersistedProfileData,
-) {
-  const linkIds = data.links.map((link) => link.id);
-  await tx.pageCard.deleteMany({
-    where: {
-      pageId,
-      ...(linkIds.length ? { id: { notIn: linkIds } } : {}),
-    },
-  });
-
-  for (const [sortOrder, link] of data.links.entries()) {
-    const linkData = {
-      title: link.title,
-      description: link.description ?? null,
-      url: link.url,
-      visible: link.visible,
-      sortOrder,
-      platform: link.platform ?? null,
-      layout: link.layout ?? null,
-      aspectRatio: link.aspectRatio ?? null,
-      imageFit: link.imageFit ?? null,
-      imagePosition: link.imagePosition ?? null,
-      titlePosition: link.titlePosition ?? null,
-      showPlatformIcon: link.showPlatformIcon ?? true,
-      showTitle: link.showTitle ?? true,
-      showDescription: link.showDescription ?? true,
-      overlayEnabled: link.overlayEnabled ?? false,
-      overlayOpacity: link.overlayOpacity ?? null,
-      imageAssetId: link.imageAssetId ?? null,
-      customStyle: toJson({
-        value: link.customStyle ?? null,
-        __imageUrl: link.imageUrl ?? null,
-        __imageAlt: link.imageAlt ?? null,
-        __availability: link.availability ?? null,
-        __sensitiveContent: link.sensitiveContent ?? null,
-        __geo: link.geo ?? null,
-      }),
-    };
-    const updated = await tx.pageCard.updateMany({
-      where: { id: link.id, pageId },
-      data: linkData,
-    });
-    if (!updated.count) {
-      await tx.pageCard.create({ data: { id: link.id, pageId, ...linkData } });
-    }
-
-    await tx.pageCardGeoDestination.deleteMany({
-      where: { pageCardId: link.id },
-    });
-    const geoDestinations = linkGeoToLegacyDestinations(link.geo, link.geoDestinations);
-    if (geoDestinations.length) {
-      await tx.pageCardGeoDestination.createMany({
-        data: geoDestinations.map((destination) => ({
-          id: destination.id,
-          pageCardId: link.id,
-          countryCode: destination.countryCode,
-          countryName: destination.countryName,
-          url: destination.url,
-        })),
-      });
-    }
-  }
-
-  const socialIds = data.socials.map((social) => social.id);
-  await tx.socialLink.deleteMany({
-    where: {
-      pageId,
-      ...(socialIds.length ? { id: { notIn: socialIds } } : {}),
-    },
-  });
-  for (const [sortOrder, social] of data.socials.entries()) {
-    const socialData = {
-      name: social.name,
-      url: social.url,
-      visible: social.visible,
-      platform: social.platform ?? null,
-      sortOrder,
-    };
-    const updated = await tx.socialLink.updateMany({
-      where: { id: social.id, pageId },
-      data: socialData,
-    });
-    if (!updated.count) {
-      await tx.socialLink.create({ data: { id: social.id, pageId, ...socialData } });
-    }
-  }
-
-  const stats = data.stats ?? [];
-  const statIds = stats.map((stat) => stat.id);
-  await tx.pageStat.deleteMany({
-    where: {
-      pageId,
-      ...(statIds.length ? { id: { notIn: statIds } } : {}),
-    },
-  });
-  for (const [sortOrder, stat] of stats.entries()) {
-    const statData = {
-      value: stat.value,
-      label: stat.label,
-      visible: stat.visible,
-      sortOrder,
-    };
-    const updated = await tx.pageStat.updateMany({
-      where: { id: stat.id, pageId },
-      data: statData,
-    });
-    if (!updated.count) {
-      await tx.pageStat.create({ data: { id: stat.id, pageId, ...statData } });
-    }
-  }
-}
-
