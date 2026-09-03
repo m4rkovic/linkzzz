@@ -1,9 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import {
-  createE2EServerEnvironment,
-  requireIsolatedE2EDatabaseUrl,
-} from "./e2e/environment";
+import { requireIsolatedE2EDatabaseUrl } from "./e2e/environment";
 
 const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100";
 const target = new URL(baseURL);
@@ -17,8 +14,10 @@ const webServer = process.env.E2E_EXTERNAL_SERVER === "1"
       url: baseURL,
       reuseExistingServer: false,
       timeout: 120_000,
+      // Keep DATABASE_URL pointing at the normal app database here.
+      // scripts/start-e2e-server.ts validates isolation first, then replaces
+      // DATABASE_URL only for the Prisma/Next child processes.
       env: {
-        ...createE2EServerEnvironment(),
         E2E_DATABASE_URL: e2eDatabaseUrl,
       },
     };
