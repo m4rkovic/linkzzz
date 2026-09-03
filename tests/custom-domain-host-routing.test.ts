@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   getConfiguredApplicationHosts,
   getRequestHostname,
+  isAllowedCustomDomainPath,
   isApplicationHostname,
   isReservedPlatformHostname,
   normalizeRequestHostname,
@@ -41,4 +42,26 @@ test("forwarded host is ignored unless explicitly trusted", () => {
     ),
     "customer.example",
   );
+});
+
+test("custom domains expose only the public runtime surface", () => {
+  assert.equal(isAllowedCustomDomainPath("/"), true);
+  assert.equal(isAllowedCustomDomainPath("/skyhook/out/card/card-1"), true);
+  assert.equal(isAllowedCustomDomainPath("/skyhook/out/social/social-1"), true);
+  assert.equal(isAllowedCustomDomainPath("/skyhook/out/block/cta-1"), true);
+  assert.equal(isAllowedCustomDomainPath("/api/analytics/events"), true);
+  assert.equal(isAllowedCustomDomainPath("/api/public/smart-links/skyhook/leads"), true);
+  assert.equal(isAllowedCustomDomainPath("/_next/webpack-hmr"), true);
+  assert.equal(isAllowedCustomDomainPath("/uploads/avatar.webp"), true);
+
+  assert.equal(isAllowedCustomDomainPath("/login"), false);
+  assert.equal(isAllowedCustomDomainPath("/dashboard"), false);
+  assert.equal(isAllowedCustomDomainPath("/admin"), false);
+  assert.equal(isAllowedCustomDomainPath("/api/auth/login"), false);
+  assert.equal(isAllowedCustomDomainPath("/api/admin/users"), false);
+  assert.equal(isAllowedCustomDomainPath("/api/smart-links"), false);
+  assert.equal(isAllowedCustomDomainPath("/api/assets"), false);
+  assert.equal(isAllowedCustomDomainPath("/api/custom-domains"), false);
+  assert.equal(isAllowedCustomDomainPath("/another-users-slug"), false);
+  assert.equal(isAllowedCustomDomainPath("/anything-else"), false);
 });
