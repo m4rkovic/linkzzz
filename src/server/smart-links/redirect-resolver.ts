@@ -44,13 +44,20 @@ export function resolveSmartLink(
 }
 
 export function resolveOutboundDestination(
-  smartLink: Pick<SmartLinkRecord, "deeplink" | "shield">,
+  smartLink: Pick<SmartLinkRecord, "deeplink" | "geo" | "shield">,
   destination: DestinationConfig,
   context: SmartLinkRequestContext,
 ): SmartLinkResolveResult {
   const shield = resolveTrafficShield(smartLink.shield, context.traffic);
   if (shield === "BLOCK") return { type: "BLOCK" };
   if (shield === "PREVIEW") return { type: "CRAWLER_PREVIEW" };
+
+  const geoAction = resolveSmartLinkGeoAction(smartLink.geo, context.countryCode);
+  if (geoAction?.type === "BLOCK") return { type: "BLOCK" };
+  if (geoAction?.type === "REDIRECT") {
+    return resolveDirectDestination(geoAction.destination, smartLink.deeplink, context);
+  }
+
   return resolveDirectDestination(destination, smartLink.deeplink, context);
 }
 
