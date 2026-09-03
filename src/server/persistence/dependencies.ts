@@ -9,7 +9,7 @@ import type {
   SmartLinkRepository,
 } from "@/server/services/contracts";
 
-type RuntimeSmartLinkRepository = Pick<
+export type RuntimeSmartLinkRepository = Pick<
   SmartLinkRepository,
   | "listForUser"
   | "findByIdForUser"
@@ -19,7 +19,7 @@ type RuntimeSmartLinkRepository = Pick<
   | "duplicateForUserWithinLimit"
 >;
 
-type RuntimeServerDependencies = Omit<ServerDependencies, "smartLinks"> & {
+export type RuntimeServerDependencies = Omit<ServerDependencies, "smartLinks"> & {
   smartLinks: RuntimeSmartLinkRepository;
 };
 
