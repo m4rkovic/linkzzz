@@ -18,3 +18,10 @@ export function duplicateSlugCandidates(slug: string, limit = 100) {
 export function canCustomerDeleteSmartLink(status: "DRAFT" | "PUBLISHED" | "DISABLED") {
   return status === "DRAFT";
 }
+
+export function canDeleteWithoutRemovingLastLandingPage(
+  type: "LANDING_PAGE" | "DIRECT",
+  landingPageCount: number,
+) {
+  return type !== "LANDING_PAGE" || landingPageCount > 1;
+}
