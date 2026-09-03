@@ -43,6 +43,34 @@ export interface SubscriptionRepository {
   upsert(record: SubscriptionRecord): Promise<SubscriptionRecord>;
 }
 
+export type AdminSubscriptionMutation =
+  | { type: "RENEW"; months: 1 | 3 | 6 | 12 }
+  | { type: "STOP_RENEWAL" }
+  | { type: "RESUME_RENEWAL" }
+  | { type: "STOP_IMMEDIATELY" }
+  | { type: "CHANGE_PLAN"; plan: Plan };
+
+export interface AdminSubscriptionMutationRepository {
+  apply(
+    actorUserId: string,
+    userId: string,
+    action: AdminSubscriptionMutation,
+  ): Promise<void>;
+}
+
+export type AdminAccountMutation =
+  | { type: "SUSPEND"; reason?: string }
+  | { type: "REACTIVATE" }
+  | { type: "RESET_PASSWORD"; passwordHash: string };
+
+export interface AdminAccountMutationRepository {
+  apply(
+    actorUserId: string,
+    userId: string,
+    action: AdminAccountMutation,
+  ): Promise<void>;
+}
+
 export type AdminCustomerReadRecord = {
   user: UserRecord;
   displayName: string;
@@ -58,7 +86,6 @@ export type AdminCustomerReadRecord = {
 export interface AdminReadRepository {
   listCustomers(): Promise<AdminCustomerReadRecord[]>;
 }
-
 
 export interface ProfileRepository {
   // Legacy single-page compatibility methods. New SmartLink editor code must use
@@ -98,12 +125,26 @@ export type DeleteSmartLinkResult =
   | { ok: true; storageKeysToRemove: string[] }
   | { ok: false; reason: "REVISION_CONFLICT" | "NOT_FOUND" };
 
+type SmartLinkQuotaRejection =
+  | { ok: false; reason: "SUBSCRIPTION_INACTIVE" }
+  | { ok: false; reason: "LIMIT_REACHED"; plan: Plan; limit: number };
+
+export type CreateSmartLinkWithinLimitResult =
+  | { ok: true; smartLink: SmartLinkRecord }
+  | SmartLinkQuotaRejection;
+
+export type DuplicateSmartLinkWithinLimitResult =
+  | { ok: true; smartLink: SmartLinkRecord }
+  | SmartLinkQuotaRejection
+  | { ok: false; reason: "NOT_FOUND" | "SMART_LINK_DISABLED" };
+
 export interface SmartLinkRepository {
   listForUser(userId: string): Promise<SmartLinkRecord[]>;
   countForUser(userId: string): Promise<number>;
   findByIdForUser(id: string, userId: string): Promise<SmartLinkRecord | null>;
   findBySlug(slug: string): Promise<SmartLinkRecord | null>;
   create(record: CreateSmartLinkRecord): Promise<SmartLinkRecord>;
+  createWithinLimit(record: CreateSmartLinkRecord): Promise<CreateSmartLinkWithinLimitResult>;
   updateIfRevision(
     id: string,
     userId: string,
@@ -116,6 +157,12 @@ export interface SmartLinkRepository {
     title: string,
     slug: string,
   ): Promise<SmartLinkRecord | null>;
+  duplicateForUserWithinLimit(
+    id: string,
+    userId: string,
+    title: string,
+    slug: string,
+  ): Promise<DuplicateSmartLinkWithinLimitResult>;
   deleteIfRevision(
     id: string,
     userId: string,
@@ -225,7 +272,6 @@ export interface AnalyticsRepository {
   listSmartLinksForUser(userId: string): Promise<AnalyticsSmartLinkRecord[]>;
 }
 
-
 export type LeadSubmissionRecord = {
   id?: string;
   smartLinkId: string;
@@ -311,6 +357,8 @@ export interface CustomerProvisioningRepository {
 
 export type ServerDependencies = {
   adminRead: AdminReadRepository;
+  adminSubscriptions: AdminSubscriptionMutationRepository;
+  adminAccounts: AdminAccountMutationRepository;
   users: UserRepository;
   subscriptions: SubscriptionRepository;
   smartLinks: SmartLinkRepository;

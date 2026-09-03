@@ -78,8 +78,14 @@ test.describe("R1.4 keyboard and focus checks", () => {
     await loginAsCustomer(page);
     await openAppearanceEditor(page);
 
+    // Focus the Page-level Appearance tab, then advance with a real keyboard Tab.
+    // Programmatic focus on a button does not have to match :focus-visible.
+    const appearanceTab = page.getByRole("button", { name: "Appearance", exact: true });
+    await appearanceTab.focus();
+    await page.keyboard.press("Tab");
+
     const layout = page.getByRole("button", { name: "Layout", exact: true });
-    await layout.focus();
+    await expect(layout).toBeFocused();
 
     const focusStyle = await layout.evaluate((element) => {
       const style = getComputedStyle(element);

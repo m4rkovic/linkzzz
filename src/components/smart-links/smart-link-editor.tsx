@@ -189,6 +189,7 @@ export default function SmartLinkEditor({
             Open public URL <ExternalLink size={16} />
           </Link>
           <Button
+            aria-label="Save Smart Link"
             disabled={!dirty || saving}
             onClick={() => void saveSmartLink()}
             className={`${activeSection === "Page" ? "inline-flex" : "hidden lg:inline-flex"} flex-1 text-zinc-900 lg:flex-none`}
