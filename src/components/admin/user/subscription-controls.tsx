@@ -19,8 +19,8 @@ export default function SubscriptionControls({
   onRequestPlanChange: (plan: AdminPlan) => void;
 }) {
   const maxLinks = getPlanLimit(user.plan);
-  const overLimit = user.linksUsed > maxLinks;
-  const usagePercentage = Math.min((user.linksUsed / maxLinks) * 100, 100);
+  const overLimit = user.smartLinksUsed > maxLinks;
+  const usagePercentage = Math.min((user.smartLinksUsed / maxLinks) * 100, 100);
   const allowedActions = getAllowedSubscriptionActions(
     user.subscriptionStatus,
     user.periodEnd,
@@ -99,7 +99,7 @@ export default function SubscriptionControls({
         <div className="mt-6">
           <div className="flex items-center justify-between gap-4">
             <p className="text-sm font-semibold text-zinc-800">Smart Link usage</p>
-            <p className={`text-sm font-bold ${overLimit ? "text-red-600" : "text-zinc-950"}`}>{getPlanUsageLabel(user.plan, user.linksUsed)}</p>
+            <p className={`text-sm font-bold ${overLimit ? "text-red-600" : "text-zinc-950"}`}>{getPlanUsageLabel(user.plan, user.smartLinksUsed)}</p>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100">
             <div className={`h-full rounded-full ${overLimit ? "bg-red-600" : "bg-zinc-950"}`} style={{ width: `${usagePercentage}%` }} />
