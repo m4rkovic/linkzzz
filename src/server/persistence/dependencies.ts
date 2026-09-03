@@ -4,9 +4,29 @@ import {
   getPrismaServerDependencies,
   getPrismaSmartLinkDeletionRepository,
 } from "@/server/persistence/prisma/dependencies";
-import type { ServerDependencies } from "@/server/services/contracts";
+import type {
+  ServerDependencies,
+  SmartLinkRepository,
+} from "@/server/services/contracts";
 
-export async function getServerDependencies(): Promise<ServerDependencies> {
+// Application services may use SmartLink reads plus guarded mutation paths.
+// Low-level create/duplicate/delete bypasses stay hidden from this boundary.
+export type RuntimeSmartLinkRepository = Pick<
+  SmartLinkRepository,
+  | "listForUser"
+  | "countForUser"
+  | "findByIdForUser"
+  | "findBySlug"
+  | "createWithinLimit"
+  | "updateIfRevision"
+  | "duplicateForUserWithinLimit"
+>;
+
+export type RuntimeServerDependencies = Omit<ServerDependencies, "smartLinks"> & {
+  smartLinks: RuntimeSmartLinkRepository;
+};
+
+export async function getServerDependencies(): Promise<RuntimeServerDependencies> {
   return getPrismaServerDependencies();
 }
 
