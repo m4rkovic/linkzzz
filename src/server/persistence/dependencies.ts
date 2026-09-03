@@ -9,6 +9,8 @@ import type {
   SmartLinkRepository,
 } from "@/server/services/contracts";
 
+// Application services may use SmartLink reads plus guarded mutation paths.
+// Low-level create/duplicate/delete bypasses stay hidden from this boundary.
 export type RuntimeSmartLinkRepository = Pick<
   SmartLinkRepository,
   | "listForUser"
