@@ -41,7 +41,8 @@ export async function verifyCustomDomain(userId: string, smartLinkId: string, in
   try { values = await resolveTxt(`_linkzzz-verification.${domain}`); }
   catch { throw new Error("Verification TXT record was not found yet."); }
   if (!values.some((parts) => parts.join("") === owned.verificationToken)) throw new Error("Verification TXT value does not match.");
-  const verified = await repositories.customDomains.setStatusForSmartLink(userId, smartLinkId, domain, "VERIFIED", new Date());
+  const nextStatus = owned.status === "ACTIVE" ? "ACTIVE" : "VERIFIED";
+  const verified = await repositories.customDomains.setStatusForSmartLink(userId, smartLinkId, domain, nextStatus, new Date());
   await repositories.audit.write({ actorUserId: userId, targetUserId: userId, action: "CUSTOM_DOMAIN_VERIFIED", resourceType: "SMART_LINK", resourceId: smartLinkId, metadata: { domain } });
   return verified!;
 }

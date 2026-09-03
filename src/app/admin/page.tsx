@@ -1,12 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Clock3, Crown, Link2, ShieldAlert, Users } from "lucide-react";
 
 import { buttonClassName } from "@/components/ui/button";
 import { getPlanUsageLabel } from "@/features/admin/subscription-rules";
 import { PLAN_CATALOG, PLAN_ORDER } from "@/features/plans/plan-catalog";
 import { getAdminOverview } from "@/server/admin/admin-service";
+import { getCurrentSession } from "@/server/auth/current-session";
 
 export default async function AdminPage() {
+  const session = await getCurrentSession();
+  if (!session) redirect("/login");
+  if (session.principal.role !== "ADMIN") redirect("/dashboard");
+
   const overview = await getAdminOverview();
 
   const stats = [

@@ -19,6 +19,7 @@ export function validateProductionEnvironment(environment: Environment) {
   requireHttpsUrl(environment, "S3_PUBLIC_BASE_URL", errors);
   requireValue(environment, "LINKZZZ_APP_HOSTS", errors);
   requireValue(environment, "LINKZZZ_CUSTOM_DOMAIN_TARGET", errors);
+  requireValue(environment, "LINKZZZ_TRUST_PROXY_HEADERS", errors);
   requireValue(environment, "LINKZZZ_ANALYTICS_HASH_SALT", errors);
 
   validateDatabaseUrl(environment.DATABASE_URL, errors);

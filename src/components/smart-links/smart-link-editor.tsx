@@ -294,7 +294,8 @@ export default function SmartLinkEditor({
             </Button>
             <Button
               variant={draft.status === "PUBLISHED" ? "secondary" : "primary"}
-              disabled={saving}
+              disabled={saving || publishBlocked}
+              title={publishBlocked ? "Save Page changes before changing publish state." : undefined}
               onClick={() => void saveSmartLink(draft.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED")}
               className="font-black"
             >

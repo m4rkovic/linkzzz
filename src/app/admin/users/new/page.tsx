@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation";
+
 import CreateUserForm from "../../../../components/admin/create-user-form";
+import { getCurrentSession } from "@/server/auth/current-session";
 
 function formatDateInput(date: Date) {
     const year = date.getFullYear();
@@ -7,7 +10,11 @@ function formatDateInput(date: Date) {
     return `${year}-${month}-${day}`;
 }
 
-export default function CreateUserPage() {
+export default async function CreateUserPage() {
+    const session = await getCurrentSession();
+    if (!session) redirect("/login");
+    if (session.principal.role !== "ADMIN") redirect("/dashboard");
+
     const initialDate = formatDateInput(new Date());
     return (
         <div className="mx-auto max-w-7xl">

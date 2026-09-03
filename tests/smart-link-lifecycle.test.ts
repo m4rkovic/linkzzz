@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildDuplicateTitle,
   canCustomerDeleteSmartLink,
+  canDeleteWithoutRemovingLastLandingPage,
   duplicateSlugCandidates,
 } from "../src/server/smart-links/smart-link-lifecycle";
 
@@ -26,4 +27,10 @@ test("customers may only delete draft SmartLinks", () => {
   assert.equal(canCustomerDeleteSmartLink("DRAFT"), true);
   assert.equal(canCustomerDeleteSmartLink("PUBLISHED"), false);
   assert.equal(canCustomerDeleteSmartLink("DISABLED"), false);
+});
+
+test("the final Landing Page cannot be removed while Direct links remain deletable", () => {
+  assert.equal(canDeleteWithoutRemovingLastLandingPage("LANDING_PAGE", 1), false);
+  assert.equal(canDeleteWithoutRemovingLastLandingPage("LANDING_PAGE", 2), true);
+  assert.equal(canDeleteWithoutRemovingLastLandingPage("DIRECT", 0), true);
 });

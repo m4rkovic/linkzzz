@@ -44,17 +44,21 @@ export class PrismaAdminReadRepository implements AdminReadRepository {
       },
     });
 
-    return customers.map((customer) => {
+    return customers.flatMap((customer) => {
       const subscription = customer.subscription;
+      if (!subscription) {
+        console.error("Skipping customer without subscription in admin read model.", {
+          userId: customer.id,
+        });
+        return [];
+      }
+
       const landingPage = customer.smartLinks.find(
         (smartLink) => smartLink.type === "LANDING_PAGE",
       );
-      if (!subscription || !landingPage?.page) {
-        throw new Error("Customer data is incomplete.");
-      }
-      const displayName = landingPage.page.displayName || customer.username;
+      const displayName = landingPage?.page?.displayName || customer.username;
 
-      return {
+      return [{
         user: {
           id: customer.id,
           username: customer.username,
@@ -79,7 +83,7 @@ export class PrismaAdminReadRepository implements AdminReadRepository {
           status: smartLink.status,
           updatedAt: smartLink.updatedAt,
         })),
-      };
+      }];
     });
   }
 }

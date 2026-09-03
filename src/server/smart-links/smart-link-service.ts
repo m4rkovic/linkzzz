@@ -14,6 +14,7 @@ import {
 import {
   buildDuplicateTitle,
   canCustomerDeleteSmartLink,
+  canDeleteWithoutRemovingLastLandingPage,
   duplicateSlugCandidates,
 } from "@/server/smart-links/smart-link-lifecycle";
 import {
@@ -63,7 +64,12 @@ export type DeleteSmartLinkServiceResult =
   | { ok: true }
   | {
       ok: false;
-      code: "NOT_FOUND" | "SMART_LINK_CONFLICT" | "SMART_LINK_NOT_DRAFT" | "SMART_LINK_DISABLED";
+      code:
+        | "NOT_FOUND"
+        | "SMART_LINK_CONFLICT"
+        | "SMART_LINK_NOT_DRAFT"
+        | "SMART_LINK_DISABLED"
+        | "LAST_LANDING_PAGE";
       message: string;
     };
 export type UpdateSmartLinkResult =
@@ -382,6 +388,18 @@ export async function deleteOwnSmartLink(
   }
   if (!canCustomerDeleteSmartLink(current.status)) {
     return { ok: false, code: "SMART_LINK_NOT_DRAFT", message: "Move this Smart Link to Draft before deleting it." };
+  }
+
+  if (current.type === "LANDING_PAGE") {
+    const ownSmartLinks = await dependencies.smartLinks.listForUser(session.user.id);
+    const landingPageCount = ownSmartLinks.filter((smartLink) => smartLink.type === "LANDING_PAGE").length;
+    if (!canDeleteWithoutRemovingLastLandingPage(current.type, landingPageCount)) {
+      return {
+        ok: false,
+        code: "LAST_LANDING_PAGE",
+        message: "Your account must keep at least one Landing Page.",
+      };
+    }
   }
 
   const deleted = await dependencies.smartLinks.deleteIfRevision(
