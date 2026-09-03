@@ -4,12 +4,13 @@ import type { ServerDependencies } from "@/server/services/contracts";
 import { getPrismaClient } from "@/server/persistence/prisma/client";
 import {
   PrismaAdminAccountMutationRepository, PrismaAdminReadRepository,
-  PrismaAdminSubscriptionMutationRepository, PrismaAnalyticsRepository,
-  PrismaAssetRepository, PrismaAuditRepository, PrismaCustomDomainRepository,
-  PrismaPasswordCredentialRepository, PrismaCustomerProvisioningRepository,
-  PrismaLeadSubmissionRepository, PrismaProfileRepository, PrismaSessionRepository,
-  PrismaSmartLinkRepository, PrismaSubscriptionHistoryRepository,
-  PrismaSubscriptionRepository, PrismaUserRepository,
+  PrismaAdminSmartLinkMutationRepository, PrismaAdminSubscriptionMutationRepository,
+  PrismaAnalyticsRepository, PrismaAssetRepository, PrismaAuditRepository,
+  PrismaCustomDomainRepository, PrismaPasswordCredentialRepository,
+  PrismaCustomerProvisioningRepository, PrismaLeadSubmissionRepository,
+  PrismaProfileRepository, PrismaSessionRepository, PrismaSmartLinkRepository,
+  PrismaSubscriptionHistoryRepository, PrismaSubscriptionRepository,
+  PrismaUserRepository,
 } from "@/server/persistence/prisma/repositories/index";
 
 let dependencies: ServerDependencies | undefined;
@@ -19,6 +20,7 @@ export async function getPrismaServerDependencies(): Promise<ServerDependencies>
     adminRead: new PrismaAdminReadRepository(prisma),
     adminSubscriptions: new PrismaAdminSubscriptionMutationRepository(prisma),
     adminAccounts: new PrismaAdminAccountMutationRepository(prisma),
+    adminSmartLinks: new PrismaAdminSmartLinkMutationRepository(prisma),
     users: new PrismaUserRepository(prisma),
     passwords: new PrismaPasswordCredentialRepository(prisma),
     sessions: new PrismaSessionRepository(prisma),

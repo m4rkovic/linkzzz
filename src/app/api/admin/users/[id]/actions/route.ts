@@ -5,7 +5,10 @@ import {
   isAdminAccountAction,
   performAdminAccountAction,
 } from "@/server/admin/admin-account-service";
-import { performAdminUserAction } from "@/server/admin/admin-service";
+import {
+  isAdminSmartLinkAction,
+  performAdminSmartLinkAction,
+} from "@/server/admin/admin-smartlink-service";
 import {
   isAdminSubscriptionAction,
   performAdminSubscriptionAction,
@@ -49,7 +52,13 @@ export async function POST(
       ? await performAdminSubscriptionAction(session, id, body)
       : isAdminAccountAction(body)
         ? await performAdminAccountAction(session, id, body)
-        : await performAdminUserAction(session, id, body);
+        : isAdminSmartLinkAction(body)
+          ? await performAdminSmartLinkAction(session, id, body)
+          : null;
+
+    if (!result) {
+      return NextResponse.json({ error: "Invalid admin action." }, { status: 400 });
+    }
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

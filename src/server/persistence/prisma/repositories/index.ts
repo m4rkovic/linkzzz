@@ -1,6 +1,7 @@
 export { PrismaAnalyticsRepository } from "./analytics-repository";
 export { PrismaAdminAccountMutationRepository } from "./admin-account-mutation-repository";
 export { PrismaAdminReadRepository } from "./admin-read-repository";
+export { PrismaAdminSmartLinkMutationRepository } from "./admin-smartlink-mutation-repository";
 export { PrismaAdminSubscriptionMutationRepository } from "./admin-subscription-mutation-repository";
 export { PrismaAssetRepository } from "./asset-repository";
 export { PrismaAuditRepository } from "./audit-repository";

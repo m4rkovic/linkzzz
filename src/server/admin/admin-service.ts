@@ -1,7 +1,6 @@
 import "server-only";
 
 import { defaultAppearance } from "@/config/profile-defaults";
-import type { AuditAction, AuditResourceType } from "@/server/audit/types";
 import { passwordHasher } from "@/server/auth/password-hasher";
 import type { AuthenticatedSession } from "@/server/auth/auth-service";
 import type { Plan } from "@/server/business/plans";
@@ -14,15 +13,9 @@ import { validatePassword } from "@/server/validation/password";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 import type {
   AdminHistorySnapshot,
-  AdminUserAction,
   AdminUserListItem,
   AdminUserSnapshot,
 } from "@/types/admin-api";
-
-type AdminSmartLinkAction = Extract<
-  AdminUserAction,
-  { type: "SET_SMART_LINK_STATUS" }
->;
 
 export type CreateAdminUserInput = {
   displayName: string;
@@ -200,75 +193,6 @@ export async function createAdminUser(
   return (await getAdminUser(user.id))!;
 }
 
-export async function performAdminUserAction(
-  admin: AuthenticatedSession,
-  userId: string,
-  action: AdminSmartLinkAction,
-): Promise<AdminActionResult> {
-  const dependencies = await getServerDependencies();
-  const user = await dependencies.users.findById(userId);
-  if (!user || user.role !== "CUSTOMER") throw new Error("Customer not found.");
-
-  const subscription = await dependencies.subscriptions.findByUserId(userId);
-  if (!subscription) throw new Error("Customer subscription is missing.");
-
-  const smartLink = await dependencies.smartLinks.findByIdForUser(
-    action.smartLinkId,
-    userId,
-  );
-  if (!smartLink) throw new Error("Smart Link not found.");
-
-  if (action.status === "DISABLED" && smartLink.status !== "PUBLISHED") {
-    throw new Error("Only published Smart Links can be disabled by an administrator.");
-  }
-
-  if (action.status === "PUBLISHED") {
-    const effectiveSubscriptionStatus = getEffectiveSubscriptionStatus(
-      subscription.status,
-      subscription.expiresAt,
-    );
-    const accessActive = user.accountStatus === "ACTIVE" &&
-      effectiveSubscriptionStatus !== "EXPIRED" &&
-      effectiveSubscriptionStatus !== "STOPPED";
-    if (!accessActive) {
-      throw new Error("Restore the customer account and subscription before enabling this Smart Link.");
-    }
-    if (smartLink.status !== "DISABLED") {
-      throw new Error("Only administrator-disabled Smart Links can be restored.");
-    }
-  }
-
-  const write = await dependencies.smartLinks.updateIfRevision(
-    smartLink.id,
-    userId,
-    {
-      title: smartLink.title,
-      slug: smartLink.slug,
-      status: action.status,
-      primaryDestination: smartLink.primaryDestination,
-      deeplink: smartLink.deeplink,
-      geo: smartLink.geo,
-      shield: smartLink.shield,
-      tracking: smartLink.tracking,
-    },
-    smartLink.revision,
-  );
-  if (!write.ok) {
-    throw new Error("Smart Link changed while the admin action was being applied. Try again.");
-  }
-
-  await writeAudit(
-    admin.user.id,
-    userId,
-    action.status === "DISABLED" ? "SMART_LINK_DISABLED" : "SMART_LINK_ENABLED",
-    "SMART_LINK",
-    { title: smartLink.title, slug: smartLink.slug },
-    smartLink.id,
-  );
-
-  return (await getAdminUser(userId))!;
-}
-
 async function buildAdminUserSnapshot(
   userId: string,
   knownUser?: UserRecord,
@@ -329,25 +253,6 @@ async function buildAdminHistory(userId: string): Promise<AdminHistorySnapshot[]
     title: auditTitle(event.action),
     description: auditDescription(event.action, event.metadata),
   }));
-}
-
-async function writeAudit(
-  actorUserId: string,
-  targetUserId: string,
-  action: AuditAction,
-  resourceType: AuditResourceType,
-  metadata?: Record<string, string | number | boolean | null>,
-  resourceId = targetUserId,
-) {
-  const dependencies = await getServerDependencies();
-  await dependencies.audit.write({
-    actorUserId,
-    targetUserId,
-    action,
-    resourceType,
-    resourceId,
-    metadata,
-  });
 }
 
 function createInitials(value: string) {
