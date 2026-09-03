@@ -44,7 +44,7 @@ export async function buildPublicSmartLinkMetadata(
 
   if (smartLink?.type === "DIRECT") {
     return {
-      title: `${smartLink.title} | Linkzzz`,
+      title: { absolute: `${smartLink.title} | Linkzzz` },
       description: "Link destination powered by Linkzzz.",
     };
   }
@@ -55,13 +55,13 @@ export async function buildPublicSmartLinkMetadata(
 
   if (!profile) {
     return {
-      title: "Profile not found | Linkzzz",
+      title: { absolute: "Profile not found | Linkzzz" },
       description: "This Linkzzz profile does not exist.",
     };
   }
 
   return {
-    title: `${profile.displayName} | Linkzzz`,
+    title: { absolute: `${profile.displayName} | Linkzzz` },
     description: profile.bio,
     openGraph: {
       title: profile.displayName,
