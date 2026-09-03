@@ -2,6 +2,7 @@ import "server-only";
 
 import type { ServerDependencies } from "@/server/services/contracts";
 import { getPrismaClient } from "@/server/persistence/prisma/client";
+import { PrismaSmartLinkDeletionRepository } from "@/server/persistence/prisma/repositories/smart-link-deletion-repository";
 import {
   PrismaAdminAccountMutationRepository, PrismaAdminReadRepository,
   PrismaAdminSmartLinkMutationRepository, PrismaAdminSubscriptionMutationRepository,
@@ -14,6 +15,8 @@ import {
 } from "@/server/persistence/prisma/repositories/index";
 
 let dependencies: ServerDependencies | undefined;
+let smartLinkDeletionRepository: PrismaSmartLinkDeletionRepository | undefined;
+
 export async function getPrismaServerDependencies(): Promise<ServerDependencies> {
   const prisma = getPrismaClient();
   return dependencies ??= {
@@ -35,4 +38,9 @@ export async function getPrismaServerDependencies(): Promise<ServerDependencies>
     customDomains: new PrismaCustomDomainRepository(prisma),
     customerProvisioning: new PrismaCustomerProvisioningRepository(prisma),
   };
+}
+
+export function getPrismaSmartLinkDeletionRepository() {
+  const prisma = getPrismaClient();
+  return smartLinkDeletionRepository ??= new PrismaSmartLinkDeletionRepository(prisma);
 }

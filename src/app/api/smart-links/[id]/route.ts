@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveSessionToken } from "@/server/auth/auth-service";
+import { deleteOwnSmartLink } from "@/server/smart-links/smart-link-deletion-service";
 import {
-  deleteOwnSmartLink,
   getOwnSmartLink,
   updateOwnSmartLink,
 } from "@/server/smart-links/smart-link-service";
