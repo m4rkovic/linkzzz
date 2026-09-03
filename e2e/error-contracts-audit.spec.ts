@@ -64,7 +64,7 @@ test("admin and custom-domain APIs expose stable errors while domain lifecycle a
     };
     expect(addPayload.domain?.domain).toBe(domain);
     const customDomainId = addPayload.domain?.id;
-    expect(customDomainId).toBeTruthy();
+    if (!customDomainId) throw new Error("E2E custom domain ID is missing.");
 
     const duplicateDomain = await page.request.post(`${origin}/api/custom-domains`, {
       headers: { origin },
@@ -136,7 +136,11 @@ async function readDomainAudits(userId: string, domain: string) {
        WHERE "targetUserId" = $1
          AND "action" IN ('CUSTOM_DOMAIN_ADDED', 'CUSTOM_DOMAIN_REMOVED')
          AND "metadata" ->> 'domain' = $2
-       ORDER BY "createdAt" ASC`,
+       ORDER BY CASE "action"
+         WHEN 'CUSTOM_DOMAIN_ADDED' THEN 1
+         WHEN 'CUSTOM_DOMAIN_REMOVED' THEN 2
+         ELSE 3
+       END`,
       [userId, domain],
     );
     return result.rows;
