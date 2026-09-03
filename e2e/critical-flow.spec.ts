@@ -120,13 +120,17 @@ test("customer publishes a Landing Page that records a public view", async ({
     ).toBeVisible();
 
     await page.goto("/dashboard/profile");
+    await expect(page).toHaveURL(/\/dashboard\/links\/[^/?]+\?section=Page&page=Profile$/);
     await expect(page.getByLabel("Display name")).toBeEnabled();
     await page.getByLabel("Display name").fill(customer.displayName);
     await page.getByLabel("Bio").fill("Verified through the Linkzzz E2E flow.");
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(page.getByText("Changes saved.", { exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Publish profile" }).click();
-    await expect(page.getByText("Your profile is live", { exact: true })).toBeVisible();
+
+    const publish = page.getByRole("button", { name: "Publish", exact: true });
+    await expect(publish).toBeEnabled();
+    await publish.click();
+    await expect(page.getByText("Smart Link published", { exact: true })).toBeVisible();
 
     await page.goto(`/${customer.slug}`);
     await expect(page.getByText(customer.displayName, { exact: true }).first()).toBeVisible();
