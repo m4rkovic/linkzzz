@@ -139,6 +139,14 @@ test("subscription transitions are enforced from the effective server status", (
       reason: "INVALID_TRANSITION",
     },
   );
+  assert.deepEqual(
+    getSubscriptionTransition("ACTIVE", past, "CHANGE_PLAN", now),
+    {
+      allowed: true,
+      effectiveStatus: "EXPIRED",
+      nextStatus: "ACTIVE",
+    },
+  );
   assert.equal(
     getSubscriptionTransition("STOPPED", future, "RENEW", now).allowed,
     true,
