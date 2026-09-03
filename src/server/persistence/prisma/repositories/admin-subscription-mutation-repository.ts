@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { AdminError } from "@/server/admin/admin-errors";
 import { addMonthsClampedUtc } from "@/server/business/date-math";
 import {
   assessPlanChange,
@@ -27,12 +28,15 @@ export class PrismaAdminSubscriptionMutationRepository
 
       const user = await tx.user.findUnique({ where: { id: userId } });
       if (!user || user.role !== "CUSTOMER") {
-        throw new Error("Customer not found.");
+        throw new AdminError("CUSTOMER_NOT_FOUND", "Customer not found.");
       }
 
       const subscription = await tx.subscription.findUnique({ where: { userId } });
       if (!subscription) {
-        throw new Error("Customer subscription is missing.");
+        throw new AdminError(
+          "SUBSCRIPTION_MISSING",
+          "Customer subscription is missing.",
+        );
       }
 
       switch (action.type) {
