@@ -12,6 +12,7 @@ import type {
 export type RuntimeSmartLinkRepository = Pick<
   SmartLinkRepository,
   | "listForUser"
+  | "countForUser"
   | "findByIdForUser"
   | "findBySlug"
   | "createWithinLimit"
