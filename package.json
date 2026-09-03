@@ -16,7 +16,7 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "npm run test:e2e:functional",
     "test:e2e:all": "npm run test:e2e:functional && npm run test:e2e:visual",
-    "test:e2e:functional": "playwright test e2e/critical-flow.spec.ts e2e/keyboard-accessibility.spec.ts e2e/smart-link-quota-concurrency.spec.ts e2e/admin-subscription-concurrency.spec.ts e2e/admin-account-concurrency.spec.ts e2e/database-timezone.spec.ts e2e/admin-subscription-date-contract.spec.ts e2e/admin-smartlink-transaction.spec.ts",
+    "test:e2e:functional": "playwright test e2e/critical-flow.spec.ts e2e/keyboard-accessibility.spec.ts e2e/smart-link-quota-concurrency.spec.ts e2e/admin-subscription-concurrency.spec.ts e2e/admin-account-concurrency.spec.ts e2e/database-timezone.spec.ts e2e/admin-subscription-date-contract.spec.ts e2e/admin-smartlink-transaction.spec.ts e2e/landing-page-delete-concurrency.spec.ts",
     "test:e2e:visual": "playwright test e2e/visual-regression.spec.ts",
     "test:e2e:visual:update": "playwright test e2e/visual-regression.spec.ts --update-snapshots",
     "test:e2e:ui": "playwright test --ui",
