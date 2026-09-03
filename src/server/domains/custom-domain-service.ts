@@ -2,6 +2,10 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 import { resolveTxt } from "node:dns/promises";
+import {
+  getRequestHostname,
+  isApplicationHostname,
+} from "@/server/domains/host-routing";
 import { getCustomDomainRoutingTarget, normalizeCustomDomain } from "@/server/domains/custom-domain-validation";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import type { CustomDomainRecord } from "@/server/services/contracts";
@@ -16,6 +20,13 @@ export async function resolveActiveCustomDomain(domain: string) {
   const repositories = await getServerDependencies();
   if (!repositories.customDomains) return null;
   return repositories.customDomains.findActiveSlugByDomain(domain);
+}
+
+export async function isSmartLinkHostAllowed(headers: Headers, slug: string) {
+  const host = getRequestHostname(headers);
+  if (!host) return false;
+  if (isApplicationHostname(host)) return true;
+  return (await resolveActiveCustomDomain(host)) === slug;
 }
 
 export async function addCustomDomain(userId: string, smartLinkId: string, input: string) {

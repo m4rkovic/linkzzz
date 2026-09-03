@@ -11,12 +11,13 @@ import { isLinkNavigable, resolveLinkAvailability } from "@/features/links/link-
 import { resolveLinkGeo } from "@/features/links/link-geo";
 import { resolveSensitiveContentWarning } from "@/features/links/sensitive-content";
 import { resolveScheduleWindow } from "@/features/scheduling/schedule";
+import { isSmartLinkHostAllowed } from "@/server/domains/custom-domain-service";
+import { getRequestHostname, isApplicationHostname } from "@/server/domains/host-routing";
 import {
   getVisitorCountryCode,
   resolvePublicProfileGeoRouting,
 } from "@/server/geo/geo-routing";
 import { getPublicProfileBySlug } from "@/server/profile/profile-service";
-import { getRequestHostname, isApplicationHostname } from "@/server/domains/host-routing";
 import { resolveOutboundDestination } from "@/server/smart-links/redirect-resolver";
 import { getSmartLinkRequestContext } from "@/server/smart-links/request-context";
 import { isPublicDestinationKind } from "@/server/smart-links/outbound-routing";
@@ -39,8 +40,13 @@ type OutboundPageProps = {
 };
 
 export default async function SmartLinkOutboundPage({ params, searchParams }: OutboundPageProps) {
-  const [{ slug, kind, id }, query] = await Promise.all([params, searchParams]);
+  const [{ slug, kind, id }, query, requestHeaders] = await Promise.all([
+    params,
+    searchParams,
+    headers(),
+  ]);
   if (!isPublicDestinationKind(kind)) notFound();
+  if (!(await isSmartLinkHostAllowed(requestHeaders, slug))) notFound();
 
   const [smartLink, profile] = await Promise.all([
     getPublicSmartLinkBySlug(slug),
@@ -48,7 +54,6 @@ export default async function SmartLinkOutboundPage({ params, searchParams }: Ou
   ]);
   if (!smartLink || smartLink.type !== "LANDING_PAGE" || !profile) notFound();
 
-  const requestHeaders = await headers();
   const countryCode = getVisitorCountryCode(requestHeaders);
   const routedProfile = resolvePublicProfileGeoRouting(profile, countryCode);
 

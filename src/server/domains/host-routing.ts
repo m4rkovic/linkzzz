@@ -3,6 +3,12 @@ import { domainToASCII } from "node:url";
 
 const DEFAULT_APP_HOSTS = ["linkzzz.com", "www.linkzzz.com"];
 
+const CUSTOM_DOMAIN_OUTBOUND_PATH =
+  /^\/[a-z0-9_-]+\/out\/(?:card|social|block)\/[^/]+\/?$/;
+const CUSTOM_DOMAIN_LEAD_PATH =
+  /^\/api\/public\/smart-links\/[a-z0-9_-]+\/leads\/?$/;
+const CUSTOM_DOMAIN_ANALYTICS_PATH = /^\/api\/analytics\/events\/?$/;
+
 export function normalizeRequestHostname(value: string | null | undefined) {
   if (!value) return null;
   const first = value.split(",")[0]?.trim().toLowerCase() ?? "";
@@ -56,4 +62,13 @@ export function getRequestHostname(headers: Headers, environment: NodeJS.Process
     if (forwarded) return forwarded;
   }
   return normalizeRequestHostname(headers.get("host"));
+}
+
+export function isAllowedCustomDomainPath(pathname: string) {
+  if (pathname === "/") return true;
+  if (pathname.startsWith("/_next/")) return true;
+  if (pathname.startsWith("/uploads/")) return true;
+  if (CUSTOM_DOMAIN_ANALYTICS_PATH.test(pathname)) return true;
+  if (CUSTOM_DOMAIN_LEAD_PATH.test(pathname)) return true;
+  return CUSTOM_DOMAIN_OUTBOUND_PATH.test(pathname);
 }

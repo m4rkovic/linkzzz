@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { isSmartLinkHostAllowed } from "@/server/domains/custom-domain-service";
 import { getVisitorCountryCode } from "@/server/geo/geo-routing";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import { getRequestIp } from "@/server/security/request";
@@ -22,6 +23,9 @@ export async function POST(request: NextRequest) {
   }
   const slug = validateSlug(body.slug);
   if (!slug.ok) return NextResponse.json({ error: "Invalid Smart Link." }, { status: 400 });
+  if (!(await isSmartLinkHostAllowed(request.headers, slug.value))) {
+    return NextResponse.json({ error: "Smart Link not found." }, { status: 404 });
+  }
 
   // Browser-originated analytics are intentionally limited to the one event
   // that cannot be authoritatively observed by the redirect response itself.
