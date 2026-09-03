@@ -2,7 +2,6 @@ import "server-only";
 
 import type { AuthenticatedSession } from "@/server/auth/auth-service";
 import { getAssetStorage } from "@/server/assets/storage-factory";
-import { getSmartLinkLimit } from "@/server/business/plans";
 import { getPlanDefinition } from "@/features/plans/plan-catalog";
 import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import { getServerDependencies } from "@/server/persistence/dependencies";
@@ -46,7 +45,6 @@ export type CreateSmartLinkResult =
       message: string;
     };
 
-
 export type DuplicateSmartLinkResult =
   | { ok: true; smartLink: SmartLinkRecord }
   | {
@@ -72,6 +70,7 @@ export type DeleteSmartLinkServiceResult =
         | "LAST_LANDING_PAGE";
       message: string;
     };
+
 export type UpdateSmartLinkResult =
   | { ok: true; smartLink: SmartLinkRecord }
   | {
@@ -148,22 +147,7 @@ export async function createOwnSmartLink(
   if (!destination.ok) return invalidCreate(destination.message);
 
   const dependencies = await getServerDependencies();
-  const [subscription, existingSlug] = await Promise.all([
-    dependencies.subscriptions.findByUserId(session.user.id),
-    dependencies.smartLinks.findBySlug(slug.value),
-  ]);
-  const access = subscription
-    ? getSubscriptionAccess(subscription.status, subscription.expiresAt)
-    : { hasAccess: false as const };
-
-  if (!subscription || !access.hasAccess) {
-    return {
-      ok: false,
-      code: "SUBSCRIPTION_INACTIVE",
-      message: "An active subscription is required to create a link.",
-    };
-  }
-
+  const existingSlug = await dependencies.smartLinks.findBySlug(slug.value);
   if (existingSlug) {
     return {
       ok: false,
@@ -172,7 +156,6 @@ export async function createOwnSmartLink(
     };
   }
 
-  const limit = getSmartLinkLimit(subscription.plan);
   const create = await dependencies.smartLinks.createWithinLimit({
     userId: session.user.id,
     type: input.type,
@@ -184,13 +167,20 @@ export async function createOwnSmartLink(
     geo: structuredClone(DEFAULT_GEO_CONFIG),
     shield: structuredClone(DEFAULT_SHIELD_CONFIG),
     tracking: structuredClone(DEFAULT_TRACKING_CONFIG),
-  }, limit);
+  });
 
   if (!create.ok) {
+    if (create.reason === "SUBSCRIPTION_INACTIVE") {
+      return {
+        ok: false,
+        code: "SUBSCRIPTION_INACTIVE",
+        message: "An active subscription is required to create a link.",
+      };
+    }
     return {
       ok: false,
       code: "SMART_LINK_LIMIT_REACHED",
-      message: `Your ${getPlanDefinition(subscription.plan).name} plan allows up to ${limit} Smart Links.`,
+      message: `Your ${getPlanDefinition(create.plan).name} plan allows up to ${create.limit} Smart Links.`,
     };
   }
 
@@ -304,7 +294,6 @@ export async function updateOwnSmartLink(
   return { ok: true, smartLink: write.smartLink };
 }
 
-
 export async function duplicateOwnSmartLink(
   session: AuthenticatedSession,
   id: string,
@@ -314,20 +303,13 @@ export async function duplicateOwnSmartLink(
   }
 
   const dependencies = await getServerDependencies();
-  const [source, subscription] = await Promise.all([
-    dependencies.smartLinks.findByIdForUser(id, session.user.id),
-    dependencies.subscriptions.findByUserId(session.user.id),
-  ]);
+  const source = await dependencies.smartLinks.findByIdForUser(id, session.user.id);
   if (!source) {
     return { ok: false, code: "NOT_FOUND", message: "Link not found." };
   }
   if (source.status === "DISABLED") {
     return { ok: false, code: "SMART_LINK_DISABLED", message: "Disabled links cannot be duplicated." };
   }
-  if (!subscription || !getSubscriptionAccess(subscription.status, subscription.expiresAt).hasAccess) {
-    return { ok: false, code: "SUBSCRIPTION_INACTIVE", message: "An active subscription is required to duplicate a link." };
-  }
-  const limit = getSmartLinkLimit(subscription.plan);
 
   let slug: string | null = null;
   for (const candidate of duplicateSlugCandidates(source.slug)) {
@@ -345,14 +327,27 @@ export async function duplicateOwnSmartLink(
     session.user.id,
     buildDuplicateTitle(source.title),
     slug,
-    limit,
   );
   if (!duplicate.ok) {
+    if (duplicate.reason === "SUBSCRIPTION_INACTIVE") {
+      return {
+        ok: false,
+        code: "SUBSCRIPTION_INACTIVE",
+        message: "An active subscription is required to duplicate a link.",
+      };
+    }
     if (duplicate.reason === "LIMIT_REACHED") {
       return {
         ok: false,
         code: "SMART_LINK_LIMIT_REACHED",
-        message: `Your ${getPlanDefinition(subscription.plan).name} plan allows up to ${limit} Smart Links.`,
+        message: `Your ${getPlanDefinition(duplicate.plan).name} plan allows up to ${duplicate.limit} Smart Links.`,
+      };
+    }
+    if (duplicate.reason === "SMART_LINK_DISABLED") {
+      return {
+        ok: false,
+        code: "SMART_LINK_DISABLED",
+        message: "Disabled links cannot be duplicated.",
       };
     }
     return { ok: false, code: "NOT_FOUND", message: "Link not found." };
