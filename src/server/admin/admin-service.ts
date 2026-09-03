@@ -5,7 +5,8 @@ import type { AuditAction, AuditResourceType } from "@/server/audit/types";
 import { passwordHasher } from "@/server/auth/password-hasher";
 import type { AuthenticatedSession } from "@/server/auth/auth-service";
 import type { Plan } from "@/server/business/plans";
-import type { SubscriptionStatus } from "@/server/business/subscriptions";
+import { parseSubscriptionDateInput } from "@/server/business/subscription-dates";
+import { getEffectiveSubscriptionStatus } from "@/server/business/subscriptions";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import type { UserRecord } from "@/server/services/contracts";
 import { validateSlug } from "@/server/validation/slug";
@@ -66,7 +67,7 @@ export async function listAdminUsers(): Promise<AdminUserListItem[]> {
       email: user.email,
       initials: createInitials(displayName),
       plan: subscription.plan,
-      subscriptionStatus: normalizeExpiredStatus(
+      subscriptionStatus: getEffectiveSubscriptionStatus(
         subscription.status,
         subscription.expiresAt,
       ),
@@ -151,8 +152,10 @@ export async function createAdminUser(
   const email = input.email.trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Enter a valid email address.");
 
-  const periodStart = parseDate(input.periodStart, "Invalid subscription start date.");
-  const periodEnd = parseDate(input.periodEnd, "Invalid subscription expiry date.");
+  const periodStart = parseSubscriptionDateInput(input.periodStart);
+  if (!periodStart) throw new Error("Invalid subscription start date.");
+  const periodEnd = parseSubscriptionDateInput(input.periodEnd);
+  if (!periodEnd) throw new Error("Invalid subscription expiry date.");
   if (periodEnd <= periodStart) throw new Error("Subscription expiry must be after the start date.");
 
   const dependencies = await getServerDependencies();
@@ -220,9 +223,13 @@ export async function performAdminUserAction(
   }
 
   if (action.status === "PUBLISHED") {
+    const effectiveSubscriptionStatus = getEffectiveSubscriptionStatus(
+      subscription.status,
+      subscription.expiresAt,
+    );
     const accessActive = user.accountStatus === "ACTIVE" &&
-      normalizeExpiredStatus(subscription.status, subscription.expiresAt) !== "EXPIRED" &&
-      subscription.status !== "STOPPED";
+      effectiveSubscriptionStatus !== "EXPIRED" &&
+      effectiveSubscriptionStatus !== "STOPPED";
     if (!accessActive) {
       throw new Error("Restore the customer account and subscription before enabling this Smart Link.");
     }
@@ -282,7 +289,10 @@ async function buildAdminUserSnapshot(
     email: user.email,
     initials: createInitials(profile.displayName || user.username),
     plan: subscription.plan,
-    subscriptionStatus: normalizeExpiredStatus(subscription.status, subscription.expiresAt),
+    subscriptionStatus: getEffectiveSubscriptionStatus(
+      subscription.status,
+      subscription.expiresAt,
+    ),
     accountStatus: user.accountStatus,
     autoRenew: subscription.autoRenew,
     periodStart: subscription.startedAt.toISOString(),
@@ -338,26 +348,6 @@ async function writeAudit(
     resourceId,
     metadata,
   });
-}
-
-function normalizeExpiredStatus(
-  status: SubscriptionStatus,
-  expiresAt: Date | null,
-): SubscriptionStatus {
-  if (
-    status !== "STOPPED" &&
-    expiresAt &&
-    expiresAt.getTime() < Date.now()
-  ) {
-    return "EXPIRED";
-  }
-  return status;
-}
-
-function parseDate(value: string, error: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) throw new Error(error);
-  return date;
 }
 
 function createInitials(value: string) {

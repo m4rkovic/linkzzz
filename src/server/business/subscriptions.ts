@@ -9,16 +9,29 @@ export type SubscriptionAccessDecision = {
   reason?: "EXPIRED" | "STOPPED";
 };
 
+export function getEffectiveSubscriptionStatus(
+  status: SubscriptionStatus,
+  expiresAt?: Date | null,
+  now = new Date(),
+): SubscriptionStatus {
+  if (status === "STOPPED") return "STOPPED";
+  if (status === "EXPIRED") return "EXPIRED";
+  if (expiresAt && expiresAt.getTime() <= now.getTime()) return "EXPIRED";
+  return status;
+}
+
 export function getSubscriptionAccess(
   status: SubscriptionStatus,
   expiresAt?: Date | null,
   now = new Date(),
 ): SubscriptionAccessDecision {
-  if (status === "STOPPED") {
+  const effectiveStatus = getEffectiveSubscriptionStatus(status, expiresAt, now);
+
+  if (effectiveStatus === "STOPPED") {
     return { hasAccess: false, reason: "STOPPED" };
   }
 
-  if (status === "EXPIRED" || (expiresAt && expiresAt.getTime() <= now.getTime())) {
+  if (effectiveStatus === "EXPIRED") {
     return { hasAccess: false, reason: "EXPIRED" };
   }
 
