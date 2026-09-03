@@ -23,7 +23,7 @@ export type UpdateProfileResult =
         | "INVALID_PROFILE"
         | "SLUG_TAKEN"
         | "PROFILE_DISABLED"
-        | "LINK_LIMIT_REACHED"
+        | "PAGE_CARD_LIMIT_REACHED"
         | "PROFILE_CONFLICT"
         | "SUBSCRIPTION_MISSING";
       message: string;
@@ -230,7 +230,7 @@ export async function updateOwnSmartLinkPage(
   if (!pageCardDecision.allowed) {
     return {
       ok: false,
-      code: "LINK_LIMIT_REACHED",
+      code: "PAGE_CARD_LIMIT_REACHED",
       message: `Your ${getPlanDefinition(subscription.plan).name} plan allows up to ${pageCardDecision.limit} links on one Landing Page.`,
     };
   }
@@ -363,7 +363,7 @@ export async function updateOwnProfile(
   if (!pageCardDecision.allowed) {
     return {
       ok: false,
-      code: "LINK_LIMIT_REACHED",
+      code: "PAGE_CARD_LIMIT_REACHED",
       message: `Your ${getPlanDefinition(subscription.plan).name} plan allows up to ${pageCardDecision.limit} links on one Landing Page.`,
     };
   }
