@@ -61,28 +61,41 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 
   const { id } = await context.params;
-  const result = await updateOwnSmartLink(
-    session,
-    id,
-    body.smartLink,
-    body.revision,
-  );
-  if (!result.ok) {
-    const status =
-      result.code === "NOT_FOUND"
-        ? 404
-        : result.code === "SMART_LINK_DISABLED"
-          ? 403
-          : result.code === "SMART_LINK_CONFLICT" || result.code === "SLUG_TAKEN"
-            ? 409
-            : 400;
-    return NextResponse.json(
-      { error: result.message, code: result.code },
-      { status },
+  try {
+    const result = await updateOwnSmartLink(
+      session,
+      id,
+      body.smartLink,
+      body.revision,
     );
-  }
+    if (!result.ok) {
+      const status =
+        result.code === "NOT_FOUND"
+          ? 404
+          : result.code === "SMART_LINK_DISABLED"
+            ? 403
+            : result.code === "SMART_LINK_CONFLICT" || result.code === "SLUG_TAKEN"
+              ? 409
+              : 400;
+      return NextResponse.json(
+        { error: result.message, code: result.code },
+        { status },
+      );
+    }
 
-  return NextResponse.json({ ok: true, smartLink: result.smartLink });
+    return NextResponse.json({ ok: true, smartLink: result.smartLink });
+  } catch (error) {
+    if (isPrismaUniqueConstraintError(error)) {
+      return NextResponse.json(
+        {
+          error: "This Smart Link URL is already in use.",
+          code: "SLUG_TAKEN",
+        },
+        { status: 409 },
+      );
+    }
+    throw error;
+  }
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
@@ -129,6 +142,15 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
 function isRevision(value: unknown): value is number {
   return Number.isSafeInteger(value) && Number(value) >= 1;
+}
+
+function isPrismaUniqueConstraintError(error: unknown) {
+  return Boolean(
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "P2002",
+  );
 }
 
 async function getSession(request: NextRequest) {
