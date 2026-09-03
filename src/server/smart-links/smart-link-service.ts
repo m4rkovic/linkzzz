@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { AuthenticatedSession } from "@/server/auth/auth-service";
-import { getAssetStorage } from "@/server/assets/storage-factory";
 import { getPlanDefinition } from "@/features/plans/plan-catalog";
 import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import { getServerDependencies } from "@/server/persistence/dependencies";
@@ -12,8 +11,6 @@ import {
 } from "@/server/smart-links/smart-link-validation";
 import {
   buildDuplicateTitle,
-  canCustomerDeleteSmartLink,
-  canDeleteWithoutRemovingLastLandingPage,
   duplicateSlugCandidates,
 } from "@/server/smart-links/smart-link-lifecycle";
 import {
@@ -55,19 +52,6 @@ export type DuplicateSmartLinkResult =
         | "SMART_LINK_LIMIT_REACHED"
         | "SUBSCRIPTION_INACTIVE"
         | "SLUG_TAKEN";
-      message: string;
-    };
-
-export type DeleteSmartLinkServiceResult =
-  | { ok: true }
-  | {
-      ok: false;
-      code:
-        | "NOT_FOUND"
-        | "SMART_LINK_CONFLICT"
-        | "SMART_LINK_NOT_DRAFT"
-        | "SMART_LINK_DISABLED"
-        | "LAST_LANDING_PAGE";
       message: string;
     };
 
@@ -365,70 +349,6 @@ export async function duplicateOwnSmartLink(
     metadata: { sourceSmartLinkId: source.id },
   });
   return { ok: true, smartLink: duplicate.smartLink };
-}
-
-export async function deleteOwnSmartLink(
-  session: AuthenticatedSession,
-  id: string,
-  expectedRevision: number,
-): Promise<DeleteSmartLinkServiceResult> {
-  if (session.user.role !== "CUSTOMER") {
-    return { ok: false, code: "NOT_FOUND", message: "Link not found." };
-  }
-
-  const dependencies = await getServerDependencies();
-  const current = await dependencies.smartLinks.findByIdForUser(id, session.user.id);
-  if (!current) {
-    return { ok: false, code: "NOT_FOUND", message: "Link not found." };
-  }
-  if (current.status === "DISABLED") {
-    return { ok: false, code: "SMART_LINK_DISABLED", message: "Administrator-disabled links cannot be deleted by the customer." };
-  }
-  if (!canCustomerDeleteSmartLink(current.status)) {
-    return { ok: false, code: "SMART_LINK_NOT_DRAFT", message: "Move this Smart Link to Draft before deleting it." };
-  }
-
-  if (current.type === "LANDING_PAGE") {
-    const ownSmartLinks = await dependencies.smartLinks.listForUser(session.user.id);
-    const landingPageCount = ownSmartLinks.filter((smartLink) => smartLink.type === "LANDING_PAGE").length;
-    if (!canDeleteWithoutRemovingLastLandingPage(current.type, landingPageCount)) {
-      return {
-        ok: false,
-        code: "LAST_LANDING_PAGE",
-        message: "Your account must keep at least one Landing Page.",
-      };
-    }
-  }
-
-  const deleted = await dependencies.smartLinks.deleteIfRevision(
-    id,
-    session.user.id,
-    expectedRevision,
-  );
-  if (!deleted.ok) {
-    return deleted.reason === "NOT_FOUND"
-      ? { ok: false, code: "NOT_FOUND", message: "Link not found." }
-      : { ok: false, code: "SMART_LINK_CONFLICT", message: "This Smart Link changed in another tab. Reload before deleting it." };
-  }
-
-  if (deleted.storageKeysToRemove.length) {
-    try {
-      const storage = await getAssetStorage();
-      await Promise.allSettled(deleted.storageKeysToRemove.map((storageKey) => storage.remove(storageKey)));
-    } catch {
-      // Database deletion is authoritative. A storage sweep may retry orphan cleanup later.
-    }
-  }
-
-  await dependencies.audit.write({
-    actorUserId: session.user.id,
-    targetUserId: session.user.id,
-    action: "SMART_LINK_DELETED",
-    resourceType: "SMART_LINK",
-    resourceId: id,
-    metadata: { slug: current.slug, type: current.type },
-  });
-  return { ok: true };
 }
 
 function invalidCreate(message: string): CreateSmartLinkResult {
