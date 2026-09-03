@@ -69,7 +69,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const status =
       result.code === "PROFILE_DISABLED"
         ? 403
-        : result.code === "PROFILE_CONFLICT" || result.code === "LINK_LIMIT_REACHED"
+        : result.code === "PROFILE_CONFLICT" ||
+            result.code === "PAGE_CARD_LIMIT_REACHED"
           ? 409
           : 400;
     return NextResponse.json(
