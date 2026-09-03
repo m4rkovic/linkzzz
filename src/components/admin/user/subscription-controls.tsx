@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarDays, CheckCircle2, Clock3, PauseCircle, PlayCir
 import type { AdminPlan, AdminUserModel } from "@/features/admin/admin-types";
 import { PLAN_CATALOG, PLAN_ORDER } from "@/features/plans/plan-catalog";
 import { formatAdminDate, getExpiryLabel, getPlanLimit, getPlanUsageLabel } from "@/features/admin/subscription-rules";
+import { getAllowedSubscriptionActions } from "@/server/business/subscriptions";
 
 export default function SubscriptionControls({
   user,
@@ -20,6 +21,12 @@ export default function SubscriptionControls({
   const maxLinks = getPlanLimit(user.plan);
   const overLimit = user.linksUsed > maxLinks;
   const usagePercentage = Math.min((user.linksUsed / maxLinks) * 100, 100);
+  const allowedActions = getAllowedSubscriptionActions(
+    user.subscriptionStatus,
+    user.periodEnd,
+  );
+  const canStopRenewal = allowedActions.includes("STOP_RENEWAL");
+  const canResumeRenewal = allowedActions.includes("RESUME_RENEWAL");
 
   return (
     <div className="space-y-6">
@@ -50,18 +57,18 @@ export default function SubscriptionControls({
               <p className="mt-1 text-xs leading-5 text-zinc-500">{user.autoRenew ? "Subscription currently renews automatically." : "Automatic renewal is currently disabled."}</p>
             </div>
 
-            {user.subscriptionStatus === "CANCEL_AT_PERIOD_END" ? (
+            {canResumeRenewal ? (
               <button type="button" onClick={onResumeRenewal} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 px-4 text-sm font-semibold text-zinc-700 sm:w-auto">
                 <PlayCircle size={17} /> Resume renewal
               </button>
             ) : (
-              <button type="button" onClick={onStopRenewal} disabled={user.subscriptionStatus !== "ACTIVE"} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 px-4 text-sm font-semibold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto">
+              <button type="button" onClick={onStopRenewal} disabled={!canStopRenewal} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 px-4 text-sm font-semibold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto">
                 <PauseCircle size={17} /> Stop renewal
               </button>
             )}
           </div>
 
-          {user.subscriptionStatus === "CANCEL_AT_PERIOD_END" && (
+          {canResumeRenewal && (
             <div className="mt-4 flex items-start gap-3 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-800">
               <Clock3 size={18} className="mt-0.5 shrink-0 text-amber-700" />
               Customer keeps access until <strong>{formatAdminDate(user.periodEnd)}</strong>.

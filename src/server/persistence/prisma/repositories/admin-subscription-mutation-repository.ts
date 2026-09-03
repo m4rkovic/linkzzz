@@ -7,6 +7,10 @@ import {
   assessPlanChange,
   assessSmartLinkPlanChange,
 } from "@/server/business/plans";
+import {
+  getSubscriptionTransition,
+  type SubscriptionStatus,
+} from "@/server/business/subscriptions";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
 import type {
@@ -39,11 +43,25 @@ export class PrismaAdminSubscriptionMutationRepository
         );
       }
 
+      const now = new Date();
+      const transition = getSubscriptionTransition(
+        subscription.status,
+        subscription.endsAt,
+        action.type,
+        now,
+      );
+      if (!transition.allowed) {
+        throw new AdminError(
+          "SUBSCRIPTION_INVALID_STATE",
+          invalidTransitionMessage(action.type, transition.effectiveStatus),
+        );
+      }
+
       switch (action.type) {
         case "RENEW": {
-          const now = new Date();
           const restarting =
-            subscription.status === "EXPIRED" || subscription.status === "STOPPED";
+            transition.effectiveStatus === "EXPIRED" ||
+            transition.effectiveStatus === "STOPPED";
           const base =
             restarting || subscription.endsAt < now ? now : subscription.endsAt;
           const startsAt = restarting ? now : subscription.startsAt;
@@ -56,7 +74,7 @@ export class PrismaAdminSubscriptionMutationRepository
           await saveSubscription(tx, {
             userId,
             plan: subscription.plan,
-            status: "ACTIVE",
+            status: transition.nextStatus,
             startsAt,
             endsAt,
             autoRenew: subscription.autoRenew,
@@ -69,9 +87,15 @@ export class PrismaAdminSubscriptionMutationRepository
               where: { id: userId },
               data: { accountStatus: "ACTIVE" },
             });
+            await writeUserAudit(tx, {
+              actorUserId,
+              targetUserId: userId,
+              action: "USER_REACTIVATED",
+              metadata: { reason: "SUBSCRIPTION_RENEWED" },
+            });
           }
 
-          await writeAudit(tx, {
+          await writeSubscriptionAudit(tx, {
             actorUserId,
             targetUserId: userId,
             action: "SUBSCRIPTION_RENEWED",
@@ -84,13 +108,13 @@ export class PrismaAdminSubscriptionMutationRepository
           await saveSubscription(tx, {
             userId,
             plan: subscription.plan,
-            status: "CANCEL_AT_PERIOD_END",
+            status: transition.nextStatus,
             startsAt: subscription.startsAt,
             endsAt: subscription.endsAt,
             autoRenew: false,
             historyAction: "STOP_RENEWAL",
           });
-          await writeAudit(tx, {
+          await writeSubscriptionAudit(tx, {
             actorUserId,
             targetUserId: userId,
             action: "SUBSCRIPTION_STOP_RENEWAL",
@@ -101,13 +125,13 @@ export class PrismaAdminSubscriptionMutationRepository
           await saveSubscription(tx, {
             userId,
             plan: subscription.plan,
-            status: "ACTIVE",
+            status: transition.nextStatus,
             startsAt: subscription.startsAt,
             endsAt: subscription.endsAt,
             autoRenew: true,
             historyAction: "RESUME_RENEWAL",
           });
-          await writeAudit(tx, {
+          await writeSubscriptionAudit(tx, {
             actorUserId,
             targetUserId: userId,
             action: "SUBSCRIPTION_RESUMED",
@@ -115,25 +139,37 @@ export class PrismaAdminSubscriptionMutationRepository
           return;
 
         case "STOP_IMMEDIATELY": {
-          const now = new Date();
           await saveSubscription(tx, {
             userId,
             plan: subscription.plan,
-            status: "STOPPED",
+            status: transition.nextStatus,
             startsAt: subscription.startsAt,
             endsAt: subscription.endsAt,
             autoRenew: false,
             historyAction: "STOP_IMMEDIATELY",
           });
-          await tx.user.update({
-            where: { id: userId },
-            data: { accountStatus: "DISABLED" },
-          });
+
+          // Billing shutdown must never erase an administrator moderation lock.
+          // SUSPENDED stays SUSPENDED; only a normal ACTIVE account receives the
+          // billing DISABLED marker that a later renewal is allowed to clear.
+          if (user.accountStatus === "ACTIVE") {
+            await tx.user.update({
+              where: { id: userId },
+              data: { accountStatus: "DISABLED" },
+            });
+            await writeUserAudit(tx, {
+              actorUserId,
+              targetUserId: userId,
+              action: "USER_DISABLED",
+              metadata: { reason: "SUBSCRIPTION_STOPPED" },
+            });
+          }
+
           await tx.session.updateMany({
             where: { userId, revokedAt: null },
             data: { revokedAt: now },
           });
-          await writeAudit(tx, {
+          await writeSubscriptionAudit(tx, {
             actorUserId,
             targetUserId: userId,
             action: "SUBSCRIPTION_STOPPED",
@@ -185,14 +221,14 @@ export class PrismaAdminSubscriptionMutationRepository
           await saveSubscription(tx, {
             userId,
             plan: action.plan,
-            status: subscription.status,
+            status: transition.nextStatus,
             startsAt: subscription.startsAt,
             endsAt: subscription.endsAt,
             autoRenew: subscription.autoRenew,
             historyAction: "PLAN_CHANGED",
             historyMetadata: metadata,
           });
-          await writeAudit(tx, {
+          await writeSubscriptionAudit(tx, {
             actorUserId,
             targetUserId: userId,
             action: "PLAN_CHANGED",
@@ -208,7 +244,7 @@ export class PrismaAdminSubscriptionMutationRepository
 type SubscriptionWrite = {
   userId: string;
   plan: "BASIC" | "PRO" | "ENTERPRISE";
-  status: "ACTIVE" | "CANCEL_AT_PERIOD_END" | "EXPIRED" | "STOPPED";
+  status: SubscriptionStatus;
   startsAt: Date;
   endsAt: Date;
   autoRenew: boolean;
@@ -244,7 +280,7 @@ async function saveSubscription(
   });
 }
 
-async function writeAudit(
+async function writeSubscriptionAudit(
   tx: Prisma.TransactionClient,
   input: {
     actorUserId: string;
@@ -263,4 +299,33 @@ async function writeAudit(
       metadata: input.metadata ? toJson(input.metadata) : undefined,
     },
   });
+}
+
+async function writeUserAudit(
+  tx: Prisma.TransactionClient,
+  input: {
+    actorUserId: string;
+    targetUserId: string;
+    action: "USER_DISABLED" | "USER_REACTIVATED";
+    metadata: Record<string, string | number | boolean | null>;
+  },
+) {
+  await tx.auditLog.create({
+    data: {
+      actorUserId: input.actorUserId,
+      targetUserId: input.targetUserId,
+      action: input.action,
+      resourceType: "USER",
+      resourceId: input.targetUserId,
+      metadata: toJson(input.metadata),
+    },
+  });
+}
+
+function invalidTransitionMessage(
+  action: AdminSubscriptionMutation["type"],
+  status: SubscriptionStatus,
+) {
+  const actionLabel = action.replaceAll("_", " ").toLowerCase();
+  return `Cannot ${actionLabel} while the subscription is ${status.toLowerCase().replaceAll("_", " ")}.`;
 }

@@ -6,9 +6,14 @@ import {
   assessSmartLinkPlanChange,
   canCreateLink,
   canCreateSmartLink,
+  canSavePageCards,
   getPageCardLimit,
   getSmartLinkLimit,
 } from "../src/server/business/plans";
+import {
+  getAllowedSubscriptionActions,
+  getSubscriptionTransition,
+} from "../src/server/business/subscriptions";
 import { PLAN_CATALOG } from "../src/features/plans/plan-catalog";
 
 test("plan catalog exposes the current customer-facing prices", () => {
@@ -44,6 +49,33 @@ test("Landing Page link limits are 10, 30 and 100", () => {
   });
 });
 
+test("grandfathered page-card overage can shrink or stay flat but cannot grow", () => {
+  assert.deepEqual(canSavePageCards("BASIC", 17, 17), {
+    allowed: true,
+    limit: 10,
+    previousCount: 17,
+    nextCount: 17,
+    overLimit: true,
+  });
+  assert.deepEqual(canSavePageCards("BASIC", 17, 12), {
+    allowed: true,
+    limit: 10,
+    previousCount: 17,
+    nextCount: 12,
+    overLimit: true,
+  });
+  assert.deepEqual(canSavePageCards("BASIC", 17, 18), {
+    allowed: false,
+    limit: 10,
+    previousCount: 17,
+    nextCount: 18,
+    overLimit: true,
+    reason: "PAGE_CARD_LIMIT_REACHED",
+  });
+  assert.equal(canSavePageCards("BASIC", 9, 10).allowed, true);
+  assert.equal(canSavePageCards("BASIC", 10, 11).allowed, false);
+});
+
 test("page-link downgrade assessment preserves data and reports overage", () => {
   assert.deepEqual(assessPlanChange("PRO", "BASIC", 17), {
     fromPlan: "PRO",
@@ -64,4 +96,63 @@ test("Smart Link downgrade assessment reports workspace overage", () => {
     exceedsNewLimit: true,
     linksToRemoveBeforeAddingNew: 10,
   });
+});
+
+test("subscription transitions are enforced from the effective server status", () => {
+  const now = new Date("2026-09-03T12:00:00.000Z");
+  const future = new Date("2026-10-03T12:00:00.000Z");
+  const past = new Date("2026-08-03T12:00:00.000Z");
+
+  assert.deepEqual(getAllowedSubscriptionActions("ACTIVE", future, now), [
+    "RENEW",
+    "STOP_RENEWAL",
+    "STOP_IMMEDIATELY",
+    "CHANGE_PLAN",
+  ]);
+  assert.deepEqual(
+    getSubscriptionTransition("ACTIVE", future, "STOP_RENEWAL", now),
+    {
+      allowed: true,
+      effectiveStatus: "ACTIVE",
+      nextStatus: "CANCEL_AT_PERIOD_END",
+    },
+  );
+  assert.deepEqual(
+    getSubscriptionTransition(
+      "CANCEL_AT_PERIOD_END",
+      future,
+      "RESUME_RENEWAL",
+      now,
+    ),
+    {
+      allowed: true,
+      effectiveStatus: "CANCEL_AT_PERIOD_END",
+      nextStatus: "ACTIVE",
+    },
+  );
+
+  assert.deepEqual(
+    getSubscriptionTransition("ACTIVE", past, "STOP_RENEWAL", now),
+    {
+      allowed: false,
+      effectiveStatus: "EXPIRED",
+      reason: "INVALID_TRANSITION",
+    },
+  );
+  assert.deepEqual(
+    getSubscriptionTransition("ACTIVE", past, "CHANGE_PLAN", now),
+    {
+      allowed: true,
+      effectiveStatus: "EXPIRED",
+      nextStatus: "ACTIVE",
+    },
+  );
+  assert.equal(
+    getSubscriptionTransition("STOPPED", future, "RENEW", now).allowed,
+    true,
+  );
+  assert.equal(
+    getSubscriptionTransition("STOPPED", future, "RESUME_RENEWAL", now).allowed,
+    false,
+  );
 });
