@@ -2,7 +2,8 @@ import "server-only";
 
 import { defaultAppearance } from "@/config/profile-defaults";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
-import { getSmartLinkLimit } from "@/server/business/plans";
+import { getPageCardLimit, getSmartLinkLimit } from "@/server/business/plans";
+import { PageCardDuplicateLimitError } from "@/server/business/quota-errors";
 import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
@@ -163,7 +164,15 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
 
       const source = await tx.smartLink.findFirst({
         where: { id, userId },
-        select: { status: true },
+        select: {
+          status: true,
+          type: true,
+          page: {
+            select: {
+              _count: { select: { cards: true } },
+            },
+          },
+        },
       });
       if (!source) {
         return { ok: false as const, reason: "NOT_FOUND" as const };
@@ -175,6 +184,18 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
       const quota = await getLockedQuotaState(tx, userId);
       if (!quota.active) {
         return { ok: false as const, reason: "SUBSCRIPTION_INACTIVE" as const };
+      }
+
+      if (source.type === "LANDING_PAGE") {
+        const currentPageCardCount = source.page?._count.cards ?? 0;
+        const pageCardLimit = getPageCardLimit(quota.plan);
+        if (currentPageCardCount > pageCardLimit) {
+          throw new PageCardDuplicateLimitError(
+            quota.plan,
+            pageCardLimit,
+            currentPageCardCount,
+          );
+        }
       }
 
       const currentCount = await tx.smartLink.count({ where: { userId } });

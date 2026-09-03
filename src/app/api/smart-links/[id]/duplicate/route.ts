@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveSessionToken } from "@/server/auth/auth-service";
+import { PageCardDuplicateLimitError } from "@/server/business/quota-errors";
 import { checkRateLimit, SENSITIVE_ACTION_RATE_LIMIT } from "@/server/security/rate-limit";
 import { getRequestIp, hasValidRequestOrigin } from "@/server/security/request";
 import { getSessionCookieName } from "@/server/security/session-cookie";
@@ -41,6 +42,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     return NextResponse.json({ smartLink: result.smartLink }, { status: 201 });
   } catch (error) {
+    if (error instanceof PageCardDuplicateLimitError) {
+      const removeCount = error.currentCount - error.limit;
+      return NextResponse.json(
+        {
+          error: `This Landing Page has ${error.currentCount} links, but the current plan allows up to ${error.limit}. Remove ${removeCount} ${removeCount === 1 ? "link" : "links"} before duplicating it.`,
+          code: error.code,
+          limit: error.limit,
+          currentCount: error.currentCount,
+        },
+        { status: 409 },
+      );
+    }
     if (isUniqueConstraintError(error)) {
       return NextResponse.json({ error: "Could not allocate a unique URL for the duplicate.", code: "SLUG_TAKEN" }, { status: 409 });
     }
