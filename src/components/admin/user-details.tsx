@@ -15,6 +15,7 @@ import type { AdminPlan } from "@/features/admin/admin-types";
 import { formatAdminDate, getPlanLimit, getPlanUsageLabel } from "@/features/admin/subscription-rules";
 import { getPlanDefinition } from "@/features/plans/plan-catalog";
 import { useAdminUser } from "@/features/admin/use-admin-user";
+import { getAllowedSubscriptionActions } from "@/server/business/subscriptions";
 import type { AdminHistorySnapshot, AdminUserSnapshot } from "@/types/admin-api";
 
  type ConfirmAction =
@@ -57,6 +58,11 @@ export default function UserDetails({
 
   const subscriptionUsable = user.subscriptionStatus === "ACTIVE" || user.subscriptionStatus === "CANCEL_AT_PERIOD_END";
   const canRestoreLinks = user.accountStatus === "ACTIVE" && subscriptionUsable;
+  const allowedSubscriptionActions = getAllowedSubscriptionActions(
+    user.subscriptionStatus,
+    user.periodEnd,
+  );
+  const canStopImmediately = allowedSubscriptionActions.includes("STOP_IMMEDIATELY");
 
   function requestPlanChange(plan: AdminPlan) {
     if (plan === user!.plan) return;
@@ -131,7 +137,7 @@ export default function UserDetails({
               </div>
             </div>
             <div className="mt-4 rounded-xl bg-red-50 p-4 text-xs leading-5 text-red-700">Smart Links, assets, domains and analytics are preserved. Published/Draft states are not rewritten during the stop.</div>
-            <button type="button" onClick={() => setConfirmAction({ type: "STOP_IMMEDIATELY" })} disabled={user.subscriptionStatus === "STOPPED"} className="mt-4 min-h-11 w-full rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40">Stop instantly</button>
+            <button type="button" onClick={() => setConfirmAction({ type: "STOP_IMMEDIATELY" })} disabled={!canStopImmediately} className="mt-4 min-h-11 w-full rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40">Stop instantly</button>
           </section>
 
           <SubscriptionHistory history={history} />
