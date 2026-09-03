@@ -125,8 +125,8 @@ async function resetSeedCustomerTestState(connectionString: string) {
     await database.query(
       `UPDATE "SmartLink"
        SET "updatedAt" = CASE "slug"
-         WHEN 'skyhook-listen' THEN TIMESTAMP '2026-09-03 12:00:00'
-         WHEN 'skyhook' THEN TIMESTAMP '2026-09-03 11:00:00'
+         WHEN 'skyhook-listen' THEN TIMESTAMPTZ '2026-09-03 12:00:00+00'
+         WHEN 'skyhook' THEN TIMESTAMPTZ '2026-09-03 11:00:00+00'
          ELSE "updatedAt"
        END
        WHERE "slug" IN ('skyhook', 'skyhook-listen')`,
@@ -137,12 +137,12 @@ async function resetSeedCustomerTestState(connectionString: string) {
          "id", "smartLinkId", "type", "isBot", "createdAt"
        )
        SELECT 'e2e-visual-skyhook-view-1', link."id", 'SMART_LINK_VIEW'::"AnalyticsEventType", false,
-              TIMESTAMP '2026-09-03 10:00:00'
+              TIMESTAMPTZ '2026-09-03 10:00:00+00'
        FROM "SmartLink" AS link
        WHERE link."slug" = 'skyhook'
        UNION ALL
        SELECT 'e2e-visual-skyhook-view-2', link."id", 'SMART_LINK_VIEW'::"AnalyticsEventType", false,
-              TIMESTAMP '2026-09-03 10:05:00'
+              TIMESTAMPTZ '2026-09-03 10:05:00+00'
        FROM "SmartLink" AS link
        WHERE link."slug" = 'skyhook'`,
     );
@@ -155,4 +155,3 @@ async function resetSeedCustomerTestState(connectionString: string) {
     await database.end();
   }
 }
-

@@ -47,7 +47,7 @@ async function readSubscriptionState(userId: string) {
   try {
     await database.connect();
     const subscription = await database.query<{ endsAt: Date }>(
-      `SELECT "endsAt" AT TIME ZONE 'UTC' AS "endsAt"
+      `SELECT "endsAt"
        FROM "Subscription"
        WHERE "userId" = $1`,
       [userId],
