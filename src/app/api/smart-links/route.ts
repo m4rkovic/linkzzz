@@ -4,6 +4,10 @@ import { resolveSessionToken } from "@/server/auth/auth-service";
 import { getSmartLinkLimit } from "@/server/business/plans";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import {
+  checkRateLimit,
+  SMART_LINK_CREATE_RATE_LIMIT,
+} from "@/server/security/rate-limit";
+import {
   createOwnSmartLink,
   listOwnSmartLinks,
 } from "@/server/smart-links/smart-link-service";
@@ -45,6 +49,26 @@ export async function POST(request: NextRequest) {
   const session = await getCustomerSession(request);
   if (!session) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  const rateLimit = await checkRateLimit(
+    `${session.user.id}:smart-link-create`,
+    SMART_LINK_CREATE_RATE_LIMIT,
+  );
+  if (!rateLimit.available) {
+    return NextResponse.json(
+      { error: "Request protection is temporarily unavailable." },
+      { status: 503 },
+    );
+  }
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: "Too many SmartLink creation attempts. Try again shortly.",
+        retryAfterMs: rateLimit.retryAfterMs,
+      },
+      { status: 429 },
+    );
   }
 
   const body = await request.json().catch(() => null);
