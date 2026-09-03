@@ -137,20 +137,20 @@ export class PrismaAdminSubscriptionMutationRepository
         }
 
         case "CHANGE_PLAN": {
-          const [smartLinkCount, pages] = await Promise.all([
-            tx.smartLink.count({ where: { userId } }),
-            tx.page.findMany({
-              where: {
-                smartLink: {
-                  userId,
-                  type: "LANDING_PAGE",
-                },
+          // Interactive Prisma transactions use one pg client. Keep queries
+          // sequential so pg@9 does not reject overlapping client.query calls.
+          const smartLinkCount = await tx.smartLink.count({ where: { userId } });
+          const pages = await tx.page.findMany({
+            where: {
+              smartLink: {
+                userId,
+                type: "LANDING_PAGE",
               },
-              select: {
-                _count: { select: { cards: true } },
-              },
-            }),
-          ]);
+            },
+            select: {
+              _count: { select: { cards: true } },
+            },
+          });
           const maxPageCardCount = pages.reduce(
             (max, page) => Math.max(max, page._count.cards),
             0,
