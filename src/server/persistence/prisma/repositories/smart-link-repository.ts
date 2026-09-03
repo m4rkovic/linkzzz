@@ -2,6 +2,8 @@ import "server-only";
 
 import { defaultAppearance } from "@/config/profile-defaults";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import { getSmartLinkLimit } from "@/server/business/plans";
+import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
 import type { SmartLinkRepository } from "@/server/services/contracts";
@@ -85,14 +87,22 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
 
   async createWithinLimit(
     record: Parameters<SmartLinkRepository["createWithinLimit"]>[0],
-    limit: number,
   ) {
-    assertPositiveLimit(limit);
     return this.db.$transaction(async (tx) => {
       await lockUserMutation(tx, record.userId);
+      const quota = await getLockedQuotaState(tx, record.userId);
+      if (!quota.active) {
+        return { ok: false as const, reason: "SUBSCRIPTION_INACTIVE" as const };
+      }
+
       const currentCount = await tx.smartLink.count({ where: { userId: record.userId } });
-      if (currentCount >= limit) {
-        return { ok: false as const, reason: "LIMIT_REACHED" as const };
+      if (currentCount >= quota.limit) {
+        return {
+          ok: false as const,
+          reason: "LIMIT_REACHED" as const,
+          plan: quota.plan,
+          limit: quota.limit,
+        };
       }
 
       const row = await createSmartLinkInTransaction(tx, record);
@@ -147,14 +157,34 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
     userId: string,
     title: string,
     slug: string,
-    limit: number,
   ) {
-    assertPositiveLimit(limit);
     return this.db.$transaction(async (tx) => {
       await lockUserMutation(tx, userId);
+
+      const source = await tx.smartLink.findFirst({
+        where: { id, userId },
+        select: { status: true },
+      });
+      if (!source) {
+        return { ok: false as const, reason: "NOT_FOUND" as const };
+      }
+      if (source.status === "DISABLED") {
+        return { ok: false as const, reason: "SMART_LINK_DISABLED" as const };
+      }
+
+      const quota = await getLockedQuotaState(tx, userId);
+      if (!quota.active) {
+        return { ok: false as const, reason: "SUBSCRIPTION_INACTIVE" as const };
+      }
+
       const currentCount = await tx.smartLink.count({ where: { userId } });
-      if (currentCount >= limit) {
-        return { ok: false as const, reason: "LIMIT_REACHED" as const };
+      if (currentCount >= quota.limit) {
+        return {
+          ok: false as const,
+          reason: "LIMIT_REACHED" as const,
+          plan: quota.plan,
+          limit: quota.limit,
+        };
       }
 
       const duplicate = await duplicateSmartLinkInTransaction(
@@ -215,6 +245,25 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
       };
     });
   }
+}
+
+async function getLockedQuotaState(
+  tx: Prisma.TransactionClient,
+  userId: string,
+) {
+  const subscription = await tx.subscription.findUnique({ where: { userId } });
+  if (
+    !subscription ||
+    !getSubscriptionAccess(subscription.status, subscription.endsAt).hasAccess
+  ) {
+    return { active: false as const };
+  }
+
+  return {
+    active: true as const,
+    plan: subscription.plan,
+    limit: getSmartLinkLimit(subscription.plan),
+  };
 }
 
 async function createSmartLinkInTransaction(
@@ -407,12 +456,6 @@ async function duplicateSmartLinkInTransaction(
     where: { id: duplicate.id },
   });
   return smartLinkRecord(created);
-}
-
-function assertPositiveLimit(limit: number) {
-  if (!Number.isSafeInteger(limit) || limit < 1) {
-    throw new Error("SmartLink limit must be a positive safe integer.");
-  }
 }
 
 function remapPageEngagement(value: unknown, cardIdMap: Map<string, string>) {
