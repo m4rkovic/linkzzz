@@ -16,7 +16,12 @@ export type VisitorBrowser =
   | "FIREFOX"
   | "OTHER";
 
-export type TrafficKind = "HUMAN" | "VERIFIED_CRAWLER" | "KNOWN_CRAWLER" | "AUTOMATION";
+export type TrafficKind =
+  | "HUMAN"
+  | "VERIFIED_CRAWLER"
+  | "KNOWN_CRAWLER"
+  | "AUTOMATION"
+  | "UNKNOWN";
 
 export type SmartLinkRequestContext = {
   userAgent: string;
