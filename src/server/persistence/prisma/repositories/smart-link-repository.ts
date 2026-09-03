@@ -7,7 +7,10 @@ import { PageCardDuplicateLimitError } from "@/server/business/quota-errors";
 import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
-import type { SmartLinkRepository } from "@/server/services/contracts";
+import type {
+  CreateSmartLinkRecord,
+  SmartLinkRepository,
+} from "@/server/services/contracts";
 import type {
   DeeplinkConfig,
   DestinationConfig,
@@ -16,6 +19,11 @@ import type {
   SmartLinkRecord,
   TrackingConfig,
 } from "@/types/smart-link";
+
+type GuardedSmartLinkRepository = Omit<
+  SmartLinkRepository,
+  "create" | "duplicateForUser" | "deleteIfRevision"
+>;
 
 function smartLinkRecord(row: {
   id: string;
@@ -52,7 +60,7 @@ function smartLinkRecord(row: {
   };
 }
 
-export class PrismaSmartLinkRepository implements SmartLinkRepository {
+export class PrismaSmartLinkRepository implements GuardedSmartLinkRepository {
   constructor(private readonly db: PrismaClient) {}
 
   async listForUser(userId: string) {
@@ -77,13 +85,6 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
       where: { slug: slug.trim().toLowerCase() },
     });
     return row ? smartLinkRecord(row) : null;
-  }
-
-  async create(record: Parameters<SmartLinkRepository["create"]>[0]) {
-    const row = await this.db.$transaction((tx) =>
-      createSmartLinkInTransaction(tx, record),
-    );
-    return smartLinkRecord(row);
   }
 
   async createWithinLimit(
@@ -140,17 +141,6 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
 
     const row = await this.db.smartLink.findFirstOrThrow({ where: { id, userId } });
     return { ok: true as const, smartLink: smartLinkRecord(row) };
-  }
-
-  async duplicateForUser(
-    id: string,
-    userId: string,
-    title: string,
-    slug: string,
-  ) {
-    return this.db.$transaction((tx) =>
-      duplicateSmartLinkInTransaction(tx, id, userId, title, slug),
-    );
   }
 
   async duplicateForUserWithinLimit(
@@ -221,51 +211,6 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
       return { ok: true as const, smartLink: duplicate };
     });
   }
-
-  async deleteIfRevision(
-    id: string,
-    userId: string,
-    expectedRevision: number,
-  ) {
-    return this.db.$transaction(async (tx) => {
-      const source = await tx.smartLink.findFirst({
-        where: { id, userId },
-        select: {
-          id: true,
-          revision: true,
-          assets: { select: { storageKey: true } },
-        },
-      });
-      if (!source) {
-        return { ok: false as const, reason: "NOT_FOUND" as const };
-      }
-      if (source.revision !== expectedRevision) {
-        return { ok: false as const, reason: "REVISION_CONFLICT" as const };
-      }
-
-      const deleted = await tx.smartLink.deleteMany({
-        where: { id, userId, revision: expectedRevision },
-      });
-      if (!deleted.count) {
-        return { ok: false as const, reason: "REVISION_CONFLICT" as const };
-      }
-
-      const storageKeys = [...new Set(source.assets.map((asset) => asset.storageKey))];
-      if (!storageKeys.length) {
-        return { ok: true as const, storageKeysToRemove: [] };
-      }
-
-      const stillReferenced = await tx.asset.findMany({
-        where: { storageKey: { in: storageKeys } },
-        select: { storageKey: true },
-      });
-      const retained = new Set(stillReferenced.map((asset) => asset.storageKey));
-      return {
-        ok: true as const,
-        storageKeysToRemove: storageKeys.filter((storageKey) => !retained.has(storageKey)),
-      };
-    });
-  }
 }
 
 async function getLockedQuotaState(
@@ -289,7 +234,7 @@ async function getLockedQuotaState(
 
 async function createSmartLinkInTransaction(
   tx: Prisma.TransactionClient,
-  record: Parameters<SmartLinkRepository["create"]>[0],
+  record: CreateSmartLinkRecord,
 ) {
   const smartLink = await tx.smartLink.create({
     data: {
