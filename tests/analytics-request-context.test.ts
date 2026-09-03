@@ -10,9 +10,11 @@ const TEST_NOW = new Date("2026-09-03T12:00:00.000Z");
 
 test("analytics metadata ignores spoofed proxy identity when proxy trust is disabled", () => {
   const previousTrust = process.env.LINKZZZ_TRUST_PROXY_HEADERS;
+  const previousGeoHeader = process.env.LINKZZZ_GEO_HEADER;
   const previousSalt = process.env.LINKZZZ_ANALYTICS_HASH_SALT;
   try {
     delete process.env.LINKZZZ_TRUST_PROXY_HEADERS;
+    delete process.env.LINKZZZ_GEO_HEADER;
     process.env.LINKZZZ_ANALYTICS_HASH_SALT = "unit-test-salt";
     const headers = new Headers({
       "user-agent": "Mozilla/5.0 Chrome/120.0 Safari/537.36",
@@ -28,15 +30,18 @@ test("analytics metadata ignores spoofed proxy identity when proxy trust is disa
     assert.equal(metadata.isBot, false);
   } finally {
     restoreEnvironment("LINKZZZ_TRUST_PROXY_HEADERS", previousTrust);
+    restoreEnvironment("LINKZZZ_GEO_HEADER", previousGeoHeader);
     restoreEnvironment("LINKZZZ_ANALYTICS_HASH_SALT", previousSalt);
   }
 });
 
 test("analytics metadata derives stable server identity from trusted request context", () => {
   const previousTrust = process.env.LINKZZZ_TRUST_PROXY_HEADERS;
+  const previousGeoHeader = process.env.LINKZZZ_GEO_HEADER;
   const previousSalt = process.env.LINKZZZ_ANALYTICS_HASH_SALT;
   try {
     process.env.LINKZZZ_TRUST_PROXY_HEADERS = "1";
+    process.env.LINKZZZ_GEO_HEADER = "x-vercel-ip-country";
     process.env.LINKZZZ_ANALYTICS_HASH_SALT = "unit-test-salt";
     const headers = new Headers({
       "user-agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36",
@@ -63,6 +68,7 @@ test("analytics metadata derives stable server identity from trusted request con
     assert.notEqual(nextDay, metadata.visitorId);
   } finally {
     restoreEnvironment("LINKZZZ_TRUST_PROXY_HEADERS", previousTrust);
+    restoreEnvironment("LINKZZZ_GEO_HEADER", previousGeoHeader);
     restoreEnvironment("LINKZZZ_ANALYTICS_HASH_SALT", previousSalt);
   }
 });
