@@ -71,8 +71,9 @@ async function seedSmartLinksToCount(username: string, targetCount: number) {
 
     await database.query(
       `INSERT INTO "SmartLink"
-        ("userId", "type", "title", "slug", "status", "createdAt", "updatedAt")
-       SELECT $1,
+        ("id", "userId", "type", "title", "slug", "status", "createdAt", "updatedAt")
+       SELECT md5($1 || ':' || seed::text || ':' || clock_timestamp()::text || ':' || random()::text),
+              $1,
               'DIRECT'::"SmartLinkType",
               'Quota seed ' || seed::text,
               LEFT($2, 24) || '-seed-' || seed::text,
