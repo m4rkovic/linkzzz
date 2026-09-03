@@ -2,6 +2,10 @@
 
 import Script from "next/script";
 
+import {
+  normalizeGa4MeasurementId,
+  normalizeMetaPixelId,
+} from "@/features/tracking/tracking-identifiers";
 import type { TrackingConfig } from "@/types/smart-link";
 
 declare global {
@@ -14,23 +18,26 @@ declare global {
 }
 
 export default function SmartLinkTracking({ tracking }: { tracking: TrackingConfig }) {
+  const ga4MeasurementId = normalizeGa4MeasurementId(tracking.ga4MeasurementId);
+  const metaPixelId = normalizeMetaPixelId(tracking.metaPixelId);
+
   return (
     <>
-      {tracking.ga4MeasurementId ? (
+      {ga4MeasurementId ? (
         <>
           <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(tracking.ga4MeasurementId)}`}
+            src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(ga4MeasurementId)}`}
             strategy="afterInteractive"
           />
-          <Script id={`linkzzz-ga4-${tracking.ga4MeasurementId}`} strategy="afterInteractive">
-            {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());gtag('config','${tracking.ga4MeasurementId}');`}
+          <Script id={`linkzzz-ga4-${ga4MeasurementId}`} strategy="afterInteractive">
+            {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());gtag('config',${JSON.stringify(ga4MeasurementId)});`}
           </Script>
         </>
       ) : null}
 
-      {tracking.metaPixelId ? (
-        <Script id={`linkzzz-meta-${tracking.metaPixelId}`} strategy="afterInteractive">
-          {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${tracking.metaPixelId}');fbq('track','PageView');`}
+      {metaPixelId ? (
+        <Script id={`linkzzz-meta-${metaPixelId}`} strategy="afterInteractive">
+          {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init',${JSON.stringify(metaPixelId)});fbq('track','PageView');`}
         </Script>
       ) : null}
     </>
