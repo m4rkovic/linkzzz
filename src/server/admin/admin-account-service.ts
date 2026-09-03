@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomInt } from "node:crypto";
 
+import { AdminError } from "@/server/admin/admin-errors";
 import { getAdminUser } from "@/server/admin/admin-service";
 import type { AuthenticatedSession } from "@/server/auth/auth-service";
 import { passwordHasher } from "@/server/auth/password-hasher";
@@ -46,7 +47,9 @@ export async function performAdminAccountAction(
   await dependencies.adminAccounts.apply(admin.user.id, userId, mutation);
 
   const result = await getAdminUser(userId);
-  if (!result) throw new Error("Customer not found.");
+  if (!result) {
+    throw new AdminError("CUSTOMER_NOT_FOUND", "Customer not found.");
+  }
   return temporaryPassword ? { ...result, temporaryPassword } : result;
 }
 
