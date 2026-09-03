@@ -1,12 +1,16 @@
 import "server-only";
 
 import { getAssetStorage } from "@/server/assets/storage-factory";
-import type { ServerDependencies } from "@/server/services/contracts";
+import type { AssetRepository } from "@/server/services/contracts";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 
 export type ProfileAssetReference = {
   id: string;
   type: "AVATAR" | "COVER" | "LINK_IMAGE";
+};
+
+type ProfileMediaDependencies = {
+  assets?: AssetRepository;
 };
 
 export function collectProfileAssetReferences(
@@ -89,7 +93,7 @@ export async function cleanupReplacedProfileAssets(
   userId: string,
   previous: PersistedProfileData | null,
   next: PersistedProfileData,
-  dependencies: ServerDependencies,
+  dependencies: ProfileMediaDependencies,
 ) {
   if (!previous || !dependencies.assets) return;
 
@@ -108,7 +112,7 @@ export async function cleanupReplacedSmartLinkAssets(
   smartLinkId: string,
   previous: PersistedProfileData | null,
   next: PersistedProfileData,
-  dependencies: ServerDependencies,
+  dependencies: ProfileMediaDependencies,
 ) {
   if (!previous || !dependencies.assets) return;
 
