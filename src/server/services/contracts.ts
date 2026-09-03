@@ -58,6 +58,19 @@ export interface AdminSubscriptionMutationRepository {
   ): Promise<void>;
 }
 
+export type AdminAccountMutation =
+  | { type: "SUSPEND"; reason?: string }
+  | { type: "REACTIVATE" }
+  | { type: "RESET_PASSWORD"; passwordHash: string };
+
+export interface AdminAccountMutationRepository {
+  apply(
+    actorUserId: string,
+    userId: string,
+    action: AdminAccountMutation,
+  ): Promise<void>;
+}
+
 export type AdminCustomerReadRecord = {
   user: UserRecord;
   displayName: string;
@@ -345,6 +358,7 @@ export interface CustomerProvisioningRepository {
 export type ServerDependencies = {
   adminRead: AdminReadRepository;
   adminSubscriptions: AdminSubscriptionMutationRepository;
+  adminAccounts: AdminAccountMutationRepository;
   users: UserRepository;
   subscriptions: SubscriptionRepository;
   smartLinks: SmartLinkRepository;
