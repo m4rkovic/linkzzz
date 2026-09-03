@@ -1,15 +1,10 @@
 import "server-only";
 
-import { randomInt } from "node:crypto";
 import { defaultAppearance } from "@/config/profile-defaults";
 import type { AuditAction, AuditResourceType } from "@/server/audit/types";
 import { passwordHasher } from "@/server/auth/password-hasher";
 import type { AuthenticatedSession } from "@/server/auth/auth-service";
-import {
-  assessPlanChange,
-  assessSmartLinkPlanChange,
-  type Plan,
-} from "@/server/business/plans";
+import type { Plan } from "@/server/business/plans";
 import type { SubscriptionStatus } from "@/server/business/subscriptions";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import type { UserRecord } from "@/server/services/contracts";
@@ -22,6 +17,11 @@ import type {
   AdminUserListItem,
   AdminUserSnapshot,
 } from "@/types/admin-api";
+
+type AdminSmartLinkAction = Extract<
+  AdminUserAction,
+  { type: "SET_SMART_LINK_STATUS" }
+>;
 
 export type CreateAdminUserInput = {
   displayName: string;
@@ -200,7 +200,7 @@ export async function createAdminUser(
 export async function performAdminUserAction(
   admin: AuthenticatedSession,
   userId: string,
-  action: AdminUserAction,
+  action: AdminSmartLinkAction,
 ): Promise<AdminActionResult> {
   const dependencies = await getServerDependencies();
   const user = await dependencies.users.findById(userId);
@@ -209,172 +209,57 @@ export async function performAdminUserAction(
   const subscription = await dependencies.subscriptions.findByUserId(userId);
   if (!subscription) throw new Error("Customer subscription is missing.");
 
-  let temporaryPassword: string | undefined;
+  const smartLink = await dependencies.smartLinks.findByIdForUser(
+    action.smartLinkId,
+    userId,
+  );
+  if (!smartLink) throw new Error("Smart Link not found.");
 
-  switch (action.type) {
-    case "RENEW": {
-      const now = new Date();
-      const restarting = subscription.status === "EXPIRED" || subscription.status === "STOPPED";
-      const base = restarting || !subscription.expiresAt || subscription.expiresAt < now
-        ? now
-        : subscription.expiresAt;
-      const startedAt = restarting ? now : subscription.startedAt;
-      const expiresAt = addMonthsClamped(base, action.months);
-
-      await dependencies.subscriptions.upsert({
-        ...subscription,
-        status: "ACTIVE",
-        startedAt,
-        expiresAt,
-      });
-
-      if (user.accountStatus === "DISABLED") {
-        await dependencies.users.update(userId, { accountStatus: "ACTIVE" });
-      }
-
-      await writeAudit(admin.user.id, userId, "SUBSCRIPTION_RENEWED", "SUBSCRIPTION", {
-        months: action.months,
-        expiresAt: expiresAt.toISOString(),
-      });
-      break;
-    }
-
-    case "STOP_RENEWAL":
-      await dependencies.subscriptions.upsert({
-        ...subscription,
-        status: "CANCEL_AT_PERIOD_END",
-        autoRenew: false,
-      });
-      await writeAudit(admin.user.id, userId, "SUBSCRIPTION_STOP_RENEWAL", "SUBSCRIPTION");
-      break;
-
-    case "RESUME_RENEWAL":
-      await dependencies.subscriptions.upsert({
-        ...subscription,
-        status: "ACTIVE",
-        autoRenew: true,
-      });
-      await writeAudit(admin.user.id, userId, "SUBSCRIPTION_RESUMED", "SUBSCRIPTION");
-      break;
-
-    case "STOP_IMMEDIATELY":
-      await dependencies.subscriptions.upsert({
-        ...subscription,
-        status: "STOPPED",
-        autoRenew: false,
-      });
-      await dependencies.users.update(userId, { accountStatus: "DISABLED" });
-      await dependencies.sessions.revokeAllForUser(userId);
-      await writeAudit(admin.user.id, userId, "SUBSCRIPTION_STOPPED", "SUBSCRIPTION");
-      break;
-
-    case "CHANGE_PLAN": {
-      const profile = await dependencies.profiles.findByUserId(userId);
-      if (!profile) throw new Error("Customer Landing Page data is incomplete.");
-      const smartLinkCount = await dependencies.smartLinks.countForUser(userId);
-      const pageCardAssessment = assessPlanChange(
-        subscription.plan,
-        action.plan,
-        profile.links.length,
-      );
-      const smartLinkAssessment = assessSmartLinkPlanChange(
-        subscription.plan,
-        action.plan,
-        smartLinkCount,
-      );
-      await dependencies.subscriptions.upsert({ ...subscription, plan: action.plan });
-      await writeAudit(admin.user.id, userId, "PLAN_CHANGED", "SUBSCRIPTION", {
-        previousPlan: subscription.plan,
-        nextPlan: action.plan,
-        overNewLimit:
-          pageCardAssessment.exceedsNewLimit ||
-          smartLinkAssessment.exceedsNewLimit,
-        pageCardsOverNewLimit: pageCardAssessment.linksToRemoveBeforeAddingNew,
-        smartLinksOverNewLimit:
-          smartLinkAssessment.linksToRemoveBeforeAddingNew,
-      });
-      break;
-    }
-
-    case "SET_SMART_LINK_STATUS": {
-      const smartLink = await dependencies.smartLinks.findByIdForUser(action.smartLinkId, userId);
-      if (!smartLink) throw new Error("Smart Link not found.");
-
-      if (action.status === "DISABLED" && smartLink.status !== "PUBLISHED") {
-        throw new Error("Only published Smart Links can be disabled by an administrator.");
-      }
-      if (action.status === "PUBLISHED") {
-        const accessActive = user.accountStatus === "ACTIVE" &&
-          normalizeExpiredStatus(subscription.status, subscription.expiresAt) !== "EXPIRED" &&
-          subscription.status !== "STOPPED";
-        if (!accessActive) {
-          throw new Error("Restore the customer account and subscription before enabling this Smart Link.");
-        }
-        if (smartLink.status !== "DISABLED") {
-          throw new Error("Only administrator-disabled Smart Links can be restored.");
-        }
-      }
-
-      const write = await dependencies.smartLinks.updateIfRevision(
-        smartLink.id,
-        userId,
-        {
-          title: smartLink.title,
-          slug: smartLink.slug,
-          status: action.status,
-          primaryDestination: smartLink.primaryDestination,
-          deeplink: smartLink.deeplink,
-          geo: smartLink.geo,
-          shield: smartLink.shield,
-          tracking: smartLink.tracking,
-        },
-        smartLink.revision,
-      );
-      if (!write.ok) throw new Error("Smart Link changed while the admin action was being applied. Try again.");
-
-      await writeAudit(
-        admin.user.id,
-        userId,
-        action.status === "DISABLED" ? "SMART_LINK_DISABLED" : "SMART_LINK_ENABLED",
-        "SMART_LINK",
-        { title: smartLink.title, slug: smartLink.slug },
-        smartLink.id,
-      );
-      break;
-    }
-
-    case "SUSPEND":
-      await dependencies.users.update(userId, { accountStatus: "SUSPENDED" });
-      await dependencies.sessions.revokeAllForUser(userId);
-      await writeAudit(admin.user.id, userId, "USER_SUSPENDED", "USER", {
-        reason: action.reason?.trim() || null,
-      });
-      break;
-
-    case "REACTIVATE": {
-      const effectiveSubscription = normalizeExpiredStatus(subscription.status, subscription.expiresAt);
-      if (effectiveSubscription === "STOPPED" || effectiveSubscription === "EXPIRED") {
-        throw new Error("Renew the subscription before reactivating this account.");
-      }
-      await dependencies.users.update(userId, { accountStatus: "ACTIVE" });
-      await writeAudit(admin.user.id, userId, "USER_REACTIVATED", "USER");
-      break;
-    }
-
-    case "RESET_PASSWORD":
-      temporaryPassword = generateTemporaryPassword();
-      await dependencies.passwords.setPasswordHash(
-        userId,
-        await passwordHasher.hash(temporaryPassword),
-      );
-      await dependencies.passwords.setMustChangePassword(userId, true);
-      await dependencies.sessions.revokeAllForUser(userId);
-      await writeAudit(admin.user.id, userId, "PASSWORD_RESET", "USER");
-      break;
+  if (action.status === "DISABLED" && smartLink.status !== "PUBLISHED") {
+    throw new Error("Only published Smart Links can be disabled by an administrator.");
   }
 
-  const result = (await getAdminUser(userId))!;
-  return temporaryPassword ? { ...result, temporaryPassword } : result;
+  if (action.status === "PUBLISHED") {
+    const accessActive = user.accountStatus === "ACTIVE" &&
+      normalizeExpiredStatus(subscription.status, subscription.expiresAt) !== "EXPIRED" &&
+      subscription.status !== "STOPPED";
+    if (!accessActive) {
+      throw new Error("Restore the customer account and subscription before enabling this Smart Link.");
+    }
+    if (smartLink.status !== "DISABLED") {
+      throw new Error("Only administrator-disabled Smart Links can be restored.");
+    }
+  }
+
+  const write = await dependencies.smartLinks.updateIfRevision(
+    smartLink.id,
+    userId,
+    {
+      title: smartLink.title,
+      slug: smartLink.slug,
+      status: action.status,
+      primaryDestination: smartLink.primaryDestination,
+      deeplink: smartLink.deeplink,
+      geo: smartLink.geo,
+      shield: smartLink.shield,
+      tracking: smartLink.tracking,
+    },
+    smartLink.revision,
+  );
+  if (!write.ok) {
+    throw new Error("Smart Link changed while the admin action was being applied. Try again.");
+  }
+
+  await writeAudit(
+    admin.user.id,
+    userId,
+    action.status === "DISABLED" ? "SMART_LINK_DISABLED" : "SMART_LINK_ENABLED",
+    "SMART_LINK",
+    { title: smartLink.title, slug: smartLink.slug },
+    smartLink.id,
+  );
+
+  return (await getAdminUser(userId))!;
 }
 
 async function buildAdminUserSnapshot(
@@ -475,40 +360,10 @@ function parseDate(value: string, error: string) {
   return date;
 }
 
-function addMonthsClamped(source: Date, months: number) {
-  const day = source.getDate();
-  const result = new Date(source);
-  result.setDate(1);
-  result.setMonth(result.getMonth() + months);
-  const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
-  result.setDate(Math.min(day, lastDay));
-  return result;
-}
-
 function createInitials(value: string) {
   const parts = value.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "U";
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("");
-}
-
-function generateTemporaryPassword() {
-  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const lower = "abcdefghijkmnopqrstuvwxyz";
-  const digits = "23456789";
-  const symbols = "!@#$%";
-  const all = upper + lower + digits + symbols;
-  const chars = [pick(upper), pick(lower), pick(digits), pick(symbols)];
-  while (chars.length < 16) chars.push(pick(all));
-
-  for (let i = chars.length - 1; i > 0; i -= 1) {
-    const j = randomInt(i + 1);
-    [chars[i], chars[j]] = [chars[j], chars[i]];
-  }
-  return chars.join("");
-}
-
-function pick(characters: string) {
-  return characters[randomInt(characters.length)]!;
 }
 
 function auditTitle(action: string) {
