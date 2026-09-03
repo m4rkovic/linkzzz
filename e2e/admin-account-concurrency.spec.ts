@@ -75,6 +75,18 @@ test("subscription stop and renewal preserve an existing moderation suspension",
     expect(stopped.subscriptionStatus).toBe("STOPPED");
     expect(stopped.userDisabledAudits).toBe(0);
 
+    const invalidResumeResponse = await page.request.post(
+      `${origin}/api/admin/users/${userId}/actions`,
+      {
+        headers: { origin },
+        data: { type: "RESUME_RENEWAL" },
+      },
+    );
+    expect(invalidResumeResponse.status()).toBe(409);
+    expect(await invalidResumeResponse.json()).toMatchObject({
+      code: "SUBSCRIPTION_INVALID_STATE",
+    });
+
     const renewResponse = await page.request.post(
       `${origin}/api/admin/users/${userId}/actions`,
       {
