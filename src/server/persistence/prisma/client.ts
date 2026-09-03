@@ -19,8 +19,6 @@ export function getPrismaClient() {
   }
 
   const prisma = createPrismaClient();
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.linkzzzPrisma = prisma;
-  }
+  globalForPrisma.linkzzzPrisma = prisma;
   return prisma;
 }
