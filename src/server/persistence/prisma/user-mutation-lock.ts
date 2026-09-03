@@ -13,7 +13,7 @@ export async function lockUserMutation(
   transaction: Prisma.TransactionClient,
   userId: string,
 ) {
-  await transaction.$queryRaw`
+  await transaction.$executeRaw`
     SELECT pg_advisory_xact_lock(hashtextextended(${userId}, 1280199500))
   `;
 }
