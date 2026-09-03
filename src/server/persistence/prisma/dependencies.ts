@@ -14,10 +14,14 @@ import {
   PrismaUserRepository,
 } from "@/server/persistence/prisma/repositories/index";
 
-let dependencies: ServerDependencies | undefined;
+type PrismaServerDependencies = Omit<ServerDependencies, "smartLinks"> & {
+  smartLinks: PrismaSmartLinkRepository;
+};
+
+let dependencies: PrismaServerDependencies | undefined;
 let smartLinkDeletionRepository: PrismaSmartLinkDeletionRepository | undefined;
 
-export async function getPrismaServerDependencies(): Promise<ServerDependencies> {
+export async function getPrismaServerDependencies(): Promise<PrismaServerDependencies> {
   const prisma = getPrismaClient();
   return dependencies ??= {
     adminRead: new PrismaAdminReadRepository(prisma),
