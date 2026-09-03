@@ -6,6 +6,7 @@ import { withSmartLinkOutboundRoutes } from "@/server/smart-links/outbound-routi
 import { getDestinationAppUri, safeAppUri } from "@/server/smart-links/provider-deeplink";
 import {
   resolveDirectDestination,
+  resolveOutboundDestination,
   resolveSmartLink,
 } from "@/server/smart-links/redirect-resolver";
 import {
@@ -88,6 +89,48 @@ test("landing page SmartLinks remain render actions", () => {
     IOS_SAFARI,
   );
   assert.deepEqual(result, { type: "RENDER_PAGE" });
+});
+
+test("outbound destinations honor SmartLink-level geo before the card destination", () => {
+  const context = { ...DESKTOP_CHROME, countryCode: "RS" };
+  const shield = { enabled: false, mode: "STANDARD" as const, verifiedCrawlerPolicy: "ALLOW" as const };
+
+  const blocked = resolveOutboundDestination(
+    {
+      deeplink: SMART_DEEPLINK,
+      geo: {
+        enabled: true,
+        rules: [{ id: "block-rs", countries: ["RS"], action: { type: "BLOCK" } }],
+        fallback: { type: "DEFAULT_PAGE" },
+      },
+      shield,
+    },
+    destination("CUSTOM", "https://card.example.com"),
+    context,
+  );
+  assert.deepEqual(blocked, { type: "BLOCK" });
+
+  const redirected = resolveOutboundDestination(
+    {
+      deeplink: SMART_DEEPLINK,
+      geo: {
+        enabled: true,
+        rules: [{
+          id: "redirect-rs",
+          countries: ["RS"],
+          action: {
+            type: "REDIRECT",
+            destination: destination("CUSTOM", "https://geo.example.com"),
+          },
+        }],
+        fallback: { type: "DEFAULT_PAGE" },
+      },
+      shield,
+    },
+    destination("CUSTOM", "https://card.example.com"),
+    context,
+  );
+  assert.deepEqual(redirected, { type: "REDIRECT", url: "https://geo.example.com/" });
 });
 
 test("desktop Direct SmartLinks use the canonical destination", () => {
