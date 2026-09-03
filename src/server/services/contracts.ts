@@ -43,6 +43,21 @@ export interface SubscriptionRepository {
   upsert(record: SubscriptionRecord): Promise<SubscriptionRecord>;
 }
 
+export type AdminSubscriptionMutation =
+  | { type: "RENEW"; months: 1 | 3 | 6 | 12 }
+  | { type: "STOP_RENEWAL" }
+  | { type: "RESUME_RENEWAL" }
+  | { type: "STOP_IMMEDIATELY" }
+  | { type: "CHANGE_PLAN"; plan: Plan };
+
+export interface AdminSubscriptionMutationRepository {
+  apply(
+    actorUserId: string,
+    userId: string,
+    action: AdminSubscriptionMutation,
+  ): Promise<void>;
+}
+
 export type AdminCustomerReadRecord = {
   user: UserRecord;
   displayName: string;
@@ -329,6 +344,7 @@ export interface CustomerProvisioningRepository {
 
 export type ServerDependencies = {
   adminRead: AdminReadRepository;
+  adminSubscriptions: AdminSubscriptionMutationRepository;
   users: UserRepository;
   subscriptions: SubscriptionRepository;
   smartLinks: SmartLinkRepository;
