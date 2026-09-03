@@ -31,12 +31,63 @@ test("stop immediately cannot race with reactivation into an active stopped acco
     const responses = await Promise.all([stop(), reactivate()]);
     const statuses = responses.map((response) => response.status()).sort();
     expect(statuses[0]).toBe(200);
-    expect([200, 400]).toContain(statuses[1]);
+    expect([200, 409]).toContain(statuses[1]);
 
     const state = await readAccountState(userId);
     expect(state.subscriptionStatus).toBe("STOPPED");
     expect(state.accountStatus).toBe("DISABLED");
     expect(state.stopAudits).toBe(1);
+    expect(state.userDisabledAudits).toBe(1);
+  } finally {
+    await removeTestCustomer(customer.username);
+  }
+});
+
+test("subscription stop and renewal preserve an existing moderation suspension", async ({ page }) => {
+  const customer = createUniqueCustomer("moderation lock", { plan: "PRO" });
+
+  try {
+    await loginAsAdmin(page);
+    const created = await createCustomerViaAdminApi(page, customer);
+    const userId = created.id!;
+    const origin = new URL(page.url()).origin;
+
+    const suspendResponse = await page.request.post(
+      `${origin}/api/admin/users/${userId}/actions`,
+      {
+        headers: { origin },
+        data: { type: "SUSPEND", reason: "E2E moderation lock" },
+      },
+    );
+    expect(suspendResponse.status()).toBe(200);
+
+    const stopResponse = await page.request.post(
+      `${origin}/api/admin/users/${userId}/actions`,
+      {
+        headers: { origin },
+        data: { type: "STOP_IMMEDIATELY" },
+      },
+    );
+    expect(stopResponse.status()).toBe(200);
+
+    const stopped = await readAccountState(userId);
+    expect(stopped.accountStatus).toBe("SUSPENDED");
+    expect(stopped.subscriptionStatus).toBe("STOPPED");
+    expect(stopped.userDisabledAudits).toBe(0);
+
+    const renewResponse = await page.request.post(
+      `${origin}/api/admin/users/${userId}/actions`,
+      {
+        headers: { origin },
+        data: { type: "RENEW", months: 1 },
+      },
+    );
+    expect(renewResponse.status()).toBe(200);
+
+    const renewed = await readAccountState(userId);
+    expect(renewed.accountStatus).toBe("SUSPENDED");
+    expect(renewed.subscriptionStatus).toBe("ACTIVE");
+    expect(renewed.userReactivatedAudits).toBe(0);
   } finally {
     await removeTestCustomer(customer.username);
   }
@@ -78,6 +129,8 @@ async function readAccountState(userId: string) {
       accountStatus: string;
       subscriptionStatus: string;
       stopAudits: number;
+      userDisabledAudits: number;
+      userReactivatedAudits: number;
     }>(
       `SELECT app_user."accountStatus",
               subscription."status" AS "subscriptionStatus",
@@ -86,7 +139,19 @@ async function readAccountState(userId: string) {
                 FROM "AuditLog" AS audit
                 WHERE audit."targetUserId" = app_user."id"
                   AND audit."action" = 'SUBSCRIPTION_STOPPED'
-              ) AS "stopAudits"
+              ) AS "stopAudits",
+              (
+                SELECT COUNT(*)::int
+                FROM "AuditLog" AS audit
+                WHERE audit."targetUserId" = app_user."id"
+                  AND audit."action" = 'USER_DISABLED'
+              ) AS "userDisabledAudits",
+              (
+                SELECT COUNT(*)::int
+                FROM "AuditLog" AS audit
+                WHERE audit."targetUserId" = app_user."id"
+                  AND audit."action" = 'USER_REACTIVATED'
+              ) AS "userReactivatedAudits"
        FROM "User" AS app_user
        INNER JOIN "Subscription" AS subscription
          ON subscription."userId" = app_user."id"
