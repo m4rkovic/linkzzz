@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { isPlanId } from "@/features/plans/plan-catalog";
 import { performAdminUserAction } from "@/server/admin/admin-service";
+import {
+  isAdminSubscriptionAction,
+  performAdminSubscriptionAction,
+} from "@/server/admin/admin-subscription-service";
 import { getCurrentSession } from "@/server/auth/current-session";
 import { requireAdmin } from "@/server/auth/guards";
 import { hasValidRequestOrigin } from "@/server/security/request";
@@ -37,7 +41,9 @@ export async function POST(
 
   const { id } = await context.params;
   try {
-    const result = await performAdminUserAction(session, id, body);
+    const result = isAdminSubscriptionAction(body)
+      ? await performAdminSubscriptionAction(session, id, body)
+      : await performAdminUserAction(session, id, body);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
