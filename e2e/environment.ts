@@ -43,6 +43,7 @@ export function createE2EServerEnvironment(
     RATE_LIMIT_BACKEND: "memory",
     ASSET_STORAGE_ADAPTER: "local",
     LINKZZZ_TRUST_PROXY_HEADERS: "1",
+    LINKZZZ_ANALYTICS_HASH_SALT: "linkzzz-e2e-analytics-hash-salt",
     LINKZZZ_DEV_PREWARM: "0",
     NEXT_TELEMETRY_DISABLED: "1",
   };
