@@ -134,10 +134,6 @@ export type ConditionalSmartLinkWriteResult =
   | { ok: true; smartLink: SmartLinkRecord }
   | { ok: false; reason: "REVISION_CONFLICT" };
 
-export type DeleteSmartLinkResult =
-  | { ok: true; storageKeysToRemove: string[] }
-  | { ok: false; reason: "REVISION_CONFLICT" | "NOT_FOUND" };
-
 type SmartLinkQuotaRejection =
   | { ok: false; reason: "SUBSCRIPTION_INACTIVE" }
   | { ok: false; reason: "LIMIT_REACHED"; plan: Plan; limit: number };
@@ -156,7 +152,6 @@ export interface SmartLinkRepository {
   countForUser(userId: string): Promise<number>;
   findByIdForUser(id: string, userId: string): Promise<SmartLinkRecord | null>;
   findBySlug(slug: string): Promise<SmartLinkRecord | null>;
-  create(record: CreateSmartLinkRecord): Promise<SmartLinkRecord>;
   createWithinLimit(record: CreateSmartLinkRecord): Promise<CreateSmartLinkWithinLimitResult>;
   updateIfRevision(
     id: string,
@@ -164,23 +159,12 @@ export interface SmartLinkRepository {
     editable: SmartLinkEditableData,
     expectedRevision: number,
   ): Promise<ConditionalSmartLinkWriteResult>;
-  duplicateForUser(
-    id: string,
-    userId: string,
-    title: string,
-    slug: string,
-  ): Promise<SmartLinkRecord | null>;
   duplicateForUserWithinLimit(
     id: string,
     userId: string,
     title: string,
     slug: string,
   ): Promise<DuplicateSmartLinkWithinLimitResult>;
-  deleteIfRevision(
-    id: string,
-    userId: string,
-    expectedRevision: number,
-  ): Promise<DeleteSmartLinkResult>;
 }
 
 export type VersionedProfileRecord = {
