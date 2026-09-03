@@ -3,6 +3,10 @@ import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
+import {
+  canCustomerDeleteSmartLink,
+  canDeleteWithoutRemovingLastLandingPage,
+} from "@/server/smart-links/smart-link-lifecycle";
 
 export type DeleteOwnSmartLinkRepositoryResult =
   | { ok: true; storageKeysToRemove: string[] }
@@ -46,7 +50,7 @@ export class PrismaSmartLinkDeletionRepository {
       if (source.status === "DISABLED") {
         return { ok: false, reason: "SMART_LINK_DISABLED" };
       }
-      if (source.status !== "DRAFT") {
+      if (!canCustomerDeleteSmartLink(source.status)) {
         return { ok: false, reason: "SMART_LINK_NOT_DRAFT" };
       }
       if (source.revision !== expectedRevision) {
@@ -57,7 +61,12 @@ export class PrismaSmartLinkDeletionRepository {
         const landingPageCount = await tx.smartLink.count({
           where: { userId, type: "LANDING_PAGE" },
         });
-        if (landingPageCount <= 1) {
+        if (
+          !canDeleteWithoutRemovingLastLandingPage(
+            source.type,
+            landingPageCount,
+          )
+        ) {
           return { ok: false, reason: "LAST_LANDING_PAGE" };
         }
       }
