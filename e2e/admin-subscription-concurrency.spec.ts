@@ -1,5 +1,6 @@
 import { Client } from "pg";
 
+import { addMonthsClampedUtc } from "../src/server/business/date-math";
 import { requireIsolatedE2EDatabaseUrl } from "./environment";
 import {
   createCustomerViaAdminApi,
@@ -28,7 +29,10 @@ test("parallel renewals serialize instead of losing a subscription extension", a
     expect(responses.map((response) => response.status())).toEqual([200, 200]);
 
     const final = await readSubscriptionState(userId);
-    const expectedEnd = addMonthsClamped(addMonthsClamped(initial.endsAt, 1), 1);
+    const expectedEnd = addMonthsClampedUtc(
+      addMonthsClampedUtc(initial.endsAt, 1),
+      1,
+    );
 
     expect(final.endsAt.getTime()).toBe(expectedEnd.getTime());
     expect(final.historyRenewals).toBe(initial.historyRenewals + 2);
@@ -43,7 +47,9 @@ async function readSubscriptionState(userId: string) {
   try {
     await database.connect();
     const subscription = await database.query<{ endsAt: Date }>(
-      `SELECT "endsAt" FROM "Subscription" WHERE "userId" = $1`,
+      `SELECT "endsAt" AT TIME ZONE 'UTC' AS "endsAt"
+       FROM "Subscription"
+       WHERE "userId" = $1`,
       [userId],
     );
     const history = await database.query<{ count: number }>(
@@ -70,18 +76,4 @@ async function readSubscriptionState(userId: string) {
   } finally {
     await database.end();
   }
-}
-
-function addMonthsClamped(source: Date, months: number) {
-  const day = source.getDate();
-  const result = new Date(source);
-  result.setDate(1);
-  result.setMonth(result.getMonth() + months);
-  const lastDay = new Date(
-    result.getFullYear(),
-    result.getMonth() + 1,
-    0,
-  ).getDate();
-  result.setDate(Math.min(day, lastDay));
-  return result;
 }
