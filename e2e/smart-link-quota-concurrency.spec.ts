@@ -23,13 +23,14 @@ test("parallel SmartLink creates cannot exceed the plan quota", async ({ page, c
     await context.clearCookies();
     await loginViaApi(page, customer.username, customer.password, "CUSTOMER");
     const origin = new URL(page.url()).origin;
+    const slugPrefix = customer.slug.slice(0, 30);
 
     const createLink = (suffix: string) => page.request.post(`${origin}/api/smart-links`, {
       headers: { origin },
       data: {
         type: "DIRECT",
         title: `Concurrent quota ${suffix}`,
-        slug: `${customer.slug}-quota-${suffix}`.slice(0, 40),
+        slug: `${slugPrefix}-quota-${suffix}`,
         primaryDestination: {
           provider: "CUSTOM",
           url: `https://example.com/quota/${suffix}`,
@@ -74,7 +75,7 @@ async function seedSmartLinksToCount(username: string, targetCount: number) {
        SELECT $1,
               'DIRECT'::"SmartLinkType",
               'Quota seed ' || seed::text,
-              LEFT($2 || '-seed-' || seed::text, 40),
+              LEFT($2, 24) || '-seed-' || seed::text,
               'DRAFT'::"SmartLinkStatus",
               NOW(),
               NOW()
