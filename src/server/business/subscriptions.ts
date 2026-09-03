@@ -87,7 +87,10 @@ export function getSubscriptionTransition(
   return {
     allowed: true,
     effectiveStatus,
-    nextStatus: resolveNextStatus(effectiveStatus, action),
+    nextStatus:
+      action === "CHANGE_PLAN"
+        ? status
+        : resolveNextStatus(effectiveStatus, action),
   };
 }
 
@@ -102,7 +105,7 @@ export function getAllowedSubscriptionActions(
 
 function resolveNextStatus(
   currentStatus: SubscriptionStatus,
-  action: SubscriptionAction,
+  action: Exclude<SubscriptionAction, "CHANGE_PLAN">,
 ): SubscriptionStatus {
   switch (action) {
     case "RENEW":
@@ -112,7 +115,5 @@ function resolveNextStatus(
       return "CANCEL_AT_PERIOD_END";
     case "STOP_IMMEDIATELY":
       return "STOPPED";
-    case "CHANGE_PLAN":
-      return currentStatus;
   }
 }
