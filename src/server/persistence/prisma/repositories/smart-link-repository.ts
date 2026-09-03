@@ -3,6 +3,7 @@ import "server-only";
 import { defaultAppearance } from "@/config/profile-defaults";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
+import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
 import type { SmartLinkRepository } from "@/server/services/contracts";
 import type {
   DeeplinkConfig,
@@ -76,39 +77,27 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
   }
 
   async create(record: Parameters<SmartLinkRepository["create"]>[0]) {
-    const row = await this.db.$transaction(async (tx) => {
-      const smartLink = await tx.smartLink.create({
-        data: {
-          userId: record.userId,
-          type: record.type,
-          title: record.title,
-          slug: record.slug.trim().toLowerCase(),
-          status: record.status,
-          primaryDestination: record.primaryDestination
-            ? toJson(record.primaryDestination)
-            : undefined,
-          deeplinkConfig: toJson(record.deeplink),
-          geoConfig: toJson(record.geo),
-          shieldConfig: toJson(record.shield),
-          trackingConfig: toJson(record.tracking),
-        },
-      });
+    const row = await this.db.$transaction((tx) =>
+      createSmartLinkInTransaction(tx, record),
+    );
+    return smartLinkRecord(row);
+  }
 
-      if (record.type === "LANDING_PAGE") {
-        await tx.page.create({
-          data: {
-            smartLinkId: smartLink.id,
-            displayName: record.title,
-            bio: "",
-            appearance: toJson(defaultAppearance),
-            contentBlocks: toJson([]),
-          },
-        });
+  async createWithinLimit(
+    record: Parameters<SmartLinkRepository["createWithinLimit"]>[0],
+    limit: number,
+  ) {
+    assertPositiveLimit(limit);
+    return this.db.$transaction(async (tx) => {
+      await lockUserMutation(tx, record.userId);
+      const currentCount = await tx.smartLink.count({ where: { userId: record.userId } });
+      if (currentCount >= limit) {
+        return { ok: false as const, reason: "LIMIT_REACHED" as const };
       }
 
-      return smartLink;
+      const row = await createSmartLinkInTransaction(tx, record);
+      return { ok: true as const, smartLink: smartLinkRecord(row) };
     });
-    return smartLinkRecord(row);
   }
 
   async updateIfRevision(
@@ -148,154 +137,37 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
     title: string,
     slug: string,
   ) {
+    return this.db.$transaction((tx) =>
+      duplicateSmartLinkInTransaction(tx, id, userId, title, slug),
+    );
+  }
+
+  async duplicateForUserWithinLimit(
+    id: string,
+    userId: string,
+    title: string,
+    slug: string,
+    limit: number,
+  ) {
+    assertPositiveLimit(limit);
     return this.db.$transaction(async (tx) => {
-      const source = await tx.smartLink.findFirst({
-        where: { id, userId },
-        include: {
-          assets: true,
-          page: {
-            include: {
-              cards: { include: { geoDestinations: true } },
-              socials: true,
-              stats: true,
-            },
-          },
-        },
-      });
-      if (!source) return null;
-
-      const duplicate = await tx.smartLink.create({
-        data: {
-          userId,
-          type: source.type,
-          title,
-          slug: slug.trim().toLowerCase(),
-          status: "DRAFT",
-          primaryDestination: source.primaryDestination === null
-            ? Prisma.JsonNull
-            : toJson(source.primaryDestination),
-          deeplinkConfig: toJson(source.deeplinkConfig),
-          geoConfig: toJson(source.geoConfig),
-          shieldConfig: toJson(source.shieldConfig),
-          trackingConfig: toJson(source.trackingConfig),
-        },
-      });
-
-      const assetIdMap = new Map<string, string>();
-      for (const asset of source.assets) {
-        const copy = await tx.asset.create({
-          data: {
-            smartLinkId: duplicate.id,
-            type: asset.type,
-            fileName: asset.fileName,
-            storageKey: asset.storageKey,
-            mimeType: asset.mimeType,
-            sizeBytes: asset.sizeBytes,
-            width: asset.width,
-            height: asset.height,
-          },
-        });
-        assetIdMap.set(asset.id, copy.id);
+      await lockUserMutation(tx, userId);
+      const currentCount = await tx.smartLink.count({ where: { userId } });
+      if (currentCount >= limit) {
+        return { ok: false as const, reason: "LIMIT_REACHED" as const };
       }
 
-      if (source.page) {
-        const page = await tx.page.create({
-          data: {
-            smartLinkId: duplicate.id,
-            displayName: source.page.displayName,
-            username: source.page.username,
-            bio: source.page.bio,
-            locationLabel: source.page.locationLabel,
-            avatarAssetId: source.page.avatarAssetId
-              ? assetIdMap.get(source.page.avatarAssetId) ?? null
-              : null,
-            coverAssetId: source.page.coverAssetId
-              ? assetIdMap.get(source.page.coverAssetId) ?? null
-              : null,
-            appearance: toJson(source.page.appearance),
-            contentBlocks: toJson(remapBlockAssets(source.page.contentBlocks, assetIdMap)),
-          },
-        });
-
-        const cardIdMap = new Map<string, string>();
-        for (const card of source.page.cards) {
-          const cardCopy = await tx.pageCard.create({
-            data: {
-              pageId: page.id,
-              title: card.title,
-              description: card.description,
-              url: card.url,
-              visible: card.visible,
-              sortOrder: card.sortOrder,
-              platform: card.platform,
-              layout: card.layout,
-              aspectRatio: card.aspectRatio,
-              imageFit: card.imageFit,
-              imagePosition: card.imagePosition,
-              titlePosition: card.titlePosition,
-              showPlatformIcon: card.showPlatformIcon,
-              showTitle: card.showTitle,
-              showDescription: card.showDescription,
-              overlayEnabled: card.overlayEnabled,
-              overlayOpacity: card.overlayOpacity,
-              customStyle: card.customStyle === null
-                ? Prisma.JsonNull
-                : toJson(card.customStyle),
-              imageAssetId: card.imageAssetId
-                ? assetIdMap.get(card.imageAssetId) ?? null
-                : null,
-            },
-          });
-          cardIdMap.set(card.id, cardCopy.id);
-          if (card.geoDestinations.length) {
-            await tx.pageCardGeoDestination.createMany({
-              data: card.geoDestinations.map((geo) => ({
-                pageCardId: cardCopy.id,
-                countryCode: geo.countryCode,
-                countryName: geo.countryName,
-                url: geo.url,
-              })),
-            });
-          }
-        }
-
-        await tx.page.update({
-          where: { id: page.id },
-          data: {
-            appearance: toJson(remapPageEngagement(source.page.appearance, cardIdMap)),
-          },
-        });
-
-        if (source.page.socials.length) {
-          await tx.socialLink.createMany({
-            data: source.page.socials.map((social) => ({
-              pageId: page.id,
-              name: social.name,
-              url: social.url,
-              visible: social.visible,
-              platform: social.platform,
-              sortOrder: social.sortOrder,
-            })),
-          });
-        }
-
-        if (source.page.stats.length) {
-          await tx.pageStat.createMany({
-            data: source.page.stats.map((stat) => ({
-              pageId: page.id,
-              value: stat.value,
-              label: stat.label,
-              visible: stat.visible,
-              sortOrder: stat.sortOrder,
-            })),
-          });
-        }
+      const duplicate = await duplicateSmartLinkInTransaction(
+        tx,
+        id,
+        userId,
+        title,
+        slug,
+      );
+      if (!duplicate) {
+        return { ok: false as const, reason: "NOT_FOUND" as const };
       }
-
-      const created = await tx.smartLink.findUniqueOrThrow({
-        where: { id: duplicate.id },
-      });
-      return smartLinkRecord(created);
+      return { ok: true as const, smartLink: duplicate };
     });
   }
 
@@ -342,6 +214,204 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
         storageKeysToRemove: storageKeys.filter((storageKey) => !retained.has(storageKey)),
       };
     });
+  }
+}
+
+async function createSmartLinkInTransaction(
+  tx: Prisma.TransactionClient,
+  record: Parameters<SmartLinkRepository["create"]>[0],
+) {
+  const smartLink = await tx.smartLink.create({
+    data: {
+      userId: record.userId,
+      type: record.type,
+      title: record.title,
+      slug: record.slug.trim().toLowerCase(),
+      status: record.status,
+      primaryDestination: record.primaryDestination
+        ? toJson(record.primaryDestination)
+        : undefined,
+      deeplinkConfig: toJson(record.deeplink),
+      geoConfig: toJson(record.geo),
+      shieldConfig: toJson(record.shield),
+      trackingConfig: toJson(record.tracking),
+    },
+  });
+
+  if (record.type === "LANDING_PAGE") {
+    await tx.page.create({
+      data: {
+        smartLinkId: smartLink.id,
+        displayName: record.title,
+        bio: "",
+        appearance: toJson(defaultAppearance),
+        contentBlocks: toJson([]),
+      },
+    });
+  }
+
+  return smartLink;
+}
+
+async function duplicateSmartLinkInTransaction(
+  tx: Prisma.TransactionClient,
+  id: string,
+  userId: string,
+  title: string,
+  slug: string,
+) {
+  const source = await tx.smartLink.findFirst({
+    where: { id, userId },
+    include: {
+      assets: true,
+      page: {
+        include: {
+          cards: { include: { geoDestinations: true } },
+          socials: true,
+          stats: true,
+        },
+      },
+    },
+  });
+  if (!source) return null;
+
+  const duplicate = await tx.smartLink.create({
+    data: {
+      userId,
+      type: source.type,
+      title,
+      slug: slug.trim().toLowerCase(),
+      status: "DRAFT",
+      primaryDestination: source.primaryDestination === null
+        ? Prisma.JsonNull
+        : toJson(source.primaryDestination),
+      deeplinkConfig: toJson(source.deeplinkConfig),
+      geoConfig: toJson(source.geoConfig),
+      shieldConfig: toJson(source.shieldConfig),
+      trackingConfig: toJson(source.trackingConfig),
+    },
+  });
+
+  const assetIdMap = new Map<string, string>();
+  for (const asset of source.assets) {
+    const copy = await tx.asset.create({
+      data: {
+        smartLinkId: duplicate.id,
+        type: asset.type,
+        fileName: asset.fileName,
+        storageKey: asset.storageKey,
+        mimeType: asset.mimeType,
+        sizeBytes: asset.sizeBytes,
+        width: asset.width,
+        height: asset.height,
+      },
+    });
+    assetIdMap.set(asset.id, copy.id);
+  }
+
+  if (source.page) {
+    const page = await tx.page.create({
+      data: {
+        smartLinkId: duplicate.id,
+        displayName: source.page.displayName,
+        username: source.page.username,
+        bio: source.page.bio,
+        locationLabel: source.page.locationLabel,
+        avatarAssetId: source.page.avatarAssetId
+          ? assetIdMap.get(source.page.avatarAssetId) ?? null
+          : null,
+        coverAssetId: source.page.coverAssetId
+          ? assetIdMap.get(source.page.coverAssetId) ?? null
+          : null,
+        appearance: toJson(source.page.appearance),
+        contentBlocks: toJson(remapBlockAssets(source.page.contentBlocks, assetIdMap)),
+      },
+    });
+
+    const cardIdMap = new Map<string, string>();
+    for (const card of source.page.cards) {
+      const cardCopy = await tx.pageCard.create({
+        data: {
+          pageId: page.id,
+          title: card.title,
+          description: card.description,
+          url: card.url,
+          visible: card.visible,
+          sortOrder: card.sortOrder,
+          platform: card.platform,
+          layout: card.layout,
+          aspectRatio: card.aspectRatio,
+          imageFit: card.imageFit,
+          imagePosition: card.imagePosition,
+          titlePosition: card.titlePosition,
+          showPlatformIcon: card.showPlatformIcon,
+          showTitle: card.showTitle,
+          showDescription: card.showDescription,
+          overlayEnabled: card.overlayEnabled,
+          overlayOpacity: card.overlayOpacity,
+          customStyle: card.customStyle === null
+            ? Prisma.JsonNull
+            : toJson(card.customStyle),
+          imageAssetId: card.imageAssetId
+            ? assetIdMap.get(card.imageAssetId) ?? null
+            : null,
+        },
+      });
+      cardIdMap.set(card.id, cardCopy.id);
+      if (card.geoDestinations.length) {
+        await tx.pageCardGeoDestination.createMany({
+          data: card.geoDestinations.map((geo) => ({
+            pageCardId: cardCopy.id,
+            countryCode: geo.countryCode,
+            countryName: geo.countryName,
+            url: geo.url,
+          })),
+        });
+      }
+    }
+
+    await tx.page.update({
+      where: { id: page.id },
+      data: {
+        appearance: toJson(remapPageEngagement(source.page.appearance, cardIdMap)),
+      },
+    });
+
+    if (source.page.socials.length) {
+      await tx.socialLink.createMany({
+        data: source.page.socials.map((social) => ({
+          pageId: page.id,
+          name: social.name,
+          url: social.url,
+          visible: social.visible,
+          platform: social.platform,
+          sortOrder: social.sortOrder,
+        })),
+      });
+    }
+
+    if (source.page.stats.length) {
+      await tx.pageStat.createMany({
+        data: source.page.stats.map((stat) => ({
+          pageId: page.id,
+          value: stat.value,
+          label: stat.label,
+          visible: stat.visible,
+          sortOrder: stat.sortOrder,
+        })),
+      });
+    }
+  }
+
+  const created = await tx.smartLink.findUniqueOrThrow({
+    where: { id: duplicate.id },
+  });
+  return smartLinkRecord(created);
+}
+
+function assertPositiveLimit(limit: number) {
+  if (!Number.isSafeInteger(limit) || limit < 1) {
+    throw new Error("SmartLink limit must be a positive safe integer.");
   }
 }
 
@@ -396,4 +466,3 @@ function remapBlockAssets(value: unknown, assetIdMap: Map<string, string>) {
     };
   });
 }
-
