@@ -24,7 +24,7 @@ export type AdminUserSnapshot = {
   autoRenew: boolean;
   periodStart: string;
   periodEnd: string;
-  linksUsed: number;
+  smartLinksUsed: number;
   smartLinks: AdminSmartLinkSnapshot[];
 };
 
