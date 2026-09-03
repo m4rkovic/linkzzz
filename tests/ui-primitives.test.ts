@@ -17,6 +17,20 @@ test("Tailwind is wired through PostCSS so utility classes reach the browser", (
   assert.match(postcssConfig, /["']@tailwindcss\/postcss["']/);
 });
 
+test("local development uses Turbopack without a remote font compile dependency", () => {
+  const packageJson = JSON.parse(
+    readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+  ) as { scripts?: Record<string, string> };
+  const rootLayout = readFileSync(
+    new URL("../src/app/layout.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.equal(packageJson.scripts?.dev, "next dev");
+  assert.equal(packageJson.scripts?.["dev:webpack"], "next dev --webpack");
+  assert.doesNotMatch(rootLayout, /next\/font\/google/);
+});
+
 test("cx keeps only meaningful class names", () => {
   assert.equal(cx("base", false, undefined, "active", null), "base active");
 });

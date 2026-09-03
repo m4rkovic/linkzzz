@@ -15,6 +15,7 @@ import type { AdminPlan } from "@/features/admin/admin-types";
 import { formatAdminDate, getPlanLimit, getPlanUsageLabel } from "@/features/admin/subscription-rules";
 import { getPlanDefinition } from "@/features/plans/plan-catalog";
 import { useAdminUser } from "@/features/admin/use-admin-user";
+import type { AdminHistorySnapshot, AdminUserSnapshot } from "@/types/admin-api";
 
  type ConfirmAction =
   | { type: "NONE" }
@@ -22,7 +23,13 @@ import { useAdminUser } from "@/features/admin/use-admin-user";
   | { type: "DOWNGRADE"; plan: AdminPlan }
   | { type: "REACTIVATE" };
 
-export default function UserDetails({ userId }: { userId: string }) {
+export default function UserDetails({
+  userId,
+  initialData,
+}: {
+  userId: string;
+  initialData: { user: AdminUserSnapshot; history: AdminHistorySnapshot[] };
+}) {
   const {
     user,
     history,
@@ -37,7 +44,7 @@ export default function UserDetails({ userId }: { userId: string }) {
     resetPassword,
     loading,
     error,
-  } = useAdminUser(userId);
+  } = useAdminUser(userId, initialData);
 
   const [resetOpen, setResetOpen] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);

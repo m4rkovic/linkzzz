@@ -115,7 +115,6 @@ export default function SmartLinksManager({
         return;
       }
       router.push(`/dashboard/links/${payload.smartLink.id}`);
-      router.refresh();
     } catch {
       const message = "Could not connect to the Linkzzz server.";
       setActionError(message);
@@ -151,7 +150,6 @@ export default function SmartLinksManager({
       setLinks((current) => current.filter((item) => item.id !== smartLink.id));
       setPendingDelete(null);
       pushToast({ title: "Smart Link deleted", tone: "success" });
-      router.refresh();
     } catch {
       const message = "Could not connect to the Linkzzz server.";
       setActionError(message);
@@ -399,7 +397,6 @@ export default function SmartLinksManager({
               setCreating(false);
               pushToast({ title: "Smart Link created", description: "Opening the editor…", tone: "success" });
               router.push(`/dashboard/links/${payload.smartLink.id}`);
-              router.refresh();
             } catch {
               const message = "Could not connect to the Linkzzz server.";
               setError(message);

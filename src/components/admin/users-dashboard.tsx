@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import { AlertTriangle, CalendarDays, Clock3, Search, UserPlus, Users } from "lucide-react";
 import { buttonClassName } from "@/components/ui/button";
 import type { AdminUserListItem } from "@/types/admin-api";
@@ -12,53 +11,44 @@ import { formatUtcDate } from "@/lib/date-format";
 
 type QuickView = "ALL" | "EXPIRING" | "CANCELLING" | "EXPIRED";
 
-export default function UsersDashboard() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [users, setUsers] = useState<AdminUserListItem[]>([]);
+export default function UsersDashboard({
+  initialUsers,
+  initialView,
+  nowMs,
+}: {
+  initialUsers: AdminUserListItem[];
+  initialView: QuickView;
+  nowMs: number;
+}) {
+  const users = initialUsers;
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const quickView = parseQuickView(searchParams.get("view"));
-
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const response = await fetch("/api/admin/users", { cache: "no-store" });
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error ?? "Unable to load users.");
-        if (active) setUsers(body.users);
-      } catch (caught) {
-        if (active) setError(caught instanceof Error ? caught.message : "Unable to load users.");
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => { active = false; };
-  }, []);
+  const [quickView, setQuickViewState] = useState<QuickView>(initialView);
 
   const counts = useMemo(() => ({
     total: users.length,
-    expiring: users.filter(isExpiringSoon).length,
+    expiring: users.filter((user) => isExpiringSoon(user, nowMs)).length,
     cancelling: users.filter((user) => user.subscriptionStatus === "CANCEL_AT_PERIOD_END").length,
-    expired: users.filter((user) => effectiveStatus(user) === "EXPIRED").length,
-  }), [users]);
+    expired: users.filter((user) => effectiveStatus(user, nowMs) === "EXPIRED").length,
+  }), [users, nowMs]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return users.filter((user) => {
       const matchesSearch = !query || [user.displayName, user.username, user.email].some((value) => value.toLowerCase().includes(query));
       if (!matchesSearch) return false;
-      if (quickView === "EXPIRING") return isExpiringSoon(user);
+      if (quickView === "EXPIRING") return isExpiringSoon(user, nowMs);
       if (quickView === "CANCELLING") return user.subscriptionStatus === "CANCEL_AT_PERIOD_END";
-      if (quickView === "EXPIRED") return effectiveStatus(user) === "EXPIRED";
+      if (quickView === "EXPIRED") return effectiveStatus(user, nowMs) === "EXPIRED";
       return true;
     });
-  }, [users, search, quickView]);
+  }, [users, search, quickView, nowMs]);
 
   function setQuickView(view: QuickView) {
-    router.replace(view === "ALL" ? "/admin/users" : `/admin/users?view=${view.toLowerCase()}`, { scroll: false });
+    setQuickViewState(view);
+    const url = new URL(window.location.href);
+    if (view === "ALL") url.searchParams.delete("view");
+    else url.searchParams.set("view", view.toLowerCase());
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
   return <div className="mx-auto w-full max-w-7xl space-y-6">
@@ -66,8 +56,6 @@ export default function UsersDashboard() {
       <div><h1 className="text-2xl font-bold tracking-tight text-zinc-950">Users</h1><p className="mt-1 text-sm text-zinc-500">Manage customer accounts, plans and subscriptions.</p></div>
       <Link href="/admin/users/new" className={buttonClassName({ variant: "primary", className: "font-black" })}><UserPlus size={17}/> Create user</Link>
     </div>
-
-    {error && <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Summary icon={Users} label="Total customers" value={counts.total} active={quickView === "ALL"} onClick={() => setQuickView("ALL")}/>
@@ -80,7 +68,7 @@ export default function UsersDashboard() {
       <div className="relative"><Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, username or email" className="h-11 w-full rounded-xl border border-zinc-200 pl-10 pr-4 text-sm outline-none focus:border-zinc-400"/></div>
     </div>
 
-    {loading ? <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-500">Loading customers...</div> : filtered.length === 0 ? <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">No customers match this view.</div> : <>
+    {filtered.length === 0 ? <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">No customers match this view.</div> : <>
       <div className="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white lg:block">
         <table className="w-full text-left text-sm"><thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Plan</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Smart Links</th><th className="px-5 py-3">Expires</th><th className="px-5 py-3"></th></tr></thead><tbody>{filtered.map((user) => <tr key={user.id} className="border-t border-zinc-100"><td className="px-5 py-4"><p className="font-semibold text-zinc-950">{user.displayName}</p><p className="mt-1 text-xs text-zinc-500">@{user.username} · {user.email}</p></td><td className="px-5 py-4 font-medium">{getPlanDefinition(user.plan).name}</td><td className="px-5 py-4"><Status user={user}/></td><td className="px-5 py-4">{getPlanUsageLabel(user.plan, user.linksUsed)}</td><td className="px-5 py-4">{formatDate(user.periodEnd)}</td><td className="px-5 py-4 text-right"><Link href={`/admin/users/${user.id}`} className="font-semibold text-zinc-950">Manage</Link></td></tr>)}</tbody></table>
       </div>
@@ -91,8 +79,7 @@ export default function UsersDashboard() {
 
 function Summary({ icon: Icon, label, value, active, onClick }: { icon: React.ElementType; label: string; value: number; active: boolean; onClick: () => void }) { return <button type="button" onClick={onClick} className={`rounded-2xl border p-4 text-left ${active ? "border-brand-violet bg-brand-violet-strong text-white shadow-lg shadow-brand-violet/15" : "border-zinc-200 bg-white"}`}><Icon size={18}/><p className="mt-4 text-2xl font-bold">{value}</p><p className={`mt-1 text-xs ${active ? "text-white" : "text-zinc-500"}`}>{label}</p></button>; }
 function Info({ label, value }: { label: string; value: string }) { return <div className="min-w-0 rounded-xl bg-zinc-50 p-3"><p className="text-zinc-400">{label}</p><p className="mt-1 break-words font-semibold text-zinc-800">{value}</p></div>; }
-function Status({ user }: { user: AdminUserListItem }) { const status = effectiveStatus(user); return <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700">{status.replaceAll("_", " ")}</span>; }
-function effectiveStatus(user: AdminUserListItem) { if (user.accountStatus === "SUSPENDED") return "SUSPENDED"; if (user.accountStatus === "DISABLED") return "STOPPED"; if (user.subscriptionStatus !== "STOPPED" && new Date(user.periodEnd).getTime() < Date.now()) return "EXPIRED"; return user.subscriptionStatus; }
-function isExpiringSoon(user: AdminUserListItem) { if (effectiveStatus(user) !== "ACTIVE") return false; const days = Math.ceil((new Date(user.periodEnd).getTime() - Date.now()) / 86400000); return days >= 0 && days <= 7; }
+function Status({ user }: { user: AdminUserListItem }) { const status = user.accountStatus === "SUSPENDED" ? "SUSPENDED" : user.accountStatus === "DISABLED" ? "STOPPED" : user.subscriptionStatus; return <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700">{status.replaceAll("_", " ")}</span>; }
+function effectiveStatus(user: AdminUserListItem, nowMs: number) { if (user.accountStatus === "SUSPENDED") return "SUSPENDED"; if (user.accountStatus === "DISABLED") return "STOPPED"; if (user.subscriptionStatus !== "STOPPED" && new Date(user.periodEnd).getTime() < nowMs) return "EXPIRED"; return user.subscriptionStatus; }
+function isExpiringSoon(user: AdminUserListItem, nowMs: number) { if (effectiveStatus(user, nowMs) !== "ACTIVE") return false; const days = Math.ceil((new Date(user.periodEnd).getTime() - nowMs) / 86400000); return days >= 0 && days <= 7; }
 function formatDate(value: string) { return formatUtcDate(value, { month: "short", day: "2-digit", year: "numeric" }); }
-function parseQuickView(value: string | null): QuickView { switch (value?.toUpperCase()) { case "EXPIRING": return "EXPIRING"; case "CANCELLING": return "CANCELLING"; case "EXPIRED": return "EXPIRED"; default: return "ALL"; } }

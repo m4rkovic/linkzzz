@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
 import DeeplinkHelper from "@/components/public/deeplink-helper";
-import { recordSmartLinkRuntimeEvent, shouldRecordBlockedAutomation } from "@/server/analytics/runtime-analytics";
+import { scheduleSmartLinkRuntimeEvent, shouldRecordBlockedAutomation } from "@/server/analytics/runtime-analytics";
 import PublicProfile from "@/components/public/public-profile";
 import TrafficShieldPreview from "@/components/public/traffic-shield-preview";
 import {
@@ -67,14 +67,14 @@ export default async function PublicProfilePage({
   const context = getSmartLinkRequestContext(requestHeaders);
   const resolution = resolveSmartLink(smartLink, context);
 
-  await recordSmartLinkRuntimeEvent({
+  scheduleSmartLinkRuntimeEvent({
     smartLink,
     headers: requestHeaders,
     context,
     type: "SMART_LINK_VIEW",
   });
   if (resolution.type === "BLOCK" && shouldRecordBlockedAutomation(context)) {
-    await recordSmartLinkRuntimeEvent({
+    scheduleSmartLinkRuntimeEvent({
       smartLink,
       headers: requestHeaders,
       context,
@@ -82,7 +82,7 @@ export default async function PublicProfilePage({
     });
   }
   if (resolution.type === "DEEPLINK_HELPER") {
-    await recordSmartLinkRuntimeEvent({
+    scheduleSmartLinkRuntimeEvent({
       smartLink,
       headers: requestHeaders,
       context,

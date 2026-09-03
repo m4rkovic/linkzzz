@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHmac } from "node:crypto";
+import { after } from "next/server";
 
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import type { AnalyticsEventRecord } from "@/server/services/contracts";
@@ -19,13 +20,20 @@ type RuntimeEventType = Extract<
   | "BLOCKED_AUTOMATED_REQUEST"
 >;
 
-export async function recordSmartLinkRuntimeEvent(input: {
+type RuntimeEventInput = {
   smartLink: Pick<SmartLinkRecord, "id" | "tracking">;
   headers: RequestHeaders;
   context: SmartLinkRequestContext;
   type: RuntimeEventType;
   pageCardId?: string | null;
-}) {
+};
+
+export function scheduleSmartLinkRuntimeEvent(input: RuntimeEventInput) {
+  if (!input.smartLink.tracking.internalAnalytics) return;
+  after(() => recordSmartLinkRuntimeEvent(input));
+}
+
+export async function recordSmartLinkRuntimeEvent(input: RuntimeEventInput) {
   if (!input.smartLink.tracking.internalAnalytics) return;
 
   try {

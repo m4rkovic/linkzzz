@@ -21,8 +21,8 @@ export function buildContentSecurityPolicy(input: {
     "script-src-attr 'none'",
     // The editor and public renderer currently use React style attributes.
     // Removing this requires a separate CSS refactor; it does not weaken script-src.
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' data: https://fonts.gstatic.com",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: https:",
     "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com",

@@ -144,7 +144,8 @@ export default function LoginForm({ notice }: { notice?: string }) {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <form onSubmit={handleSubmit} className="mt-8 space-y-5" data-hydrated={hydrated ? "true" : "false"} aria-busy={loading}>
+              <fieldset disabled={!hydrated || loading} className="contents">
               <div>
                 <label htmlFor="identifier" className="text-sm font-medium text-zinc-900">
                   Username or email
@@ -229,6 +230,7 @@ export default function LoginForm({ notice }: { notice?: string }) {
                 {loading ? "Signing in..." : "Sign in"}
                 {!loading && <ArrowRight size={17} />}
               </Button>
+              </fieldset>
             </form>
 
             <div className="mt-8 border-t border-zinc-100 pt-6">

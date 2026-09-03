@@ -32,16 +32,9 @@ test("admin provisions a customer who publishes a Smart Link and records analyti
   await expect(page).toHaveURL(/\/admin$/);
 
   await page.goto("/admin/users/new", { waitUntil: "domcontentloaded" });
+  await expect(page.locator('form[data-hydrated="true"]')).toBeVisible();
   const displayNameInput = page.getByLabel("Display name");
-  // create-user-form.tsx has no hydration gate on its inputs, unlike the login
-  // form. On a route Next hasn't compiled yet this run, domcontentloaded can
-  // land before hydration attaches onChange, so an immediate .fill() is
-  // silently dropped from React state (the DOM shows it, state doesn't).
-  // Retry until the value actually sticks before trusting the rest of the form.
-  await expect(async () => {
-    await displayNameInput.fill(displayName);
-    await expect(displayNameInput).toHaveValue(displayName);
-  }).toPass();
+  await displayNameInput.fill(displayName);
   await page.getByLabel("Login username").fill(username);
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Public slug").fill(slug);
@@ -55,6 +48,7 @@ test("admin provisions a customer who publishes a Smart Link and records analyti
 
   await login(page, username, temporaryPassword);
   await expect(page).toHaveURL(/\/change-password$/);
+  await expect(page.locator('form[data-hydrated="true"]')).toBeVisible();
   await page.getByLabel("Current password").fill(temporaryPassword);
   await page.getByLabel("New password", { exact: true }).fill(permanentPassword);
   await page.getByLabel("Confirm new password").fill(permanentPassword);
@@ -106,14 +100,9 @@ test("admin provisions a customer who publishes a Smart Link and records analyti
   await page.getByRole("button", { name: "Publish profile" }).click();
   await expect(page.getByText("Your profile is live", { exact: true })).toBeVisible();
 
-  const analyticsResponse = page.waitForResponse((response) => {
-    if (!response.url().endsWith("/api/analytics/events")) return false;
-    return response.request().postData()?.includes('"type":"PAGE_VIEW"') ?? false;
-  });
-
   await page.goto(`/${slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText(displayName, { exact: true }).first()).toBeVisible();
-  expect((await analyticsResponse).status()).toBe(202);
+  await expect.poll(() => countSmartLinkViews(slug), { timeout: 10_000 }).toBeGreaterThan(0);
 });
 
 async function login(
@@ -187,6 +176,26 @@ async function removeTestCustomer(username: string) {
   } catch (error) {
     await database.query("ROLLBACK").catch(() => undefined);
     throw error;
+  } finally {
+    await database.end();
+  }
+}
+
+async function countSmartLinkViews(slug: string) {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) return 0;
+
+  const database = new Client({ connectionString });
+  try {
+    await database.connect();
+    const result = await database.query<{ count: number }>(
+      `SELECT COUNT(*)::int AS "count"
+       FROM "AnalyticsEvent" AS event
+       INNER JOIN "SmartLink" AS link ON link."id" = event."smartLinkId"
+       WHERE link."slug" = $1 AND event."type" = 'SMART_LINK_VIEW'`,
+      [slug],
+    );
+    return result.rows[0]?.count ?? 0;
   } finally {
     await database.end();
   }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 
 export default function SignOutButton({
   children,
@@ -10,7 +9,6 @@ export default function SignOutButton({
   children: ReactNode;
   className?: string;
 }) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleSignOut() {
@@ -25,9 +23,9 @@ export default function SignOutButton({
         method: "POST",
       });
     } finally {
-      router.replace("/login");
-      router.refresh();
-      setLoading(false);
+      // The session cookie changed, so start the next route from a clean server
+      // request instead of racing a client transition against an RSC refresh.
+      window.location.replace("/login");
     }
   }
 

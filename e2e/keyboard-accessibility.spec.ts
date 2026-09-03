@@ -18,6 +18,7 @@ test.describe("R1.4 keyboard and focus checks", () => {
     skipMobileKeyboard(testInfo);
     await context.clearCookies();
     await page.goto("/login");
+    await expect(page.locator('form[data-hydrated="true"]')).toBeVisible();
 
     await page.keyboard.press("Tab");
     await expect(page.getByLabel("Username or email")).toBeFocused();

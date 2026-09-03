@@ -25,6 +25,7 @@ import { Button, buttonClassName } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ProfileProvider } from "@/features/profile/profile-context";
 import type { SmartLinkEditableData, SmartLinkStatus } from "@/types/smart-link";
+import type { CustomDomainView } from "@/types/custom-domain";
 
 import { DeeplinkSection } from "./editor/deeplink-section";
 import { EditorNavigation } from "./editor/editor-navigation";
@@ -49,12 +50,14 @@ export default function SmartLinkEditor({
   initialSection = "Link",
   initialPageSection = "Profile",
   pageLinkLimit,
+  initialDomains,
 }: {
   initialSmartLink: SerializableSmartLink;
   initialPage?: InitialPage;
   initialSection?: EditorSection;
   initialPageSection?: PageSection;
   pageLinkLimit: number;
+  initialDomains: CustomDomainView[];
 }) {
   const [activeSection, setActiveSection] = useState<EditorSection>(initialSection);
   const [pageSection, setPageSection] = useState<PageSection>(initialPageSection);
@@ -236,7 +239,7 @@ export default function SmartLinkEditor({
           </div>
 
           <div className={activeSection === "Link" ? "mt-4 xl:mt-0" : "hidden"}>
-            <LinkSection smartLinkId={initialSmartLink.id} type={initialSmartLink.type} draft={draft} change={change} />
+            <LinkSection smartLinkId={initialSmartLink.id} type={initialSmartLink.type} draft={draft} change={change} initialDomains={initialDomains} />
           </div>
 
           {initialSmartLink.type === "LANDING_PAGE" && initialPage && (

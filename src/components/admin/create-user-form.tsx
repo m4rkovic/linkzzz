@@ -6,6 +6,7 @@ import { CalendarDays, Check, Eye, EyeOff, KeyRound, Link2, Mail, RefreshCw, Shi
 import { buttonClassName } from "@/components/ui/button";
 import { cardClassName } from "@/components/ui/card";
 import { controlClassName } from "@/components/ui/form-control";
+import { useHydrated } from "@/components/ui/use-hydrated";
 import type { AdminPlan as Plan } from "@/features/admin/admin-types";
 import { getPlanDefinition } from "@/features/plans/plan-catalog";
 
@@ -32,6 +33,7 @@ type CreateUserFormProps = {
 
 export default function CreateUserForm({ initialDate }: CreateUserFormProps) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const initialExpiryDate = addMonthsClampedDateInput(initialDate, 1);
   const [displayName, setDisplayName] = useState(""); const [username, setUsername] = useState(""); const [email, setEmail] = useState(""); const [slug, setSlug] = useState("");
   const [password, setPassword] = useState(""); const [showPassword, setShowPassword] = useState(false); const [plan, setPlan] = useState<Plan>("BASIC");
@@ -40,11 +42,12 @@ export default function CreateUserForm({ initialDate }: CreateUserFormProps) {
 
   function handleUsername(value: string) { const next = value.toLowerCase().replace(/[^a-z0-9_-]/g, ""); if (!slug || slug === username) setSlug(next); setUsername(next); }
   function generatePassword() { const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%"; const bytes = new Uint32Array(16); crypto.getRandomValues(bytes); setPassword(Array.from(bytes, (value) => chars[value % chars.length]).join("")); setShowPassword(true); }
-  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setError(""); setBusy(true); try { const response = await fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ displayName, username, email, slug, password, plan, periodStart: `${startDate}T12:00:00`, periodEnd: `${expiryDate}T12:00:00`, autoRenew, mustChangePassword }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "Unable to create customer."); router.push(`/admin/users/${body.user.id}`); router.refresh(); } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to create customer."); } finally { setBusy(false); } }
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setError(""); setBusy(true); try { const response = await fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ displayName, username, email, slug, password, plan, periodStart: `${startDate}T12:00:00`, periodEnd: `${expiryDate}T12:00:00`, autoRenew, mustChangePassword }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "Unable to create customer."); router.push(`/admin/users/${body.user.id}`); } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to create customer."); } finally { setBusy(false); } }
 
   return (
-    <form onSubmit={submit} className="mx-auto max-w-6xl">
+    <form onSubmit={submit} className="mx-auto max-w-6xl" data-hydrated={hydrated ? "true" : "false"} aria-busy={busy}>
       {error && <div role="alert" className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
+      <fieldset disabled={!hydrated || busy} className="contents">
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-5">
           <FormSection icon={UserRound} title="Customer information" description="Account identity and public profile address.">
@@ -74,6 +77,7 @@ export default function CreateUserForm({ initialDate }: CreateUserFormProps) {
           <p className="px-2 text-center text-xs leading-5 text-zinc-400">The account, subscription, profile and audit record are created together.</p>
         </aside>
       </div>
+      </fieldset>
     </form>
   );
 }

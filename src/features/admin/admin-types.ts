@@ -15,7 +15,6 @@ export type AdminHistoryItem = {
   id: string | number;
   date: string;
   title: string;
-  slug: string;
   description: string;
 };
 

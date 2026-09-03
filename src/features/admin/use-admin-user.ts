@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import type { AdminHistoryItem, AdminPlan, AdminUserModel } from "@/features/admin/admin-types";
-import type { AdminUserAction, AdminUserSnapshot } from "@/types/admin-api";
+import type {
+  AdminHistorySnapshot,
+  AdminUserAction,
+  AdminUserSnapshot,
+} from "@/types/admin-api";
 
 function hydrateUser(user: AdminUserSnapshot): AdminUserModel {
   return {
@@ -17,11 +21,14 @@ function hydrateUser(user: AdminUserSnapshot): AdminUserModel {
   };
 }
 
-export function useAdminUser(userId: string) {
+export function useAdminUser(
+  userId: string,
+  initialData: { user: AdminUserSnapshot; history: AdminHistorySnapshot[] },
+) {
   const { pushToast } = useToast();
-  const [user, setUser] = useState<AdminUserModel | null>(null);
-  const [history, setHistory] = useState<AdminHistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<AdminUserModel>(() => hydrateUser(initialData.user));
+  const [history, setHistory] = useState<AdminHistoryItem[]>(initialData.history);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -39,11 +46,6 @@ export function useAdminUser(userId: string) {
       setLoading(false);
     }
   }, [userId]);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(timeoutId);
-  }, [load]);
 
   async function action(payload: AdminUserAction, successTitle: string) {
     setError("");

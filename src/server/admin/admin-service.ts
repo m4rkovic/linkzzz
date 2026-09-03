@@ -12,6 +12,7 @@ import {
 } from "@/server/business/plans";
 import type { SubscriptionStatus } from "@/server/business/subscriptions";
 import { getServerDependencies } from "@/server/persistence/dependencies";
+import type { UserRecord } from "@/server/services/contracts";
 import { validateSlug } from "@/server/validation/slug";
 import { validatePassword } from "@/server/validation/password";
 import type { PersistedProfileData } from "@/types/persisted-profile";
@@ -59,7 +60,9 @@ export async function listAdminUsers(): Promise<AdminUserListItem[]> {
   const users = await dependencies.users.list();
   const customers = users.filter((user) => user.role === "CUSTOMER");
 
-  const snapshots = await Promise.all(customers.map((user) => buildAdminUserSnapshot(user.id)));
+  const snapshots = await Promise.all(
+    customers.map((user) => buildAdminUserSnapshot(user.id, user)),
+  );
   return snapshots.map(toAdminUserListItem);
 }
 
@@ -101,9 +104,14 @@ export async function getAdminUser(userId: string): Promise<AdminActionResult | 
   const user = await dependencies.users.findById(userId);
   if (!user || user.role !== "CUSTOMER") return null;
 
+  const [snapshot, history] = await Promise.all([
+    buildAdminUserSnapshot(userId, user),
+    buildAdminHistory(userId),
+  ]);
+
   return {
-    user: await buildAdminUserSnapshot(userId),
-    history: await buildAdminHistory(userId),
+    user: snapshot,
+    history,
   };
 }
 
@@ -131,7 +139,13 @@ export async function createAdminUser(
   if (periodEnd <= periodStart) throw new Error("Subscription expiry must be after the start date.");
 
   const dependencies = await getServerDependencies();
-  const existingSlug = await dependencies.smartLinks.findBySlug(slugValidation.value);
+  const [existingUsername, existingEmail, existingSlug] = await Promise.all([
+    dependencies.users.findByLogin(usernameValidation.value),
+    dependencies.users.findByLogin(email),
+    dependencies.smartLinks.findBySlug(slugValidation.value),
+  ]);
+  if (existingUsername) throw new Error("Username is already in use.");
+  if (existingEmail) throw new Error("Email address is already in use.");
   if (existingSlug) throw new Error("Smart Link slug already exists.");
 
   const passwordHash = await passwordHasher.hash(input.password);
@@ -346,12 +360,17 @@ export async function performAdminUserAction(
   return temporaryPassword ? { ...result, temporaryPassword } : result;
 }
 
-async function buildAdminUserSnapshot(userId: string): Promise<AdminUserSnapshot> {
+async function buildAdminUserSnapshot(
+  userId: string,
+  knownUser?: UserRecord,
+): Promise<AdminUserSnapshot> {
   const dependencies = await getServerDependencies();
-  const user = await dependencies.users.findById(userId);
-  const subscription = await dependencies.subscriptions.findByUserId(userId);
-  const profile = await dependencies.profiles.findByUserId(userId);
-  const smartLinks = await dependencies.smartLinks.listForUser(userId);
+  const [user, subscription, profile, smartLinks] = await Promise.all([
+    knownUser ? Promise.resolve(knownUser) : dependencies.users.findById(userId),
+    dependencies.subscriptions.findByUserId(userId),
+    dependencies.profiles.findByUserId(userId),
+    dependencies.smartLinks.listForUser(userId),
+  ]);
   if (!user || !subscription || !profile) throw new Error("Customer data is incomplete.");
 
   return {

@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import DeeplinkHelper from "@/components/public/deeplink-helper";
 import LandingPage from "@/components/landing/landing-page";
-import { recordSmartLinkRuntimeEvent, shouldRecordBlockedAutomation } from "@/server/analytics/runtime-analytics";
+import { scheduleSmartLinkRuntimeEvent, shouldRecordBlockedAutomation } from "@/server/analytics/runtime-analytics";
 import PublicProfile from "@/components/public/public-profile";
 import TrafficShieldPreview from "@/components/public/traffic-shield-preview";
 import { resolveActiveCustomDomain } from "@/server/domains/custom-domain-service";
@@ -28,12 +28,12 @@ export default async function Home() {
     if (!smartLink) notFound();
     const context = getSmartLinkRequestContext(requestHeaders);
     const resolution = resolveSmartLink(smartLink, context);
-    await recordSmartLinkRuntimeEvent({ smartLink, headers: requestHeaders, context, type: "SMART_LINK_VIEW" });
+    scheduleSmartLinkRuntimeEvent({ smartLink, headers: requestHeaders, context, type: "SMART_LINK_VIEW" });
     if (resolution.type === "BLOCK" && shouldRecordBlockedAutomation(context)) {
-      await recordSmartLinkRuntimeEvent({ smartLink, headers: requestHeaders, context, type: "BLOCKED_AUTOMATED_REQUEST" });
+      scheduleSmartLinkRuntimeEvent({ smartLink, headers: requestHeaders, context, type: "BLOCKED_AUTOMATED_REQUEST" });
     }
     if (resolution.type === "DEEPLINK_HELPER") {
-      await recordSmartLinkRuntimeEvent({ smartLink, headers: requestHeaders, context, type: "DEEPLINK_ATTEMPT" });
+      scheduleSmartLinkRuntimeEvent({ smartLink, headers: requestHeaders, context, type: "DEEPLINK_ATTEMPT" });
     }
     if (resolution.type === "NOT_FOUND" || resolution.type === "BLOCK") notFound();
     if (resolution.type === "CRAWLER_PREVIEW") return <TrafficShieldPreview />;

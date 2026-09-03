@@ -5,6 +5,7 @@ import { FileText, Route } from "lucide-react";
 import { DestinationPicker } from "@/components/destinations/destination-picker";
 import CustomDomainManager from "@/components/smart-links/custom-domain-manager";
 import type { SmartLinkEditableData, SmartLinkRecord } from "@/types/smart-link";
+import type { CustomDomainView } from "@/types/custom-domain";
 
 import { EditorPanel, Field, inputClass } from "./editor-primitives";
 import { emptyDestination, normalizeSlug } from "./editor-utils";
@@ -15,11 +16,13 @@ export function LinkSection({
   type,
   draft,
   change,
+  initialDomains,
 }: {
   smartLinkId: string;
   type: SmartLinkRecord["type"];
   draft: SmartLinkEditableData;
   change: SmartLinkChangeHandler;
+  initialDomains: CustomDomainView[];
 }) {
   return (
     <EditorPanel
@@ -69,7 +72,7 @@ export function LinkSection({
         />
       )}
 
-      <CustomDomainManager smartLinkId={smartLinkId} />
+      <CustomDomainManager smartLinkId={smartLinkId} initialDomains={initialDomains} />
     </EditorPanel>
   );
 }

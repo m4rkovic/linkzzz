@@ -1,46 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Clipboard, ExternalLink, Globe2, Loader2, Plus, Power, RefreshCw, Trash2 } from "lucide-react";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import type { CustomDomainDnsRecord, CustomDomainView } from "@/types/custom-domain";
 
-type DnsRecord = { type: "TXT" | "CNAME"; name: string; value: string };
-type DomainRecord = {
-  id: string;
+export default function CustomDomainManager({
+  smartLinkId,
+  initialDomains,
+}: {
   smartLinkId: string;
-  domain: string;
-  status: "PENDING" | "VERIFIED" | "ACTIVE" | "DISABLED";
-  verifiedAt: string | null;
-  dns: { verification: DnsRecord; routing: DnsRecord };
-};
-
-export default function CustomDomainManager({ smartLinkId }: { smartLinkId: string }) {
-  const [domains, setDomains] = useState<DomainRecord[]>([]);
+  initialDomains: CustomDomainView[];
+}) {
+  const [domains, setDomains] = useState<CustomDomainView[]>(initialDomains);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState("");
   const [pendingRemoveDomain, setPendingRemoveDomain] = useState<string | null>(null);
   const { pushToast } = useToast();
-
-  const load = useCallback(async () => {
-    const response = await fetch(`/api/custom-domains?smartLinkId=${encodeURIComponent(smartLinkId)}`, { cache: "no-store" });
-    const payload = await response.json().catch(() => null) as { domains?: DomainRecord[]; error?: string } | null;
-    if (!response.ok) throw new Error(payload?.error ?? "Could not load custom domains.");
-    setDomains(payload?.domains ?? []);
-  }, [smartLinkId]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void load()
-        .catch((reason) => setError(reason instanceof Error ? reason.message : "Could not load custom domains."))
-        .finally(() => setLoading(false));
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [load]);
 
   async function addDomain() {
     if (!input.trim()) return;
@@ -52,7 +31,7 @@ export default function CustomDomainManager({ smartLinkId }: { smartLinkId: stri
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ smartLinkId, domain: input }),
       });
-      const payload = await response.json().catch(() => null) as { domain?: DomainRecord; error?: string } | null;
+      const payload = await response.json().catch(() => null) as { domain?: CustomDomainView; error?: string } | null;
       if (!response.ok || !payload?.domain) throw new Error(payload?.error ?? "Could not add domain.");
       setDomains((current) => [...current, payload.domain!]);
       setInput("");
@@ -73,7 +52,7 @@ export default function CustomDomainManager({ smartLinkId }: { smartLinkId: stri
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ smartLinkId, domain, action: operation }),
       });
-      const payload = await response.json().catch(() => null) as { domain?: DomainRecord; error?: string } | null;
+      const payload = await response.json().catch(() => null) as { domain?: CustomDomainView; error?: string } | null;
       if (!response.ok || !payload?.domain) throw new Error(payload?.error ?? "Domain update failed.");
       setDomains((current) => current.map((item) => item.domain === domain ? payload.domain! : item));
       pushToast({ title: operation === "VERIFY" ? "DNS checked" : operation === "ACTIVATE" ? "Domain activated" : "Domain disabled", tone: "success" });
@@ -142,8 +121,7 @@ export default function CustomDomainManager({ smartLinkId }: { smartLinkId: stri
       </div>
 
       {error && <p className="mt-3 text-xs font-semibold text-red-600">{error}</p>}
-      {loading && <p className="mt-4 text-xs text-zinc-500">Loading domains…</p>}
-      {!loading && domains.length === 0 && <p className="mt-4 rounded-xl bg-zinc-50 p-4 text-xs leading-5 text-zinc-500">No custom domain connected to this link.</p>}
+      {domains.length === 0 && <p className="mt-4 rounded-xl bg-zinc-50 p-4 text-xs leading-5 text-zinc-500">No custom domain connected to this link.</p>}
 
       <div className="mt-4 space-y-3">
         {domains.map((item) => (
@@ -201,7 +179,7 @@ export default function CustomDomainManager({ smartLinkId }: { smartLinkId: stri
   );
 }
 
-function DnsCard({ title, record, copied, onCopy, routing = false }: { title: string; record: DnsRecord; copied: string; onCopy: (value: string) => Promise<void>; routing?: boolean }) {
+function DnsCard({ title, record, copied, onCopy, routing = false }: { title: string; record: CustomDomainDnsRecord; copied: string; onCopy: (value: string) => Promise<void>; routing?: boolean }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-3">
       <p className="text-xs font-black text-zinc-800">{title}</p>
@@ -225,7 +203,7 @@ function DnsRow({ label, value, copied, onCopy }: { label: string; value: string
   );
 }
 
-function DomainStatus({ status }: { status: DomainRecord["status"] }) {
+function DomainStatus({ status }: { status: CustomDomainView["status"] }) {
   const style = status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : status === "VERIFIED" ? "bg-blue-100 text-blue-700" : status === "DISABLED" ? "bg-zinc-200 text-zinc-600" : "bg-amber-100 text-amber-700";
   return <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wider ${style}`}>{status}</span>;
 }

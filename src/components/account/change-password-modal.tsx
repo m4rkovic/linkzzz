@@ -132,7 +132,7 @@ export default function ChangePasswordModal({
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 p-5 sm:p-6">
+        <form onSubmit={handleSubmit} className="space-y-5 p-5 sm:p-6" data-hydrated={hydrated ? "true" : "false"} aria-busy={loading}>
           {success ? (
             <div className="rounded-2xl bg-emerald-50 p-5">
               <div className="flex items-start gap-3">
@@ -145,7 +145,7 @@ export default function ChangePasswordModal({
               <button type="button" onClick={goToLogin} className="mt-5 min-h-11 w-full rounded-xl bg-zinc-950 px-4 text-sm font-semibold text-white">Sign in again</button>
             </div>
           ) : (
-            <>
+            <fieldset disabled={!hydrated || loading} className="contents">
               <PasswordInput inputRef={firstInputRef} label="Current password" value={currentPassword} onChange={setCurrentPassword} visible={showPasswords} autoComplete="current-password" />
               <PasswordInput label="New password" value={newPassword} onChange={setNewPassword} visible={showPasswords} autoComplete="new-password" />
               <PasswordInput label="Confirm new password" value={confirmPassword} onChange={setConfirmPassword} visible={showPasswords} autoComplete="new-password" />
@@ -173,9 +173,9 @@ export default function ChangePasswordModal({
 
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 {!forced && <button type="button" onClick={resetAndClose} disabled={loading} className="min-h-11 rounded-xl border border-zinc-200 px-4 text-sm font-semibold text-zinc-700 disabled:opacity-60">Cancel</button>}
-                <button type={hydrated ? "submit" : "button"} disabled={!hydrated || loading} className="min-h-11 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Changing..." : "Change password"}</button>
+                <button type="submit" disabled={!hydrated || loading} className="min-h-11 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Changing..." : "Change password"}</button>
               </div>
-            </>
+            </fieldset>
           )}
         </form>
       </div>

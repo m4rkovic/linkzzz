@@ -115,9 +115,14 @@ export async function loginWithPassword(input: {
     return { ok: false, code: "ACCOUNT_UNAVAILABLE" };
   }
 
-  if (user.role === "CUSTOMER") {
-    const subscription = await dependencies.subscriptions.findByUserId(user.id);
+  const [subscription, mustChangePassword] = await Promise.all([
+    user.role === "CUSTOMER"
+      ? dependencies.subscriptions.findByUserId(user.id)
+      : Promise.resolve(null),
+    dependencies.passwords.getMustChangePassword(user.id),
+  ]);
 
+  if (user.role === "CUSTOMER") {
     if (
       !subscription ||
       !getSubscriptionAccess(subscription.status, subscription.expiresAt).hasAccess
@@ -134,9 +139,6 @@ export async function loginWithPassword(input: {
     tokenHash,
     expiresAt,
   });
-
-  const mustChangePassword =
-    await dependencies.passwords.getMustChangePassword(user.id);
 
   await dependencies.audit.write({
     actorUserId: user.id,
@@ -187,9 +189,14 @@ export async function resolveSessionToken(
     return null;
   }
 
-  if (user.role === "CUSTOMER") {
-    const subscription = await dependencies.subscriptions.findByUserId(user.id);
+  const [subscription, mustChangePassword] = await Promise.all([
+    user.role === "CUSTOMER"
+      ? dependencies.subscriptions.findByUserId(user.id)
+      : Promise.resolve(null),
+    dependencies.passwords.getMustChangePassword(user.id),
+  ]);
 
+  if (user.role === "CUSTOMER") {
     if (
       !subscription ||
       !getSubscriptionAccess(subscription.status, subscription.expiresAt).hasAccess
@@ -198,9 +205,6 @@ export async function resolveSessionToken(
       return null;
     }
   }
-
-  const mustChangePassword =
-    await dependencies.passwords.getMustChangePassword(user.id);
 
   if (mustChangePassword && !options.allowPasswordChangeRequired) {
     return null;

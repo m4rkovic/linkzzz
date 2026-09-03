@@ -1,4 +1,7 @@
 import UserDetails from "@/components/admin/user-details";
+import { getAdminUser } from "@/server/admin/admin-service";
+import { getCurrentSession } from "@/server/auth/current-session";
+import { notFound, redirect } from "next/navigation";
 
 type UserPageProps = {
     params: Promise<{
@@ -9,7 +12,12 @@ type UserPageProps = {
 export default async function UserPage({
     params,
 }: UserPageProps) {
-    const { id } = await params;
+    const [session, { id }] = await Promise.all([getCurrentSession(), params]);
+    if (!session) redirect("/login");
+    if (session.principal.role !== "ADMIN") redirect("/dashboard");
 
-    return <UserDetails userId={id} />;
+    const initialData = await getAdminUser(id);
+    if (!initialData) notFound();
+
+    return <UserDetails userId={id} initialData={initialData} />;
 }

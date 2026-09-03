@@ -6,6 +6,10 @@ import { getVersionedPageForSmartLink } from "@/server/profile/profile-service";
 import { getPageCardLimit } from "@/server/business/plans";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import { getOwnSmartLink } from "@/server/smart-links/smart-link-service";
+import {
+  customDomainDnsInstructions,
+  listCustomDomains,
+} from "@/server/domains/custom-domain-service";
 
 type SmartLinkEditorPageProps = {
   params: Promise<{ id: string }>;
@@ -27,11 +31,14 @@ export default async function SmartLinkEditorPage({ params, searchParams }: Smar
   const smartLink = await getOwnSmartLink(session, id);
   if (!smartLink) notFound();
 
-  const page = smartLink.type === "LANDING_PAGE"
-    ? await getVersionedPageForSmartLink(session, smartLink.id)
-    : undefined;
   const dependencies = await getServerDependencies();
-  const subscription = await dependencies.subscriptions.findByUserId(session.user.id);
+  const [page, subscription, domains] = await Promise.all([
+    smartLink.type === "LANDING_PAGE"
+      ? getVersionedPageForSmartLink(session, smartLink.id)
+      : Promise.resolve(undefined),
+    dependencies.subscriptions.findByUserId(session.user.id),
+    listCustomDomains(session.user.id, smartLink.id),
+  ]);
   const pageLinkLimit = subscription ? getPageCardLimit(subscription.plan) : 0;
   if (smartLink.type === "LANDING_PAGE" && !page) notFound();
 
@@ -56,6 +63,14 @@ export default async function SmartLinkEditorPage({ params, searchParams }: Smar
       initialSection={initialSection}
       initialPageSection={initialPageSection}
       pageLinkLimit={pageLinkLimit}
+      initialDomains={domains.map((domain) => ({
+        id: domain.id ?? domain.domain,
+        smartLinkId: domain.smartLinkId,
+        domain: domain.domain,
+        status: domain.status,
+        verifiedAt: domain.verifiedAt?.toISOString() ?? null,
+        dns: customDomainDnsInstructions(domain),
+      }))}
     />
   );
 }
