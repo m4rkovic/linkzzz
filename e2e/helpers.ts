@@ -1,6 +1,7 @@
 import { Client } from "pg";
 import { expect, type Page } from "@playwright/test";
 
+import { formatSubscriptionDateInput } from "../src/server/business/subscription-dates";
 import { requireIsolatedE2EDatabaseUrl } from "./environment";
 
 const ADMIN_IDENTIFIER = process.env.E2E_ADMIN_USERNAME ?? "admin";
@@ -45,8 +46,8 @@ export function createUniqueCustomer(
     slug: username.replaceAll("_", "-").slice(0, 40),
     password: "LinkzzzE2E!2026",
     plan: options.plan ?? "PRO",
-    periodStart: start.toISOString(),
-    periodEnd: end.toISOString(),
+    periodStart: formatSubscriptionDateInput(start),
+    periodEnd: formatSubscriptionDateInput(end),
     autoRenew: false,
     mustChangePassword: options.mustChangePassword ?? false,
   };
