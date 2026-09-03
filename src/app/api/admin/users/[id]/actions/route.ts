@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { isPlanId } from "@/features/plans/plan-catalog";
+import {
+  isAdminAccountAction,
+  performAdminAccountAction,
+} from "@/server/admin/admin-account-service";
 import { performAdminUserAction } from "@/server/admin/admin-service";
 import {
   isAdminSubscriptionAction,
@@ -43,7 +47,9 @@ export async function POST(
   try {
     const result = isAdminSubscriptionAction(body)
       ? await performAdminSubscriptionAction(session, id, body)
-      : await performAdminUserAction(session, id, body);
+      : isAdminAccountAction(body)
+        ? await performAdminAccountAction(session, id, body)
+        : await performAdminUserAction(session, id, body);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
