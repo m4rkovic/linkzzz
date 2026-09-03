@@ -22,6 +22,7 @@ const completeEnvironment = {
   LINKZZZ_APP_HOSTS: "linkzzz.com,www.linkzzz.com",
   LINKZZZ_CUSTOM_DOMAIN_TARGET: "domains.linkzzz.com",
   LINKZZZ_TRUST_PROXY_HEADERS: "0",
+  LINKZZZ_GEO_HEADER: "x-vercel-ip-country",
   LINKZZZ_ANALYTICS_HASH_SALT: "analytics-secret-with-high-entropy",
 };
 
@@ -38,6 +39,7 @@ test("production environment requires shared infrastructure", () => {
   assert.ok(errors.includes("ASSET_STORAGE_ADAPTER must be s3."));
   assert.ok(errors.includes("S3_PUBLIC_BASE_URL is required."));
   assert.ok(errors.includes("LINKZZZ_CUSTOM_DOMAIN_TARGET is required."));
+  assert.ok(errors.includes("LINKZZZ_GEO_HEADER is required."));
   assert.ok(errors.includes("LINKZZZ_ANALYTICS_HASH_SALT is required."));
 });
 
@@ -50,6 +52,7 @@ test("production environment rejects insecure endpoints and invalid hosts", () =
     LINKZZZ_APP_HOSTS: "https://linkzzz.com/profile",
     LINKZZZ_CUSTOM_DOMAIN_TARGET: "https://domains.linkzzz.com/path",
     LINKZZZ_TRUST_PROXY_HEADERS: "yes",
+    LINKZZZ_GEO_HEADER: "bad header name",
   });
 
   assert.ok(errors.includes("UPSTASH_REDIS_REST_URL must use HTTPS."));
@@ -58,6 +61,7 @@ test("production environment rejects insecure endpoints and invalid hosts", () =
   assert.ok(errors.some((error) => error.startsWith("LINKZZZ_APP_HOSTS")));
   assert.ok(errors.some((error) => error.startsWith("LINKZZZ_CUSTOM_DOMAIN_TARGET")));
   assert.ok(errors.includes("LINKZZZ_TRUST_PROXY_HEADERS must be 0 or 1."));
+  assert.ok(errors.includes("LINKZZZ_GEO_HEADER must be a valid HTTP header name."));
 });
 
 test("production environment rejects weak analytics salt", () => {
