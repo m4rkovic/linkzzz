@@ -43,9 +43,15 @@ export async function buildPublicSmartLinkMetadata(
   const smartLink = slug ? await getCachedPublicSmartLinkBySlug(slug) : null;
 
   if (smartLink?.type === "DIRECT") {
+    const description = "Link destination powered by Linkzzz.";
     return {
       title: { absolute: `${smartLink.title} | Linkzzz` },
-      description: "Link destination powered by Linkzzz.",
+      description,
+      openGraph: {
+        title: smartLink.title,
+        description,
+        type: "website",
+      },
     };
   }
 
