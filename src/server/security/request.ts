@@ -2,13 +2,24 @@ import type { NextRequest } from "next/server";
 
 import { isSameOriginRequest } from "@/server/security/origin";
 
-export function getRequestIp(request: NextRequest) {
+type RequestHeaders = Pick<Headers, "get">;
+
+export function getTrustedRequestIp(headers: RequestHeaders) {
   if (process.env.LINKZZZ_TRUST_PROXY_HEADERS !== "1") return "unknown";
 
-  const forwarded = request.headers.get("x-forwarded-for");
+  const forwarded = headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
 
-  return request.headers.get("x-real-ip")?.trim() || "unknown";
+  return headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+export function getTrustedProxyHeader(headers: RequestHeaders, name: string) {
+  if (process.env.LINKZZZ_TRUST_PROXY_HEADERS !== "1") return null;
+  return headers.get(name)?.trim() || null;
+}
+
+export function getRequestIp(request: NextRequest) {
+  return getTrustedRequestIp(request.headers);
 }
 
 export function getRequestRateLimitKey(request: NextRequest) {
