@@ -4,19 +4,19 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { getEffectiveSubscriptionStatus } from "@/server/business/subscriptions";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
+import type {
+  AdminSmartLinkMutation,
+  AdminSmartLinkMutationRepository,
+} from "@/server/services/contracts";
 
-export type AdminSmartLinkStatusMutation = {
-  smartLinkId: string;
-  status: "PUBLISHED" | "DISABLED";
-};
-
-export class PrismaAdminSmartLinkMutationRepository {
+export class PrismaAdminSmartLinkMutationRepository
+  implements AdminSmartLinkMutationRepository {
   constructor(private readonly db: PrismaClient) {}
 
   async apply(
     actorUserId: string,
     userId: string,
-    action: AdminSmartLinkStatusMutation,
+    action: AdminSmartLinkMutation,
   ): Promise<void> {
     await this.db.$transaction(async (tx) => {
       await lockUserMutation(tx, userId);
