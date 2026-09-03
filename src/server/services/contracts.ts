@@ -71,6 +71,19 @@ export interface AdminAccountMutationRepository {
   ): Promise<void>;
 }
 
+export type AdminSmartLinkMutation = {
+  smartLinkId: string;
+  status: "PUBLISHED" | "DISABLED";
+};
+
+export interface AdminSmartLinkMutationRepository {
+  apply(
+    actorUserId: string,
+    userId: string,
+    action: AdminSmartLinkMutation,
+  ): Promise<void>;
+}
+
 export type AdminCustomerReadRecord = {
   user: UserRecord;
   displayName: string;
@@ -359,6 +372,7 @@ export type ServerDependencies = {
   adminRead: AdminReadRepository;
   adminSubscriptions: AdminSubscriptionMutationRepository;
   adminAccounts: AdminAccountMutationRepository;
+  adminSmartLinks: AdminSmartLinkMutationRepository;
   users: UserRepository;
   subscriptions: SubscriptionRepository;
   smartLinks: SmartLinkRepository;
