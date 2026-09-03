@@ -1,4 +1,5 @@
 export { PrismaAnalyticsRepository } from "./analytics-repository";
+export { PrismaAdminAccountMutationRepository } from "./admin-account-mutation-repository";
 export { PrismaAdminReadRepository } from "./admin-read-repository";
 export { PrismaAdminSubscriptionMutationRepository } from "./admin-subscription-mutation-repository";
 export { PrismaAssetRepository } from "./asset-repository";
