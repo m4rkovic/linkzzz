@@ -18,6 +18,10 @@ export type AuditAction =
   | "PROFILE_PUBLISHED"
   | "PROFILE_UNPUBLISHED"
   | "SLUG_CHANGED"
+  | "SMART_LINK_UPDATED"
+  | "SMART_LINK_PUBLISHED"
+  | "SMART_LINK_UNPUBLISHED"
+  | "SMART_LINK_SLUG_CHANGED"
   | "USER_DELETED"
   | "CUSTOM_DOMAIN_ADDED"
   | "CUSTOM_DOMAIN_VERIFIED"
@@ -45,7 +49,6 @@ export type AuditEventInput = {
   resourceId?: string;
   metadata?: Record<string, string | number | boolean | null>;
 };
-
 
 export type AuditEventRecord = AuditEventInput & {
   id: string;

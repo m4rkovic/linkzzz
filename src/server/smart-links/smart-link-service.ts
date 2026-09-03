@@ -260,10 +260,11 @@ export async function updateOwnSmartLink(
     await dependencies.audit.write({
       actorUserId: session.user.id,
       targetUserId: session.user.id,
-      action: "SLUG_CHANGED",
-      resourceType: "PROFILE",
+      action: "SMART_LINK_SLUG_CHANGED",
+      resourceType: "SMART_LINK",
       resourceId: write.smartLink.id,
       metadata: {
+        title: write.smartLink.title,
         previousSlug: current.slug,
         nextSlug: write.smartLink.slug,
       },
@@ -276,19 +277,21 @@ export async function updateOwnSmartLink(
       targetUserId: session.user.id,
       action:
         write.smartLink.status === "PUBLISHED"
-          ? "PROFILE_PUBLISHED"
-          : "PROFILE_UNPUBLISHED",
-      resourceType: "PROFILE",
+          ? "SMART_LINK_PUBLISHED"
+          : "SMART_LINK_UNPUBLISHED",
+      resourceType: "SMART_LINK",
       resourceId: write.smartLink.id,
+      metadata: { title: write.smartLink.title, slug: write.smartLink.slug },
     });
   }
 
   await dependencies.audit.write({
     actorUserId: session.user.id,
     targetUserId: session.user.id,
-    action: "PROFILE_UPDATED",
-    resourceType: "PROFILE",
+    action: "SMART_LINK_UPDATED",
+    resourceType: "SMART_LINK",
     resourceId: write.smartLink.id,
+    metadata: { title: write.smartLink.title, slug: write.smartLink.slug },
   });
 
   return { ok: true, smartLink: write.smartLink };

@@ -100,6 +100,101 @@ test("admin and custom-domain APIs expose stable errors while domain lifecycle a
   }
 });
 
+test("admin DTO and customer edit audits use explicit Smart Link terminology", async ({ page, context }) => {
+  const customer = createUniqueCustomer("smartlink terms", { plan: "PRO" });
+  const origin = new URL(
+    process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100",
+  ).origin;
+
+  try {
+    await loginAsAdmin(page);
+    const created = await createCustomerViaAdminApi(page, customer);
+    const customerId = created.id!;
+    const smartLinkId = await findLandingPageId(customer.username);
+
+    const adminResponse = await page.request.get(
+      `${origin}/api/admin/users/${customerId}`,
+    );
+    expect(adminResponse.status()).toBe(200);
+    const adminPayload = await adminResponse.json() as {
+      user?: Record<string, unknown>;
+    };
+    expect(adminPayload.user?.smartLinksUsed).toBe(1);
+    expect(
+      Object.prototype.hasOwnProperty.call(adminPayload.user ?? {}, "linksUsed"),
+    ).toBe(false);
+
+    await context.clearCookies();
+    await loginViaApi(
+      page,
+      customer.username,
+      customer.password,
+      "CUSTOMER",
+    );
+
+    const readResponse = await page.request.get(
+      `${origin}/api/smart-links/${smartLinkId}`,
+    );
+    expect(readResponse.status()).toBe(200);
+    const readPayload = await readResponse.json() as {
+      smartLink: {
+        title: string;
+        slug: string;
+        revision: number;
+        primaryDestination?: unknown;
+        deeplink: unknown;
+        geo: unknown;
+        shield: unknown;
+        tracking: unknown;
+      };
+    };
+    const source = readPayload.smartLink;
+    const nextSlug = `${source.slug}-audit`;
+
+    const updateResponse = await page.request.patch(
+      `${origin}/api/smart-links/${smartLinkId}`,
+      {
+        headers: { origin },
+        data: {
+          revision: source.revision,
+          smartLink: {
+            title: `${source.title} updated`,
+            slug: nextSlug,
+            status: "PUBLISHED",
+            primaryDestination: source.primaryDestination,
+            deeplink: source.deeplink,
+            geo: source.geo,
+            shield: source.shield,
+            tracking: source.tracking,
+          },
+        },
+      },
+    );
+    expect(updateResponse.status()).toBe(200);
+
+    const audits = await readSmartLinkEditAudits(customerId, smartLinkId);
+    expect(audits).toEqual([
+      {
+        action: "SMART_LINK_SLUG_CHANGED",
+        resourceType: "SMART_LINK",
+        resourceId: smartLinkId,
+      },
+      {
+        action: "SMART_LINK_PUBLISHED",
+        resourceType: "SMART_LINK",
+        resourceId: smartLinkId,
+      },
+      {
+        action: "SMART_LINK_UPDATED",
+        resourceType: "SMART_LINK",
+        resourceId: smartLinkId,
+      },
+    ]);
+  } finally {
+    await removeTestCustomer(customer.username);
+  }
+});
+
 async function findLandingPageId(username: string) {
   const database = new Client({ connectionString: requireIsolatedE2EDatabaseUrl() });
   try {
@@ -142,6 +237,38 @@ async function readDomainAudits(userId: string, domain: string) {
          ELSE 3
        END`,
       [userId, domain],
+    );
+    return result.rows;
+  } finally {
+    await database.end();
+  }
+}
+
+async function readSmartLinkEditAudits(userId: string, smartLinkId: string) {
+  const database = new Client({ connectionString: requireIsolatedE2EDatabaseUrl() });
+  try {
+    await database.connect();
+    const result = await database.query<{
+      action: string;
+      resourceType: string;
+      resourceId: string | null;
+    }>(
+      `SELECT "action", "resourceType", "resourceId"
+       FROM "AuditLog"
+       WHERE "targetUserId" = $1
+         AND "resourceId" = $2
+         AND "action" IN (
+           'SMART_LINK_SLUG_CHANGED',
+           'SMART_LINK_PUBLISHED',
+           'SMART_LINK_UPDATED'
+         )
+       ORDER BY CASE "action"
+         WHEN 'SMART_LINK_SLUG_CHANGED' THEN 1
+         WHEN 'SMART_LINK_PUBLISHED' THEN 2
+         WHEN 'SMART_LINK_UPDATED' THEN 3
+         ELSE 4
+       END`,
+      [userId, smartLinkId],
     );
     return result.rows;
   } finally {

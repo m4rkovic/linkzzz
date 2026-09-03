@@ -21,7 +21,11 @@ import type { PublicProfileData } from "@/types/profile";
 
 type SaveProfileResult =
   | { ok: true }
-  | { ok: false; error: string; code?: "PROFILE_CONFLICT" };
+  | {
+      ok: false;
+      error: string;
+      code?: "PROFILE_CONFLICT" | "PAGE_CARD_LIMIT_REACHED";
+    };
 
 type ProfileContextValue = {
   profile: PublicProfileData;
@@ -105,8 +109,9 @@ export function ProfileProvider({
           ok: false,
           error: payload?.error ?? "Could not save profile.",
           code:
-            payload?.code === "PROFILE_CONFLICT"
-              ? "PROFILE_CONFLICT"
+            payload?.code === "PROFILE_CONFLICT" ||
+            payload?.code === "PAGE_CARD_LIMIT_REACHED"
+              ? payload.code
               : undefined,
         };
       }

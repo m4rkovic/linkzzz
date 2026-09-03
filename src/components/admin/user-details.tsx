@@ -66,7 +66,7 @@ export default function UserDetails({
 
   function requestPlanChange(plan: AdminPlan) {
     if (plan === user!.plan) return;
-    if (user!.linksUsed > getPlanLimit(plan)) {
+    if (user!.smartLinksUsed > getPlanLimit(plan)) {
       setConfirmAction({ type: "DOWNGRADE", plan });
       return;
     }
@@ -90,7 +90,7 @@ export default function UserDetails({
     setConfirmAction({ type: "NONE" });
   }
 
-  const confirmCopy = getConfirmCopy(confirmAction, user.linksUsed);
+  const confirmCopy = getConfirmCopy(confirmAction, user.smartLinksUsed);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6">
@@ -101,7 +101,7 @@ export default function UserDetails({
         <OverviewCard icon={UserRound} label="Plan" value={getPlanDefinition(user.plan).name} />
         <OverviewCard icon={CalendarDays} label="Expires" value={formatAdminDate(user.periodEnd)} />
         <OverviewCard icon={RefreshCw} label="Auto renewal" value={user.autoRenew ? "Enabled" : "Disabled"} />
-        <OverviewCard icon={Link2} label="Smart Links" value={getPlanUsageLabel(user.plan, user.linksUsed)} />
+        <OverviewCard icon={Link2} label="Smart Links" value={getPlanUsageLabel(user.plan, user.smartLinksUsed)} />
       </div>
 
       <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
@@ -163,10 +163,10 @@ function OverviewCard({ icon: Icon, label, value }: { icon: React.ElementType; l
   return <section className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600"><Icon size={18}/></div><p className="mt-4 text-xs font-medium uppercase tracking-wide text-zinc-400">{label}</p><p className="mt-1 break-words text-sm font-semibold text-zinc-900">{value}</p></section>;
 }
 
-function getConfirmCopy(action: ConfirmAction, linksUsed: number) {
+function getConfirmCopy(action: ConfirmAction, smartLinksUsed: number) {
   switch (action.type) {
     case "STOP_IMMEDIATELY": return { title: "Stop subscription immediately?", description: "Customer sign-in and all public Smart Link access will stop now. Existing Smart Link publication states and data remain preserved.", confirmLabel: "Stop immediately", danger: true };
-    case "DOWNGRADE": { const targetPlan = getPlanDefinition(action.plan); return { title: `Change plan to ${targetPlan.name}?`, description: `This customer currently has ${linksUsed} Smart Links. Existing Smart Links stay intact, but new Smart Links will be blocked until usage is within the ${targetPlan.smartLinkDisplay} Smart Link allowance.`, confirmLabel: "Change plan", danger: false }; }
+    case "DOWNGRADE": { const targetPlan = getPlanDefinition(action.plan); return { title: `Change plan to ${targetPlan.name}?`, description: `This customer currently has ${smartLinksUsed} Smart Links. Existing Smart Links stay intact, but new Smart Links will be blocked until usage is within the ${targetPlan.smartLinkDisplay} Smart Link allowance.`, confirmLabel: "Change plan", danger: false }; }
     case "REACTIVATE": return { title: "Reactivate account?", description: "Customer sign-in and eligible published Smart Links will become available again, subject to subscription status.", confirmLabel: "Reactivate", danger: false };
     case "NONE": return { title: "Confirm action", description: "", confirmLabel: "Confirm", danger: false };
   }

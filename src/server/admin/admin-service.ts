@@ -69,7 +69,7 @@ export async function listAdminUsers(): Promise<AdminUserListItem[]> {
       autoRenew: subscription.autoRenew,
       periodStart: subscription.startedAt.toISOString(),
       periodEnd: (subscription.expiresAt ?? subscription.startedAt).toISOString(),
-      linksUsed: smartLinks.length,
+      smartLinksUsed: smartLinks.length,
       smartLinks: smartLinks.map((smartLink) => ({
         ...smartLink,
         updatedAt: smartLink.updatedAt.toISOString(),
@@ -101,7 +101,7 @@ export async function getAdminOverview(): Promise<AdminOverviewSnapshot> {
     cancelling: users.filter((user) => user.subscriptionStatus === "CANCEL_AT_PERIOD_END").length,
     suspended: users.filter((user) => user.accountStatus !== "ACTIVE").length,
     accessBlocked: users.filter((user) => user.accountStatus !== "ACTIVE" || user.subscriptionStatus === "EXPIRED" || user.subscriptionStatus === "STOPPED").length,
-    totalSmartLinks: users.reduce((sum, user) => sum + user.linksUsed, 0),
+    totalSmartLinks: users.reduce((sum, user) => sum + user.smartLinksUsed, 0),
     planCounts: {
       BASIC: users.filter((user) => user.plan === "BASIC").length,
       PRO: users.filter((user) => user.plan === "PRO").length,
@@ -246,7 +246,7 @@ async function buildAdminUserSnapshot(
     autoRenew: subscription.autoRenew,
     periodStart: subscription.startedAt.toISOString(),
     periodEnd: (subscription.expiresAt ?? subscription.startedAt).toISOString(),
-    linksUsed: smartLinks.length,
+    smartLinksUsed: smartLinks.length,
     smartLinks: smartLinks.map((smartLink) => ({
       id: smartLink.id,
       title: smartLink.title,
@@ -297,6 +297,11 @@ function auditTitle(action: string) {
     SUBSCRIPTION_STOPPED: "Subscription stopped immediately",
     USER_SUSPENDED: "Account suspended",
     USER_REACTIVATED: "Account reactivated",
+    USER_DISABLED: "Account disabled",
+    SMART_LINK_UPDATED: "Smart Link updated",
+    SMART_LINK_PUBLISHED: "Smart Link published",
+    SMART_LINK_UNPUBLISHED: "Smart Link moved to draft",
+    SMART_LINK_SLUG_CHANGED: "Smart Link URL changed",
     SMART_LINK_DISABLED: "Smart Link disabled",
     SMART_LINK_ENABLED: "Smart Link restored",
   };
@@ -309,6 +314,10 @@ function auditDescription(
 ) {
   if (action === "PLAN_CHANGED") return `${metadata?.previousPlan ?? "Plan"} changed to ${metadata?.nextPlan ?? "new plan"}.`;
   if (action === "SUBSCRIPTION_RENEWED" && typeof metadata?.months === "number" && metadata.months > 0) return `Subscription extended by ${metadata.months} month${metadata.months === 1 ? "" : "s"}.`;
+  if (action === "SMART_LINK_UPDATED") return `${metadata?.title ?? "Smart Link"} was updated.`;
+  if (action === "SMART_LINK_PUBLISHED") return `${metadata?.title ?? "Smart Link"} was published.`;
+  if (action === "SMART_LINK_UNPUBLISHED") return `${metadata?.title ?? "Smart Link"} was moved to draft.`;
+  if (action === "SMART_LINK_SLUG_CHANGED") return `${metadata?.previousSlug ?? "Previous URL"} changed to ${metadata?.nextSlug ?? "new URL"}.`;
   if (action === "SMART_LINK_DISABLED") return `${metadata?.title ?? "Smart Link"} was disabled by an administrator.`;
   if (action === "SMART_LINK_ENABLED") return `${metadata?.title ?? "Smart Link"} was restored by an administrator.`;
   if (action === "USER_SUSPENDED" && metadata?.reason) return String(metadata.reason);
