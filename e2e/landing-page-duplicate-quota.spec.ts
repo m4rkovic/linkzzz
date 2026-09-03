@@ -12,7 +12,7 @@ import {
 } from "./helpers";
 import { expect, test } from "./test";
 
-test("over-limit Landing Page cannot be duplicated after a plan downgrade", async ({ page, context }) => {
+test("over-limit Landing Page cannot grow or be duplicated after a plan downgrade", async ({ page, context }) => {
   const customer = createUniqueCustomer("dup card quota", { plan: "BASIC" });
   const limit = getPageCardLimit("BASIC");
   const overLimitCount = limit + 1;
@@ -26,13 +26,52 @@ test("over-limit Landing Page cannot be duplicated after a plan downgrade", asyn
     await loginViaApi(page, customer.username, customer.password, "CUSTOMER");
     const origin = new URL(page.url()).origin;
 
-    const response = await page.request.post(
+    const pageResponse = await page.request.get(
+      `${origin}/api/smart-links/${sourceSmartLinkId}/page`,
+    );
+    expect(pageResponse.status()).toBe(200);
+    const pageRecord = await pageResponse.json() as {
+      profile: {
+        links: Array<Record<string, unknown>>;
+        [key: string]: unknown;
+      };
+      revision: number;
+    };
+
+    const growthResponse = await page.request.put(
+      `${origin}/api/smart-links/${sourceSmartLinkId}/page`,
+      {
+        headers: { origin },
+        data: {
+          revision: pageRecord.revision,
+          profile: {
+            ...pageRecord.profile,
+            links: [
+              ...pageRecord.profile.links,
+              {
+                id: `e2e-growth-${randomUUID()}`,
+                title: "Attempted overage growth",
+                url: "https://example.com/overage-growth",
+                visible: true,
+                geoDestinations: [],
+              },
+            ],
+          },
+        },
+      },
+    );
+    expect(growthResponse.status()).toBe(409);
+    expect(await growthResponse.json()).toMatchObject({
+      code: "PAGE_CARD_LIMIT_REACHED",
+    });
+
+    const duplicateResponse = await page.request.post(
       `${origin}/api/smart-links/${sourceSmartLinkId}/duplicate`,
       { headers: { origin } },
     );
 
-    expect(response.status()).toBe(409);
-    const payload = await response.json() as {
+    expect(duplicateResponse.status()).toBe(409);
+    const payload = await duplicateResponse.json() as {
       code?: string;
       limit?: number;
       currentCount?: number;
