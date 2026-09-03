@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { addMonthsClampedUtc } from "@/server/business/date-math";
 import {
   assessPlanChange,
   assessSmartLinkPlanChange,
@@ -42,7 +43,7 @@ export class PrismaAdminSubscriptionMutationRepository
           const base =
             restarting || subscription.endsAt < now ? now : subscription.endsAt;
           const startsAt = restarting ? now : subscription.startsAt;
-          const endsAt = addMonthsClamped(base, action.months);
+          const endsAt = addMonthsClampedUtc(base, action.months);
           const metadata = {
             months: action.months,
             expiresAt: endsAt.toISOString(),
@@ -258,18 +259,4 @@ async function writeAudit(
       metadata: input.metadata ? toJson(input.metadata) : undefined,
     },
   });
-}
-
-function addMonthsClamped(source: Date, months: number) {
-  const day = source.getDate();
-  const result = new Date(source);
-  result.setDate(1);
-  result.setMonth(result.getMonth() + months);
-  const lastDay = new Date(
-    result.getFullYear(),
-    result.getMonth() + 1,
-    0,
-  ).getDate();
-  result.setDate(Math.min(day, lastDay));
-  return result;
 }
