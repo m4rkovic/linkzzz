@@ -44,9 +44,13 @@ test("SmartLink geo resolves matching country before the primary destination", (
   assert.deepEqual(resolveSmartLink(base, context), { type: "REDIRECT", url: "https://example.com/rs" });
 });
 
-test("SmartLink geo uses fallback when country is missing or unmatched", () => {
+test("SmartLink geo uses fallback only for known unmatched countries", () => {
   assert.equal(resolveSmartLinkGeoAction(base.geo, "US")?.type, "REDIRECT");
-  assert.deepEqual(resolveSmartLink(base, { ...context, countryCode: null }), { type: "REDIRECT", url: "https://example.com/world" });
+  assert.equal(resolveSmartLinkGeoAction(base.geo, null), null);
+  assert.deepEqual(
+    resolveSmartLink(base, { ...context, countryCode: null }),
+    { type: "REDIRECT", url: "https://example.com/default" },
+  );
 });
 
 test("geo BLOCK prevents resolution", () => {
@@ -60,18 +64,19 @@ test("STANDARD shield previews known crawlers and blocks generic automation", ()
   assert.equal(resolveTrafficShield(shield, "AUTOMATION"), "BLOCK");
 });
 
-test("STRICT shield blocks unverified crawler traffic", () => {
+test("STRICT shield still previews known and ambiguous traffic while blocking automation", () => {
   const shield = { enabled: true, mode: "STRICT" as const, verifiedCrawlerPolicy: "ALLOW" as const };
-  assert.equal(resolveTrafficShield(shield, "KNOWN_CRAWLER"), "BLOCK");
+  assert.equal(resolveTrafficShield(shield, "KNOWN_CRAWLER"), "PREVIEW");
+  assert.equal(resolveTrafficShield(shield, "UNKNOWN"), "PREVIEW");
   assert.equal(resolveTrafficShield(shield, "AUTOMATION"), "BLOCK");
 });
 
-test("known crawler and generic automation classification stays distinct", () => {
+test("known crawler, generic automation and unknown traffic classification stay distinct", () => {
   assert.equal(classifyTraffic(new Headers({ "user-agent": "Googlebot/2.1" })), "KNOWN_CRAWLER");
   assert.equal(classifyTraffic(new Headers({ "user-agent": "curl/8.7.1" })), "AUTOMATION");
+  assert.equal(classifyTraffic(new Headers()), "UNKNOWN");
   assert.equal(classifyTraffic(new Headers({ "user-agent": "Mozilla/5.0 Chrome/131" })), "HUMAN");
 });
-
 
 test("verified crawler trust requires the configured edge secret", () => {
   const previous = process.env.LINKZZZ_EDGE_BOT_SECRET;

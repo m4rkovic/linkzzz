@@ -20,12 +20,14 @@ export function validateProductionEnvironment(environment: Environment) {
   requireValue(environment, "LINKZZZ_APP_HOSTS", errors);
   requireValue(environment, "LINKZZZ_CUSTOM_DOMAIN_TARGET", errors);
   requireValue(environment, "LINKZZZ_TRUST_PROXY_HEADERS", errors);
+  requireValue(environment, "LINKZZZ_GEO_HEADER", errors);
   requireValue(environment, "LINKZZZ_ANALYTICS_HASH_SALT", errors);
 
   validateDatabaseUrl(environment.DATABASE_URL, errors);
   validateAppHosts(environment.LINKZZZ_APP_HOSTS, errors);
   validatePublicHostname(environment.LINKZZZ_CUSTOM_DOMAIN_TARGET, "LINKZZZ_CUSTOM_DOMAIN_TARGET", errors);
   validateBooleanFlag(environment.LINKZZZ_TRUST_PROXY_HEADERS, "LINKZZZ_TRUST_PROXY_HEADERS", errors);
+  validateHeaderName(environment.LINKZZZ_GEO_HEADER, "LINKZZZ_GEO_HEADER", errors);
   validateSecretLength(environment.LINKZZZ_ANALYTICS_HASH_SALT, "LINKZZZ_ANALYTICS_HASH_SALT", 32, errors);
 
   return errors;
@@ -154,6 +156,17 @@ function validateBooleanFlag(
 ) {
   if (!value?.trim()) return;
   if (value !== "0" && value !== "1") errors.push(`${name} must be 0 or 1.`);
+}
+
+function validateHeaderName(
+  value: string | undefined,
+  name: string,
+  errors: string[],
+) {
+  if (!value?.trim()) return;
+  if (!/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(value.trim())) {
+    errors.push(`${name} must be a valid HTTP header name.`);
+  }
 }
 
 function validateSecretLength(

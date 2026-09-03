@@ -8,29 +8,40 @@ import {
 } from "@/server/geo/geo-routing";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 
-test("visitor country uses Vercel and Cloudflare ISO country headers when proxy headers are trusted", () => {
-  const previous = process.env.LINKZZZ_TRUST_PROXY_HEADERS;
+test("visitor country uses only the explicitly configured trusted geo header", () => {
+  const previousTrust = process.env.LINKZZZ_TRUST_PROXY_HEADERS;
+  const previousHeader = process.env.LINKZZZ_GEO_HEADER;
   try {
     process.env.LINKZZZ_TRUST_PROXY_HEADERS = "1";
+    process.env.LINKZZZ_GEO_HEADER = "x-vercel-ip-country";
     assert.equal(
-      getVisitorCountryCode(new Headers({ "x-vercel-ip-country": "de" })),
+      getVisitorCountryCode(new Headers({
+        "x-vercel-ip-country": "de",
+        "cf-ipcountry": "RS",
+      })),
       "DE",
     );
+    assert.equal(
+      getVisitorCountryCode(new Headers({ "cf-ipcountry": "RS" })),
+      null,
+    );
+
+    process.env.LINKZZZ_GEO_HEADER = "cf-ipcountry";
     assert.equal(
       getVisitorCountryCode(new Headers({ "cf-ipcountry": "RS" })),
       "RS",
     );
     assert.equal(
-      getVisitorCountryCode(new Headers({ "x-vercel-ip-country": "XX" })),
+      getVisitorCountryCode(new Headers({ "cf-ipcountry": "XX" })),
       null,
     );
     assert.equal(
-      getVisitorCountryCode(new Headers({ "x-vercel-ip-country": "invalid" })),
+      getVisitorCountryCode(new Headers({ "cf-ipcountry": "invalid" })),
       null,
     );
   } finally {
-    if (previous === undefined) delete process.env.LINKZZZ_TRUST_PROXY_HEADERS;
-    else process.env.LINKZZZ_TRUST_PROXY_HEADERS = previous;
+    restoreEnvironment("LINKZZZ_TRUST_PROXY_HEADERS", previousTrust);
+    restoreEnvironment("LINKZZZ_GEO_HEADER", previousHeader);
   }
 });
 
@@ -91,17 +102,28 @@ function createProfile() {
   } satisfies PersistedProfileData;
 }
 
-test("visitor geo headers are ignored unless proxy headers are trusted", async () => {
-  const { getVisitorCountryCode } = await import("@/server/geo/geo-routing");
-  const previous = process.env.LINKZZZ_TRUST_PROXY_HEADERS;
-  const headers = new Headers({ "cf-ipcountry": "RS", "x-vercel-ip-country": "DE" });
+test("visitor geo headers are ignored unless proxy trust and a valid header name are configured", () => {
+  const previousTrust = process.env.LINKZZZ_TRUST_PROXY_HEADERS;
+  const previousHeader = process.env.LINKZZZ_GEO_HEADER;
+  const headers = new Headers({ "x-vercel-ip-country": "DE" });
   try {
     process.env.LINKZZZ_TRUST_PROXY_HEADERS = "0";
+    process.env.LINKZZZ_GEO_HEADER = "x-vercel-ip-country";
     assert.equal(getVisitorCountryCode(headers), null);
+
     process.env.LINKZZZ_TRUST_PROXY_HEADERS = "1";
-    assert.equal(getVisitorCountryCode(headers), "DE");
+    delete process.env.LINKZZZ_GEO_HEADER;
+    assert.equal(getVisitorCountryCode(headers), null);
+
+    process.env.LINKZZZ_GEO_HEADER = "not a header";
+    assert.equal(getVisitorCountryCode(headers), null);
   } finally {
-    if (previous === undefined) delete process.env.LINKZZZ_TRUST_PROXY_HEADERS;
-    else process.env.LINKZZZ_TRUST_PROXY_HEADERS = previous;
+    restoreEnvironment("LINKZZZ_TRUST_PROXY_HEADERS", previousTrust);
+    restoreEnvironment("LINKZZZ_GEO_HEADER", previousHeader);
   }
 });
+
+function restoreEnvironment(name: string, value: string | undefined) {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}

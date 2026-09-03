@@ -11,8 +11,9 @@ const AUTOMATION = /(bot\b|crawler|spider|headlesschrome|phantomjs|curl\/|wget\/
 export function classifyTraffic(headers: RequestHeaders): TrafficKind {
   if (isTrustedVerifiedCrawler(headers)) return "VERIFIED_CRAWLER";
   const userAgent = headers.get("user-agent")?.trim() ?? "";
+  if (!userAgent) return "UNKNOWN";
   if (KNOWN_CRAWLER.test(userAgent)) return "KNOWN_CRAWLER";
-  if (!userAgent || AUTOMATION.test(userAgent)) return "AUTOMATION";
+  if (AUTOMATION.test(userAgent)) return "AUTOMATION";
   return "HUMAN";
 }
 
@@ -26,8 +27,13 @@ export function resolveTrafficShield(
     return shield.verifiedCrawlerPolicy;
   }
 
-  if (shield.mode === "STRICT") return "BLOCK";
-  if (traffic === "KNOWN_CRAWLER") return "PREVIEW";
+  // Social/search unfurlers need a renderable preview in both Shield modes.
+  // Missing User-Agent is ambiguous rather than proof of automation, so it is
+  // also served the neutral preview instead of being hard-blocked.
+  if (traffic === "KNOWN_CRAWLER" || traffic === "UNKNOWN") {
+    return "PREVIEW";
+  }
+
   return "BLOCK";
 }
 

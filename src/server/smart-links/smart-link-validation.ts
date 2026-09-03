@@ -215,6 +215,7 @@ function validateGeo(
   }
 
   const ids = new Set<string>();
+  const claimedCountries = new Set<string>();
   const rules: GeoConfig["rules"] = [];
   for (const candidate of raw.rules) {
     if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
@@ -231,9 +232,13 @@ function validateGeo(
     if (countries.some((country) => !/^[A-Z]{2}$/.test(country))) {
       return { ok: false, message: "Geo country codes must use two-letter ISO codes such as RS or US." };
     }
+    if (countries.some((country) => claimedCountries.has(country))) {
+      return { ok: false, message: "A country can appear in only one geo rule." };
+    }
     const action = validateGeoAction(rule.action);
     if (!action.ok) return action;
     ids.add(rule.id);
+    countries.forEach((country) => claimedCountries.add(country));
     rules.push({ id: rule.id, countries, action: action.value });
   }
 

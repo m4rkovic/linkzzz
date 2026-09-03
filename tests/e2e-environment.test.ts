@@ -46,6 +46,8 @@ test("E2E server gets isolated persistence and local development adapters", () =
   assert.match(environment.DATABASE_URL ?? "", /linkzzz_e2e/);
   assert.equal(environment.RATE_LIMIT_BACKEND, "memory");
   assert.equal(environment.ASSET_STORAGE_ADAPTER, "local");
+  assert.equal(environment.LINKZZZ_TRUST_PROXY_HEADERS, "1");
+  assert.equal(environment.LINKZZZ_GEO_HEADER, "x-vercel-ip-country");
   assert.equal(environment.LINKZZZ_DEV_PREWARM, "0");
   assert.equal(environment.NODE_ENV, "development");
 });

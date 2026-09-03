@@ -3,19 +3,16 @@ import type { PersistedProfileData } from "@/types/persisted-profile";
 
 type RequestHeaders = Pick<Headers, "get">;
 
-const COUNTRY_HEADERS = ["x-vercel-ip-country", "cf-ipcountry"] as const;
 const ISO_COUNTRY_CODE = /^[A-Z]{2}$/;
 const UNKNOWN_COUNTRY_CODES = new Set(["XX"]);
+const HTTP_HEADER_NAME = /^[!#$%&'*+\-.^_`|~0-9a-z]+$/i;
 
 export function getVisitorCountryCode(headers: RequestHeaders) {
   if (process.env.LINKZZZ_TRUST_PROXY_HEADERS !== "1") return null;
 
-  for (const header of COUNTRY_HEADERS) {
-    const countryCode = normalizeCountryCode(headers.get(header));
-    if (countryCode) return countryCode;
-  }
-
-  return null;
+  const headerName = normalizeHeaderName(process.env.LINKZZZ_GEO_HEADER);
+  if (!headerName) return null;
+  return normalizeCountryCode(headers.get(headerName));
 }
 
 export function resolvePublicProfileGeoRouting(
@@ -53,4 +50,9 @@ function normalizeCountryCode(value: string | null | undefined) {
     return null;
   }
   return normalized;
+}
+
+function normalizeHeaderName(value: string | null | undefined) {
+  const normalized = value?.trim().toLowerCase() ?? "";
+  return normalized && HTTP_HEADER_NAME.test(normalized) ? normalized : null;
 }

@@ -1,5 +1,5 @@
 import { getDestinationProvider } from "@/features/destinations/provider-registry";
-import { resolveSmartLinkGeoAction } from "@/server/smart-links/geo-resolver";
+import { resolveSmartLinkGeo } from "@/server/smart-links/geo-resolver";
 import { getDestinationAppUri, safeAppUri } from "@/server/smart-links/provider-deeplink";
 import type { SmartLinkRequestContext } from "@/types/smart-link-runtime";
 import { resolveTrafficShield } from "@/server/smart-links/traffic-shield";
@@ -31,11 +31,8 @@ export function resolveSmartLink(
   if (shield === "BLOCK") return { type: "BLOCK" };
   if (shield === "PREVIEW") return { type: "CRAWLER_PREVIEW" };
 
-  const geoAction = resolveSmartLinkGeoAction(smartLink.geo, context.countryCode);
-  if (geoAction?.type === "BLOCK") return { type: "BLOCK" };
-  if (geoAction?.type === "REDIRECT") {
-    return resolveDirectDestination(geoAction.destination, smartLink.deeplink, context);
-  }
+  const geoOverride = resolveGeoOverride(smartLink, context);
+  if (geoOverride) return geoOverride;
 
   if (smartLink.type === "LANDING_PAGE") return { type: "RENDER_PAGE" };
   const destination = smartLink.primaryDestination;
@@ -52,11 +49,8 @@ export function resolveOutboundDestination(
   if (shield === "BLOCK") return { type: "BLOCK" };
   if (shield === "PREVIEW") return { type: "CRAWLER_PREVIEW" };
 
-  const geoAction = resolveSmartLinkGeoAction(smartLink.geo, context.countryCode);
-  if (geoAction?.type === "BLOCK") return { type: "BLOCK" };
-  if (geoAction?.type === "REDIRECT") {
-    return resolveDirectDestination(geoAction.destination, smartLink.deeplink, context);
-  }
+  const geoOverride = resolveGeoOverride(smartLink, context);
+  if (geoOverride) return geoOverride;
 
   return resolveDirectDestination(destination, smartLink.deeplink, context);
 }
@@ -89,6 +83,19 @@ export function resolveDirectDestination(
   }
   if (!appUrl) return { type: "REDIRECT", url: destinationUrl };
   return helper({ mode: "APP_OPEN", providerName, appUrl, fallbackUrl, context, longPressHelper: deeplink.longPressHelper, autoAttempt: true });
+}
+
+function resolveGeoOverride(
+  smartLink: Pick<SmartLinkRecord, "deeplink" | "geo">,
+  context: SmartLinkRequestContext,
+): SmartLinkResolveResult | null {
+  const geo = resolveSmartLinkGeo(smartLink.geo, context.countryCode);
+  if (geo.type !== "ACTION") return null;
+  if (geo.action.type === "BLOCK") return { type: "BLOCK" };
+  if (geo.action.type === "REDIRECT") {
+    return resolveDirectDestination(geo.action.destination, smartLink.deeplink, context);
+  }
+  return null;
 }
 
 function helper(input: { mode: "APP_OPEN" | "EXTERNAL_BROWSER"; providerName: string; appUrl: string | null; fallbackUrl: string; context: SmartLinkRequestContext; longPressHelper: boolean; autoAttempt: boolean; }): SmartLinkResolveResult {
