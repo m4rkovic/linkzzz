@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { isSmartLinkHostAllowed } from "@/server/domains/custom-domain-service";
 import { captureEmailLead } from "@/server/profile/lead-capture-service";
 import { checkRateLimit, LEAD_CAPTURE_RATE_LIMIT } from "@/server/security/rate-limit";
 import { getRequestIp } from "@/server/security/request";
@@ -8,6 +9,10 @@ type RouteContext = { params: Promise<{ slug: string }> };
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const { slug } = await context.params;
+  if (!(await isSmartLinkHostAllowed(request.headers, slug))) {
+    return NextResponse.json({ error: "Smart Link not found." }, { status: 404 });
+  }
+
   const rateLimit = await checkRateLimit(
     `${getRequestIp(request)}:${slug.trim().toLowerCase()}`,
     LEAD_CAPTURE_RATE_LIMIT,
