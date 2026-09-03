@@ -78,8 +78,8 @@ test.describe("R1.4 keyboard and focus checks", () => {
     await loginAsCustomer(page);
     await openAppearanceEditor(page);
 
-    // Start immediately before the appearance navigation, then move focus with
-    // the keyboard so Chromium applies the :focus-visible keyboard heuristic.
+    // Focus the Page-level Appearance tab, then advance with a real keyboard Tab.
+    // Programmatic focus on a button does not have to match :focus-visible.
     const appearanceTab = page.getByRole("button", { name: "Appearance", exact: true });
     await appearanceTab.focus();
     await page.keyboard.press("Tab");
