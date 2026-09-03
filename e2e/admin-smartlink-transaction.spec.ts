@@ -46,7 +46,10 @@ test("admin SmartLink status changes are revisioned and audited together", async
         },
       },
     );
-    expect(duplicateDisable.status()).toBe(400);
+    expect(duplicateDisable.status()).toBe(409);
+    expect(await duplicateDisable.json()).toMatchObject({
+      code: "SMART_LINK_INVALID_STATE",
+    });
 
     const unchanged = await readState(seeded.smartLinkId);
     expect(unchanged).toEqual(disabled);
