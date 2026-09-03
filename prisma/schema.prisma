@@ -73,8 +73,8 @@ model User {
   role          UserRole      @default(CUSTOMER)
   accountStatus AccountStatus @default(ACTIVE)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   smartLinks   SmartLink[]
   credential   PasswordCredential?
@@ -103,8 +103,8 @@ model SmartLink {
 
   revision Int @default(1)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   page            Page?
@@ -124,8 +124,8 @@ model PasswordCredential {
   passwordHash       String
   mustChangePassword Boolean @default(true)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -134,11 +134,11 @@ model Session {
   id        String    @id @default(uuid())
   userId    String
   tokenHash String    @unique
-  expiresAt DateTime
-  revokedAt DateTime?
+  expiresAt DateTime  @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -152,13 +152,13 @@ model Subscription {
   plan   PlanType
   status SubscriptionStatus @default(ACTIVE)
 
-  startsAt DateTime
-  endsAt   DateTime
+  startsAt DateTime @db.Timestamptz(3)
+  endsAt   DateTime @db.Timestamptz(3)
 
   autoRenew Boolean @default(false)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -168,12 +168,12 @@ model SubscriptionHistory {
   userId   String
   plan     PlanType
   status   SubscriptionStatus
-  startsAt DateTime?
-  endsAt   DateTime?
+  startsAt DateTime?          @db.Timestamptz(3)
+  endsAt   DateTime?          @db.Timestamptz(3)
   action   String
   metadata Json?
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @db.Timestamptz(3) @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -200,8 +200,8 @@ model Page {
   contentBlocks Json @default("[]")
   revision      Int  @default(1)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   smartLink SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
 
@@ -242,8 +242,8 @@ model PageCard {
   imageAssetId String?
   imageAsset   Asset?  @relation("PageCardImage", fields: [imageAssetId], references: [id], onDelete: SetNull)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   page            Page                     @relation(fields: [pageId], references: [id], onDelete: Cascade)
   geoDestinations PageCardGeoDestination[]
@@ -261,8 +261,8 @@ model PageCardGeoDestination {
   countryName String
   url         String
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   pageCard PageCard @relation(fields: [pageCardId], references: [id], onDelete: Cascade)
 
@@ -280,8 +280,8 @@ model SocialLink {
   platform  String?
   sortOrder Int     @default(0)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
@@ -297,8 +297,8 @@ model PageStat {
   visible   Boolean @default(true)
   sortOrder Int     @default(0)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
@@ -319,8 +319,8 @@ model Asset {
   width  Int?
   height Int?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   smartLink SmartLink  @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
   avatarFor Page[]     @relation("PageAvatar")
@@ -350,7 +350,7 @@ model AnalyticsEvent {
 
   isBot Boolean @default(false)
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @db.Timestamptz(3) @default(now())
 
   smartLink SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
   pageCard  PageCard? @relation(fields: [pageCardId], references: [id], onDelete: SetNull)
@@ -361,14 +361,13 @@ model AnalyticsEvent {
   @@index([type])
 }
 
-
 model LeadSubmission {
   id          String @id @default(uuid())
   smartLinkId String
   blockId     String
   email       String
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @db.Timestamptz(3) @default(now())
 
   smartLink SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
 
@@ -384,10 +383,10 @@ model CustomDomain {
   domain            String             @unique
   status            CustomDomainStatus @default(PENDING)
   verificationToken String             @unique
-  verifiedAt        DateTime?
+  verifiedAt        DateTime?           @db.Timestamptz(3)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   smartLink SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
 
@@ -407,7 +406,7 @@ model AuditLog {
 
   ipAddress String?
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @db.Timestamptz(3) @default(now())
 
   actor  User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
   target User? @relation("AuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
