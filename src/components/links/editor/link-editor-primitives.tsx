@@ -1,6 +1,53 @@
 import type { ElementType, ReactNode } from "react";
 import type { LinkCardAspectRatio, LinkCardLayout } from "@/types/profile";
 
+type EditorSubtab = {
+  id: string;
+  label: string;
+  description: string;
+};
+
+export function EditorSubtabs({
+  label,
+  tabs,
+  activeTab,
+  onChange,
+}: {
+  label: string;
+  tabs: readonly EditorSubtab[];
+  activeTab: string;
+  onChange: (tab: string) => void;
+}) {
+  return (
+    <div className="mb-5 flex flex-wrap gap-2 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-2" aria-label={label}>
+      {tabs.map((tab) => {
+        const selected = tab.id === activeTab;
+
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onChange(tab.id)}
+            className={`min-w-[128px] flex-1 rounded-xl px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 ${
+              selected
+                ? "bg-white text-zinc-950 shadow-sm ring-1 ring-brand-violet/20"
+                : "text-zinc-500 hover:bg-white/70 hover:text-zinc-800"
+            }`}
+          >
+            <span className={`block text-xs font-black ${selected ? "text-brand-violet-strong" : "text-zinc-700"}`}>
+              {tab.label}
+            </span>
+            <span className="mt-0.5 block truncate text-[10px] leading-4 text-zinc-400">
+              {tab.description}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function EditorSection({ title, description, icon: Icon, children }: { title: string; description: string; icon?: ElementType; children: ReactNode }) {
   return (
     <section>

@@ -32,7 +32,7 @@ const mockVisitor: VisitorLocation = {
   flag: "🇷🇸",
 };
 
-export default function AppearanceEditor() {
+export default function AppearanceEditor({ showPreview = true }: { showPreview?: boolean }) {
   const editor = useAppearanceEditor();
   const [requestedPanel, setRequestedPanel] = useState<AppearancePanel>("layout");
   const [resetOpen, setResetOpen] = useState(false);
@@ -42,7 +42,7 @@ export default function AppearanceEditor() {
     : "layout";
 
   return (
-    <div className="grid w-full min-w-0 max-w-full gap-6 2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8">
+    <div className={`grid w-full min-w-0 max-w-full gap-6 ${showPreview ? "2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8" : ""}`}>
       <div className="min-w-0">
         <div className="grid min-w-0 gap-4 lg:grid-cols-[156px_minmax(0,1fr)]">
           <div className="min-w-0 lg:sticky lg:top-24 lg:self-start">
@@ -168,12 +168,14 @@ export default function AppearanceEditor() {
         </div>
       </div>
 
-      <ProfilePreviewFrame
-        profile={editor.profile}
-        visitor={mockVisitor}
-        badge={editor.layoutMode === "visual" ? "Visual" : "Classic"}
-        subtitle="Appearance updates instantly"
-      />
+      {showPreview && (
+        <ProfilePreviewFrame
+          profile={editor.profile}
+          visitor={mockVisitor}
+          badge={editor.layoutMode === "visual" ? "Visual" : "Classic"}
+          subtitle="Appearance updates instantly"
+        />
+      )}
 
       <ConfirmDialog
         open={resetOpen}

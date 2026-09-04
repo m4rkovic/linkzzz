@@ -10,15 +10,16 @@ import {
 } from "lucide-react";
 import GeoRoutingEditor from "@/components/links/geo-routing-editor";
 import type { CardStyleDraft, LinkDraft } from "@/features/links/link-editor-types";
-import { EditorSection } from "./link-editor-primitives";
+import { EditorSection, EditorSubtabs } from "./link-editor-primitives";
 import LinkBasicSections from "./link-basic-sections";
 import LinkMediaSection from "./link-media-section";
 import LinkDisplaySection from "./link-display-section";
-import LinkCardDesignSection from "./link-card-design-section";
+import LinkCardDesignSection, { type LinkCardDesignPanel } from "./link-card-design-section";
 import LinkAvailabilitySection from "./link-availability-section";
 import LinkSensitiveContentSection from "./link-sensitive-content-section";
 
 type LinkEditorPanel = "basics" | "media" | "design" | "rules" | "geo";
+type DesignPanel = "display" | LinkCardDesignPanel;
 
 const panels = [
   { id: "basics", label: "Basics", icon: Link2 },
@@ -26,6 +27,14 @@ const panels = [
   { id: "design", label: "Design", icon: Palette },
   { id: "rules", label: "Rules", icon: CalendarClock },
   { id: "geo", label: "Geo", icon: Globe2 },
+] as const;
+
+const designTabs = [
+  { id: "display", label: "Display", description: "Visible content" },
+  { id: "surface", label: "Surface", description: "Background and shape" },
+  { id: "typography", label: "Type & icon", description: "Text and platform mark" },
+  { id: "action", label: "Badge & CTA", description: "Promotional action" },
+  { id: "focus", label: "Focus", description: "Attention effect" },
 ] as const;
 
 export default function LinkEditorForm({ draft, setDraft, error, onSave, onCancel, protectedImageUrl }: {
@@ -37,6 +46,13 @@ export default function LinkEditorForm({ draft, setDraft, error, onSave, onCance
   protectedImageUrl?: string;
 }) {
   const [activePanel, setActivePanel] = useState<LinkEditorPanel>("basics");
+  const [requestedDesignPanel, setRequestedDesignPanel] = useState<DesignPanel>("display");
+  const availableDesignTabs = draft.layout === "button"
+    ? designTabs.filter((tab) => tab.id === "display" || tab.id === "focus")
+    : designTabs;
+  const activeDesignPanel = availableDesignTabs.some((tab) => tab.id === requestedDesignPanel)
+    ? requestedDesignPanel
+    : "display";
 
   function updateDraft(values: Partial<LinkDraft>) {
     setDraft((current) => ({ ...current, ...values }));
@@ -108,9 +124,22 @@ export default function LinkEditorForm({ draft, setDraft, error, onSave, onCance
           )}
 
           {activePanel === "design" && (
-            <div className="space-y-7">
-              <LinkDisplaySection draft={draft} onChange={updateDraft} />
-              <LinkCardDesignSection draft={draft} onChange={updateCustomStyle} />
+            <div>
+              <EditorSubtabs
+                label="Card design settings"
+                tabs={availableDesignTabs}
+                activeTab={activeDesignPanel}
+                onChange={(tab) => setRequestedDesignPanel(tab as DesignPanel)}
+              />
+              {activeDesignPanel === "display" ? (
+                <LinkDisplaySection draft={draft} onChange={updateDraft} />
+              ) : (
+                <LinkCardDesignSection
+                  draft={draft}
+                  panel={activeDesignPanel}
+                  onChange={updateCustomStyle}
+                />
+              )}
             </div>
           )}
 

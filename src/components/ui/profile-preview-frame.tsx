@@ -9,6 +9,7 @@ type ProfilePreviewFrameProps = {
   title?: string;
   subtitle?: string;
   badge?: string;
+  stickyFrom?: "xl" | "2xl" | "none";
 };
 
 export default function ProfilePreviewFrame({
@@ -17,10 +18,17 @@ export default function ProfilePreviewFrame({
   title = "Live preview",
   subtitle = "Changes update instantly",
   badge,
+  stickyFrom = "2xl",
 }: ProfilePreviewFrameProps) {
+  const stickyClass = stickyFrom === "xl"
+    ? "xl:sticky xl:top-24"
+    : stickyFrom === "2xl"
+      ? "2xl:sticky 2xl:top-28"
+      : "";
+
   return (
     <aside className="w-full min-w-0 max-w-full">
-      <div className="2xl:sticky 2xl:top-28">
+      <div className={stickyClass}>
         <div className="mb-3 flex min-w-0 items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-zinc-900">{title}</p>

@@ -27,7 +27,13 @@ const mockVisitor: VisitorLocation = {
   flag: "🇷🇸",
 };
 
-export default function ProfileEditor({ smartLinkScoped = false }: { smartLinkScoped?: boolean }) {
+export default function ProfileEditor({
+  smartLinkScoped = false,
+  showPreview = true,
+}: {
+  smartLinkScoped?: boolean;
+  showPreview?: boolean;
+}) {
   const { profile, setProfile, saveProfile, saving, dirty } = useProfile();
   const { pushToast } = useToast();
   const [saved, setSaved] = useState(false);
@@ -91,7 +97,7 @@ export default function ProfileEditor({ smartLinkScoped = false }: { smartLinkSc
   }
 
   return (
-    <div className="grid w-full min-w-0 max-w-full gap-6 2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8">
+    <div className={`grid w-full min-w-0 max-w-full gap-6 ${showPreview ? "2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8" : ""}`}>
       <div className="min-w-0 space-y-6">
         {!smartLinkScoped && <ProfilePublishingSection />}
 
@@ -262,11 +268,13 @@ export default function ProfileEditor({ smartLinkScoped = false }: { smartLinkSc
         </div>
       </div>
 
-      <ProfilePreviewFrame
-        profile={profile}
-        visitor={mockVisitor}
-        badge={profile.status === "PUBLISHED" ? "Live" : "Preview"}
-      />
+      {showPreview && (
+        <ProfilePreviewFrame
+          profile={profile}
+          visitor={mockVisitor}
+          badge={profile.status === "PUBLISHED" ? "Live" : "Preview"}
+        />
+      )}
     </div>
   );
 }

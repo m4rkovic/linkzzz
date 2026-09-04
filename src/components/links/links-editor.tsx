@@ -1,12 +1,12 @@
 "use client";
 
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Link2, Plus } from "lucide-react";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import ProfilePreviewFrame from "@/components/ui/profile-preview-frame";
-import type { VisitorLocation } from "@/types/profile";
+import type { PublicProfileData, VisitorLocation } from "@/types/profile";
 import LinkEditorForm from "./editor/link-editor-form";
 import CampaignEditor from "./campaign-editor";
 import VisitorMessagingEditor from "./visitor-messaging-editor";
@@ -15,7 +15,13 @@ import { useLinksEditor } from "@/features/links/use-links-editor";
 
 const mockVisitor: VisitorLocation = { countryCode: "RS", countryName: "Serbia", flag: "🇷🇸" };
 
-export default function LinksEditor() {
+export default function LinksEditor({
+  showPreview = true,
+  onPreviewProfileChange,
+}: {
+  showPreview?: boolean;
+  onPreviewProfileChange?: (profile: PublicProfileData) => void;
+}) {
   const editor = useLinksEditor();
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const sensors = useSensors(
@@ -23,8 +29,12 @@ export default function LinksEditor() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  useEffect(() => {
+    onPreviewProfileChange?.(editor.previewProfile);
+  }, [editor.previewProfile, onPreviewProfileChange]);
+
   return (
-    <div className="grid w-full min-w-0 max-w-full gap-6 2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8">
+    <div className={`grid w-full min-w-0 max-w-full gap-6 ${showPreview ? "2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8" : ""}`}>
       <div className="min-w-0 space-y-6">
         <LinksSummary count={editor.links.length} limit={editor.limit} usagePercentage={editor.usagePercentage} visual={editor.profile.appearance.layoutMode === "visual"} />
         <CampaignEditor />
@@ -84,7 +94,14 @@ export default function LinksEditor() {
         )}
       </div>
 
-      <ProfilePreviewFrame profile={editor.previewProfile} visitor={mockVisitor} subtitle="Changes update instantly" badge="RS" />
+      {showPreview && (
+        <ProfilePreviewFrame
+          profile={editor.previewProfile}
+          visitor={mockVisitor}
+          subtitle="Changes update instantly"
+          badge="RS"
+        />
+      )}
 
       <ConfirmDialog
         open={Boolean(pendingDeleteId)}

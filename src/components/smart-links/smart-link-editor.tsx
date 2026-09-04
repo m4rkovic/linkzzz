@@ -222,8 +222,8 @@ export default function SmartLinkEditor({
         </p>
       )}
 
-      <div className="mt-6 min-w-0 xl:grid xl:grid-cols-[210px_minmax(0,1fr)] xl:gap-6">
-        <aside className="hidden xl:block">
+      <div className={`mt-6 min-w-0 ${activeSection === "Page" ? "" : "xl:grid xl:grid-cols-[210px_minmax(0,1fr)] xl:gap-6"}`}>
+        <aside className={activeSection === "Page" ? "hidden" : "hidden xl:block"}>
           <div className="sticky top-24 rounded-2xl border border-zinc-200 bg-white p-2">
             <p className="px-3 pb-2 pt-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Editor</p>
             <EditorNavigation sections={sections} activeSection={activeSection} onSelect={setActiveSection} vertical />
@@ -235,7 +235,7 @@ export default function SmartLinkEditor({
         </aside>
 
         <div className="min-w-0">
-          <div className="xl:hidden">
+          <div className={activeSection === "Page" ? "block" : "xl:hidden"}>
             <EditorNavigation sections={sections} activeSection={activeSection} onSelect={setActiveSection} />
           </div>
 
