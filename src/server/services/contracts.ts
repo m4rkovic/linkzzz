@@ -7,6 +7,7 @@ import type {
 import type { SmartLinkModerationMutation } from "@/server/smart-links/smart-link-lifecycle";
 import type { AccountStatus, UserRole } from "@/server/types/auth";
 import type { PersistedProfileData } from "@/types/persisted-profile";
+import type { AnalyticsDashboardData } from "@/types/analytics";
 import type { SmartLinkEditableData, SmartLinkRecord } from "@/types/smart-link";
 
 export type UserRecord = {
@@ -243,10 +244,11 @@ export interface AnalyticsRepository {
     slug: string,
     event: Omit<AnalyticsEventRecord, "smartLinkId">,
   ): Promise<boolean>;
-  listForUser(userId: string): Promise<AnalyticsEventRecord[]>;
   summarizeDashboard(userId: string): Promise<AnalyticsDashboardSummary>;
-  listForSmartLink(smartLinkId: string, from?: Date): Promise<AnalyticsEventRecord[]>;
-  listSmartLinksForUser(userId: string): Promise<AnalyticsSmartLinkRecord[]>;
+  getDashboardData(
+    userId: string,
+    scopeSmartLinkId?: string,
+  ): Promise<AnalyticsDashboardData | null>;
 }
 
 export type LeadSubmissionRecord = {
