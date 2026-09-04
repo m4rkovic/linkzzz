@@ -49,10 +49,10 @@ export default function LinkBasicSections({ draft, onChange }: Props) {
           {LINK_LAYOUT_OPTIONS.map((option) => {
             const selected = draft.layout === option.id;
             return (
-              <button key={option.id} type="button" onClick={() => onChange({ layout: option.id })} className={`min-h-[92px] rounded-xl border p-3 text-left transition ${selected ? "border-zinc-950 bg-zinc-950 text-white" : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400"}`}>
+              <button key={option.id} type="button" onClick={() => onChange({ layout: option.id })} className={`min-h-[92px] rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 ${selected ? "border-brand-violet-strong bg-brand-violet-strong text-white shadow-sm" : "border-zinc-200 bg-white text-zinc-900 hover:border-brand-violet/50 hover:bg-brand-violet-soft/40"}`}>
                 <CardLayoutIcon layout={option.id} selected={selected} />
                 <p className="mt-2 text-xs font-bold">{option.name}</p>
-                <p className="mt-1 text-[10px] leading-4 text-zinc-400">{option.description}</p>
+                <p className={`mt-1 text-[10px] leading-4 ${selected ? "text-white/65" : "text-zinc-400"}`}>{option.description}</p>
               </button>
             );
           })}
