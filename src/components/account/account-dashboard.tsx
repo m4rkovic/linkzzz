@@ -21,7 +21,7 @@ export default function AccountDashboard({ account }: { account: AccountSummary 
       </div>
 
       <SubscriptionCard account={account} />
-      <UsageCard used={account.linksUsed} limit={plan.smartLinkLimit} displayLimit={plan.smartLinkDisplay} />
+      <UsageCard used={account.smartLinksUsed} limit={plan.smartLinkLimit} displayLimit={plan.smartLinkDisplay} />
 
       <section className="min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
         <h2 className="text-lg font-semibold text-zinc-950">Account information</h2>

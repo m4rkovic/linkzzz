@@ -1,20 +1,15 @@
 import type { PlanId } from "@/features/plans/plan-catalog";
+import type { SubscriptionStatus } from "@/server/business/subscriptions";
 
 export type AccountPlan = PlanId;
-
-export type AccountSubscriptionStatus =
-  | "ACTIVE"
-  | "CANCEL_AT_PERIOD_END"
-  | "EXPIRED"
-  | "STOPPED";
 
 export type AccountSummary = {
   username: string;
   email: string;
   plan: AccountPlan;
-  subscriptionStatus: AccountSubscriptionStatus;
+  subscriptionStatus: SubscriptionStatus;
   periodLabel: string;
   expiresLabel: string;
   autoRenew: boolean;
-  linksUsed: number;
+  smartLinksUsed: number;
 };
