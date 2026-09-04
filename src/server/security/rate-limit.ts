@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { logServerError } from "@/server/observability/server-logger";
 
 export type RateLimitPolicy = {
   limit: number;
@@ -149,10 +150,9 @@ export async function checkRateLimit(
   } catch (error) {
     if (!didReportUnavailable) {
       didReportUnavailable = true;
-      console.error(
-        "Rate-limit backend is unavailable; protected request was rejected.",
-        error instanceof Error ? error.message : "Unknown rate-limit error.",
-      );
+      logServerError("rate_limit.backend_unavailable", error, {
+        outcome: "protected_request_rejected",
+      });
     }
 
     return {
