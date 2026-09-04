@@ -58,10 +58,11 @@ export default function SortableLinkCard({
     <article
       ref={setNodeRef}
       style={style}
-      className={`w-full min-w-0 overflow-hidden rounded-2xl border bg-white ${
-        editing ? "border-zinc-950 p-4 sm:p-6" : "border-zinc-200 p-3 sm:p-4"
+      className={`relative w-full min-w-0 overflow-hidden rounded-2xl border bg-white ${
+        editing ? "border-brand-violet/50 p-4 shadow-sm sm:p-6" : "border-zinc-200 p-3 sm:p-4"
       }`}
     >
+      {editing && <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-violet via-brand-violet-strong to-brand-lime" />}
       {editing ? (
         <LinkEditorForm
           draft={draft}
