@@ -2,7 +2,7 @@ import "server-only";
 
 import { defaultAppearance } from "@/config/profile-defaults";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
-import { getPageCardLimit, getSmartLinkLimit } from "@/server/business/plans";
+import { canCreateSmartLink, getPageCardLimit } from "@/server/business/plans";
 import { PageCardDuplicateLimitError } from "@/server/business/quota-errors";
 import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
@@ -19,11 +19,6 @@ import type {
   SmartLinkRecord,
   TrackingConfig,
 } from "@/types/smart-link";
-
-type GuardedSmartLinkRepository = Omit<
-  SmartLinkRepository,
-  "create" | "duplicateForUser" | "deleteIfRevision"
->;
 
 function smartLinkRecord(row: {
   id: string;
@@ -60,7 +55,7 @@ function smartLinkRecord(row: {
   };
 }
 
-export class PrismaSmartLinkRepository implements GuardedSmartLinkRepository {
+export class PrismaSmartLinkRepository implements SmartLinkRepository {
   constructor(private readonly db: PrismaClient) {}
 
   async listForUser(userId: string) {
@@ -98,12 +93,13 @@ export class PrismaSmartLinkRepository implements GuardedSmartLinkRepository {
       }
 
       const currentCount = await tx.smartLink.count({ where: { userId: record.userId } });
-      if (currentCount >= quota.limit) {
+      const decision = canCreateSmartLink(quota.plan, currentCount);
+      if (!decision.allowed) {
         return {
           ok: false as const,
           reason: "LIMIT_REACHED" as const,
           plan: quota.plan,
-          limit: quota.limit,
+          limit: decision.limit,
         };
       }
 
@@ -189,12 +185,13 @@ export class PrismaSmartLinkRepository implements GuardedSmartLinkRepository {
       }
 
       const currentCount = await tx.smartLink.count({ where: { userId } });
-      if (currentCount >= quota.limit) {
+      const decision = canCreateSmartLink(quota.plan, currentCount);
+      if (!decision.allowed) {
         return {
           ok: false as const,
           reason: "LIMIT_REACHED" as const,
           plan: quota.plan,
-          limit: quota.limit,
+          limit: decision.limit,
         };
       }
 
@@ -228,7 +225,6 @@ async function getLockedQuotaState(
   return {
     active: true as const,
     plan: subscription.plan,
-    limit: getSmartLinkLimit(subscription.plan),
   };
 }
 
