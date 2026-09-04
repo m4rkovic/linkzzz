@@ -72,6 +72,14 @@ test("production environment rejects weak analytics salt", () => {
   assert.ok(errors.includes("LINKZZZ_ANALYTICS_HASH_SALT must be at least 32 characters."));
 });
 
+test("production environment rejects an invalid asset storage quota", () => {
+  const errors = validateProductionEnvironment({
+    ...completeEnvironment,
+    ASSET_STORAGE_QUOTA_BYTES: "-1",
+  });
+  assert.ok(errors.includes("ASSET_STORAGE_QUOTA_BYTES must be a positive safe integer."));
+});
+
 test("production environment accepts legacy strict SSL aliases that runtime upgrades", () => {
   const errors = validateProductionEnvironment({
     ...completeEnvironment,

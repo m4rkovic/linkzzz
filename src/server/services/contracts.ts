@@ -281,7 +281,6 @@ export interface AssetRepository {
     smartLinkId: string,
     ids: string[],
   ): Promise<AssetRecord[]>;
-  create(asset: AssetRecord): Promise<AssetRecord>;
   createForSmartLink(
     userId: string,
     smartLinkId: string,
@@ -293,6 +292,7 @@ export interface AssetRepository {
     smartLinkId: string,
     ids: string[],
   ): Promise<AssetRecord[]>;
+  deleteOrphaned(limit?: number): Promise<AssetRecord[]>;
 }
 
 export type CustomDomainRecord = {
