@@ -4,6 +4,7 @@ import type {
   SubscriptionMutation,
   SubscriptionStatus,
 } from "@/server/business/subscriptions";
+import type { SmartLinkModerationMutation } from "@/server/smart-links/smart-link-lifecycle";
 import type { SmartLinkStatus, SmartLinkType } from "@/types/smart-link";
 
 export type AdminSmartLinkSnapshot = {
@@ -46,7 +47,7 @@ export type AdminUserListItem = Omit<AdminUserSnapshot, "smartLinks"> & {
 
 export type AdminUserAction =
   | SubscriptionMutation
-  | { type: "SET_SMART_LINK_STATUS"; smartLinkId: string; status: "PUBLISHED" | "DISABLED" }
+  | SmartLinkModerationMutation
   | { type: "SUSPEND"; reason?: string }
   | { type: "REACTIVATE" }
   | { type: "RESET_PASSWORD" };

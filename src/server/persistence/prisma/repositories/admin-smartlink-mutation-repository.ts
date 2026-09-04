@@ -5,10 +5,8 @@ import { AdminError } from "@/server/admin/admin-errors";
 import { getEffectiveSubscriptionStatus } from "@/server/business/subscriptions";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
-import type {
-  AdminSmartLinkMutation,
-  AdminSmartLinkMutationRepository,
-} from "@/server/services/contracts";
+import type { AdminSmartLinkMutationRepository } from "@/server/services/contracts";
+import type { SmartLinkModerationMutation } from "@/server/smart-links/smart-link-lifecycle";
 
 export class PrismaAdminSmartLinkMutationRepository
   implements AdminSmartLinkMutationRepository {
@@ -17,7 +15,7 @@ export class PrismaAdminSmartLinkMutationRepository
   async apply(
     actorUserId: string,
     userId: string,
-    action: AdminSmartLinkMutation,
+    action: SmartLinkModerationMutation,
   ): Promise<void> {
     await this.db.$transaction(async (tx) => {
       await lockUserMutation(tx, userId);

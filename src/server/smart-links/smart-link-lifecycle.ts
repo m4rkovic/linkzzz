@@ -1,3 +1,16 @@
+import type { SmartLinkStatus } from "@/types/smart-link";
+
+export type SmartLinkModerationStatus = Extract<
+  SmartLinkStatus,
+  "PUBLISHED" | "DISABLED"
+>;
+
+export type SmartLinkModerationMutation = {
+  type: "SET_SMART_LINK_STATUS";
+  smartLinkId: string;
+  status: SmartLinkModerationStatus;
+};
+
 export function buildDuplicateTitle(title: string) {
   const suffix = " copy";
   const base = title.trim() || "SmartLink";
