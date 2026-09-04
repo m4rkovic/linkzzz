@@ -64,10 +64,10 @@ test("STANDARD shield previews known crawlers and blocks generic automation", ()
   assert.equal(resolveTrafficShield(shield, "AUTOMATION"), "BLOCK");
 });
 
-test("STRICT shield still previews known and ambiguous traffic while blocking automation", () => {
+test("STRICT shield previews known crawlers but blocks ambiguous traffic and automation", () => {
   const shield = { enabled: true, mode: "STRICT" as const, verifiedCrawlerPolicy: "ALLOW" as const };
   assert.equal(resolveTrafficShield(shield, "KNOWN_CRAWLER"), "PREVIEW");
-  assert.equal(resolveTrafficShield(shield, "UNKNOWN"), "PREVIEW");
+  assert.equal(resolveTrafficShield(shield, "UNKNOWN"), "BLOCK");
   assert.equal(resolveTrafficShield(shield, "AUTOMATION"), "BLOCK");
 });
 

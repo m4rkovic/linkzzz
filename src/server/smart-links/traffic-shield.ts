@@ -28,10 +28,14 @@ export function resolveTrafficShield(
   }
 
   // Social/search unfurlers need a renderable preview in both Shield modes.
-  // Missing User-Agent is ambiguous rather than proof of automation, so it is
-  // also served the neutral preview instead of being hard-blocked.
-  if (traffic === "KNOWN_CRAWLER" || traffic === "UNKNOWN") {
+  if (traffic === "KNOWN_CRAWLER") {
     return "PREVIEW";
+  }
+
+  // STANDARD is forgiving of clients that omit User-Agent. STRICT treats
+  // that ambiguity as automated traffic and blocks it.
+  if (traffic === "UNKNOWN") {
+    return shield.mode === "STRICT" ? "BLOCK" : "PREVIEW";
   }
 
   return "BLOCK";
