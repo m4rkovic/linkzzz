@@ -223,20 +223,25 @@ async function buildAdminUserSnapshot(
   knownUser?: UserRecord,
 ): Promise<AdminUserSnapshot> {
   const dependencies = await getServerDependencies();
-  const [user, subscription, profile, smartLinks] = await Promise.all([
+  const [user, subscription, smartLinks] = await Promise.all([
     knownUser ? Promise.resolve(knownUser) : dependencies.users.findById(userId),
     dependencies.subscriptions.findByUserId(userId),
-    dependencies.profiles.findByUserId(userId),
     dependencies.smartLinks.listForUser(userId),
   ]);
-  if (!user || !subscription || !profile) throw new Error("Customer data is incomplete.");
+  if (!user || !subscription) throw new Error("Customer data is incomplete.");
+
+  const landingPage = smartLinks.find((smartLink) => smartLink.type === "LANDING_PAGE");
+  const profileRecord = landingPage
+    ? await dependencies.profiles.findVersionedBySmartLinkIdForUser(landingPage.id, userId)
+    : null;
+  const displayName = profileRecord?.profile.displayName || user.username;
 
   return {
     id: user.id,
-    displayName: profile.displayName || user.username,
+    displayName,
     username: user.username,
     email: user.email,
-    initials: createInitials(profile.displayName || user.username),
+    initials: createInitials(displayName),
     plan: subscription.plan,
     subscriptionStatus: getEffectiveSubscriptionStatus(
       subscription.status,

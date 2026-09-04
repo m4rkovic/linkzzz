@@ -89,19 +89,6 @@ const pageInclude = { smartLink: true, cards: { include: { geoDestinations: true
 export class PrismaProfileRepository implements ProfileRepository {
   constructor(private readonly db: PrismaClient) {}
 
-  async findByUserId(userId: string) {
-    return (await this.findVersionedByUserId(userId))?.profile ?? null;
-  }
-
-  async findVersionedByUserId(userId: string) {
-    const row = await this.db.page.findFirst({
-      where: { smartLink: { userId, type: "LANDING_PAGE" } },
-      orderBy: { createdAt: "asc" },
-      include: pageInclude,
-    });
-    return row ? { profile: profileData(row), revision: row.revision } : null;
-  }
-
   async findVersionedBySmartLinkIdForUser(smartLinkId: string, userId: string) {
     const row = await this.db.page.findFirst({
       where: {
@@ -111,30 +98,6 @@ export class PrismaProfileRepository implements ProfileRepository {
       include: pageInclude,
     });
     return row ? { profile: profileData(row), revision: row.revision } : null;
-  }
-
-  async findBySlug(slug: string) {
-    const smartLink = await this.db.smartLink.findUnique({
-      where: { slug: slug.trim().toLowerCase() },
-      include: { page: { include: pageInclude } },
-    });
-    return smartLink?.page
-      ? { userId: smartLink.userId, profile: profileData(smartLink.page) }
-      : null;
-  }
-
-  async upsert(userId: string, data: PersistedProfileData) {
-    const result = await this.writeLegacyProfile(userId, data);
-    if (!result.ok) throw new Error("Unexpected profile revision conflict.");
-    return result.profile;
-  }
-
-  async updateIfRevision(
-    userId: string,
-    data: PersistedProfileData,
-    expectedRevision: number,
-  ) {
-    return this.writeLegacyProfile(userId, data, expectedRevision);
   }
 
   async updateForSmartLinkIfRevision(
@@ -179,87 +142,6 @@ export class PrismaProfileRepository implements ProfileRepository {
 
       const saved = await tx.page.findUniqueOrThrow({
         where: { id: existingPage.id },
-        include: pageInclude,
-      });
-      return {
-        ok: true as const,
-        profile: profileData(saved),
-        revision: saved.revision,
-      };
-    });
-  }
-
-  private async writeLegacyProfile(
-    userId: string,
-    data: PersistedProfileData,
-    expectedRevision?: number,
-  ) {
-    const appearance = persistedAppearance(data);
-
-    return this.db.$transaction(async (tx) => {
-      const existingProfile = await tx.page.findFirst({
-        where: { smartLink: { userId, type: "LANDING_PAGE" } },
-        orderBy: { createdAt: "asc" },
-        select: { id: true, smartLinkId: true },
-      });
-      const base = {
-        displayName: data.displayName,
-        username: data.username ?? null,
-        bio: data.bio,
-        locationLabel: data.locationLabel ?? null,
-        avatarAssetId: data.avatarAssetId ?? null,
-        coverAssetId: data.coverAssetId ?? null,
-        appearance: toJson(appearance),
-        contentBlocks: toJson(data.contentBlocks),
-      };
-      const profile = expectedRevision === undefined
-        ? existingProfile
-          ? await tx.page.update({
-              where: { id: existingProfile.id },
-              data: { ...base, revision: { increment: 1 } },
-            })
-          : await (async () => {
-              const smartLink = await tx.smartLink.create({
-                data: {
-                  userId,
-                  type: "LANDING_PAGE",
-                  title: data.displayName,
-                  slug: data.slug.trim().toLowerCase(),
-                  status: data.status,
-                },
-              });
-              return tx.page.create({
-                data: { smartLinkId: smartLink.id, ...base },
-              });
-            })()
-        : await (async () => {
-            if (!existingProfile) return null;
-            const updated = await tx.page.updateMany({
-              where: { id: existingProfile.id, revision: expectedRevision },
-              data: { ...base, revision: { increment: 1 } },
-            });
-            if (!updated.count) return null;
-            return tx.page.findUniqueOrThrow({ where: { id: existingProfile.id } });
-          })();
-
-      if (!profile) {
-        return { ok: false as const, reason: "REVISION_CONFLICT" as const };
-      }
-
-      await tx.smartLink.update({
-        where: { id: profile.smartLinkId },
-        data: {
-          title: data.displayName,
-          slug: data.slug.trim().toLowerCase(),
-          status: data.status,
-          revision: { increment: 1 },
-        },
-      });
-
-      await writePageChildren(tx, profile.id, data);
-
-      const saved = await tx.page.findUniqueOrThrow({
-        where: { id: profile.id },
         include: pageInclude,
       });
       return {

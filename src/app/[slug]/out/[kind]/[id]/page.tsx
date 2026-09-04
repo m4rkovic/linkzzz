@@ -17,7 +17,7 @@ import {
   getVisitorCountryCode,
   resolvePublicProfileGeoRouting,
 } from "@/server/geo/geo-routing";
-import { getPublicProfileBySlug } from "@/server/profile/profile-service";
+import { getPublicProfileForSmartLink } from "@/server/profile/public-profile-service";
 import { resolveOutboundDestination } from "@/server/smart-links/redirect-resolver";
 import { getSmartLinkRequestContext } from "@/server/smart-links/request-context";
 import { isPublicDestinationKind } from "@/server/smart-links/outbound-routing";
@@ -48,11 +48,11 @@ export default async function SmartLinkOutboundPage({ params, searchParams }: Ou
   if (!isPublicDestinationKind(kind)) notFound();
   if (!(await isSmartLinkHostAllowed(requestHeaders, slug))) notFound();
 
-  const [smartLink, profile] = await Promise.all([
-    getPublicSmartLinkBySlug(slug),
-    getPublicProfileBySlug(slug),
-  ]);
-  if (!smartLink || smartLink.type !== "LANDING_PAGE" || !profile) notFound();
+  const smartLink = await getPublicSmartLinkBySlug(slug);
+  if (!smartLink || smartLink.type !== "LANDING_PAGE") notFound();
+
+  const profile = await getPublicProfileForSmartLink(smartLink.id, smartLink.userId);
+  if (!profile) notFound();
 
   const countryCode = getVisitorCountryCode(requestHeaders);
   const routedProfile = resolvePublicProfileGeoRouting(profile, countryCode);
