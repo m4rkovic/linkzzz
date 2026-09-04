@@ -6,6 +6,7 @@ import {
   normalizeProviderDestination,
   type DestinationProviderId,
 } from "@/features/destinations/provider-registry";
+import { parseValidatedProfilePayload } from "@/server/profile/profile-payload-parser";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 
 const PROFILE_STATUSES = new Set(["DRAFT", "PUBLISHED", "DISABLED"]);
@@ -142,19 +143,7 @@ export function validateProfilePayload(
 
   return {
     ok: true,
-    value: {
-      ...(structuredClone(value) as PersistedProfileData),
-      slug: slug.value,
-      displayName: profile.displayName.trim(),
-      username:
-        typeof profile.username === "string" ? profile.username.trim() : undefined,
-      bio: profile.bio,
-      contentBlocks: structuredClone(contentBlocks) as PersistedProfileData["contentBlocks"],
-      locationLabel:
-        typeof profile.locationLabel === "string"
-          ? profile.locationLabel.trim()
-          : undefined,
-    },
+    value: parseValidatedProfilePayload(profile, contentBlocks, slug.value),
   };
 }
 
