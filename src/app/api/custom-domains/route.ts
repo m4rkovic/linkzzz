@@ -19,6 +19,7 @@ import {
   checkRateLimit,
   CUSTOM_DOMAIN_RATE_LIMIT,
 } from "@/server/security/rate-limit";
+import { logServerError } from "@/server/observability/server-logger";
 
 export async function GET(request: NextRequest) {
   const session = await customerSession(request);
@@ -234,10 +235,7 @@ function customDomainFailure(
     );
   }
 
-  console.error("Custom domain operation failed.", {
-    ...context,
-    error,
-  });
+  logServerError("custom_domain.operation_failed", error, context);
   return NextResponse.json(
     {
       error: "Custom domain operation failed.",
