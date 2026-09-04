@@ -91,9 +91,19 @@ export default function PageBlocksEditor() {
             Add supporting content below your link cards. Blocks are independent from cards and keep their own order.
           </p>
         </div>
-        <span className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-black text-zinc-600">
-          {blocks.length} / 30 blocks
-        </span>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
+          <div className="flex items-center justify-between gap-3 sm:justify-end">
+            <span aria-live="polite" className={`text-xs font-semibold ${dirty ? "text-amber-700" : "text-zinc-500"}`}>
+              {dirty ? "Unsaved changes" : "All changes saved"}
+            </span>
+            <span className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-black text-zinc-600">
+              {blocks.length} / 30 blocks
+            </span>
+          </div>
+          <Button variant="primary" onClick={() => void saveBlocks()} disabled={saving || !dirty} className="w-full sm:w-auto">
+            <Save size={16} /> {saving ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
       </div>
 
       <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -135,15 +145,6 @@ export default function PageBlocksEditor() {
             onMove={(delta) => moveBlock(index, delta)}
           />
         ))}
-      </div>
-
-      <div className="sticky bottom-3 z-30 mt-5 rounded-2xl border border-zinc-200/90 bg-white/95 p-3 shadow-[0_14px_40px_rgba(24,24,27,0.12)] backdrop-blur sm:flex sm:items-center sm:justify-between sm:gap-4">
-        <p className={`mb-2 text-xs font-semibold sm:mb-0 ${dirty ? "text-amber-700" : "text-zinc-500"}`}>
-          {dirty ? "Unsaved Page block changes" : "All Page block changes are saved"}
-        </p>
-        <Button variant="primary" onClick={() => void saveBlocks()} disabled={saving || !dirty} className="w-full sm:w-auto">
-          <Save size={16} /> {saving ? "Saving…" : "Save changes"}
-        </Button>
       </div>
 
       <ConfirmDialog

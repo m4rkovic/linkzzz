@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import SignOutButton from "@/components/auth/sign-out-button";
+import LinkzzzBrand from "@/components/ui/linkzzz-brand";
 
 type SidebarProps = {
   onNavigate?: () => void;
@@ -29,11 +30,11 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-zinc-200 bg-white">
-      <div className="flex h-20 shrink-0 items-center px-6">
-        <span className="text-xl font-black tracking-tight text-zinc-950">LINKZZZ</span>
+      <div className="flex h-20 shrink-0 items-center border-b border-zinc-100 px-6">
+        <LinkzzzBrand href="/dashboard" />
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 pt-4">
         {navigation.map((item) => {
           const Icon = item.icon;
           const active = item.href === "/dashboard"

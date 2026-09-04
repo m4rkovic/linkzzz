@@ -12,6 +12,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/form-control";
+import LinkzzzBrand from "@/components/ui/linkzzz-brand";
 import { useHydrated } from "@/components/ui/use-hydrated";
 
 type LoginResponse = {
@@ -86,7 +87,7 @@ export default function LoginForm({ notice }: { notice?: string }) {
         <div className="absolute -bottom-20 right-0 h-80 w-80 rounded-full bg-brand-violet/10 blur-2xl" />
 
         <div className="relative z-10">
-          <p className="flex items-center gap-2 text-2xl font-black tracking-tight">LINKZZZ <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-brand-lime" /></p>
+          <LinkzzzBrand href="/" tone="light" />
           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
             Profile platform
           </p>
@@ -120,7 +121,7 @@ export default function LoginForm({ notice }: { notice?: string }) {
 
       <main className="flex min-h-screen flex-1 flex-col">
         <div className="flex items-center justify-between px-5 py-5 sm:px-8 lg:hidden">
-          <p className="text-xl font-black tracking-tight text-zinc-950">LINKZZZ</p>
+          <LinkzzzBrand href="/" />
         </div>
 
         <div className="flex flex-1 items-center justify-center px-5 pb-10 sm:px-8 lg:px-12">

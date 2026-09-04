@@ -192,7 +192,7 @@ export default function SmartLinkEditor({
             aria-label="Save Smart Link"
             disabled={!dirty || saving}
             onClick={() => void saveSmartLink()}
-            className={`${activeSection === "Page" ? "inline-flex" : "hidden lg:inline-flex"} flex-1 text-zinc-900 lg:flex-none`}
+            className="flex-1 text-zinc-900 lg:flex-none"
           >
             {saved ? <Check size={16} /> : <Save size={16} />}
             {saving ? "Saving…" : saved ? "Saved" : "Save changes"}
@@ -202,7 +202,7 @@ export default function SmartLinkEditor({
             disabled={saving || publishBlocked}
             title={publishBlocked ? "Save Page changes before changing publish state." : undefined}
             onClick={() => void saveSmartLink(draft.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED")}
-            className={`${activeSection === "Page" ? "inline-flex" : "hidden lg:inline-flex"} flex-1 font-black lg:flex-none`}
+            className="flex-1 font-black lg:flex-none"
           >
             <Send size={16} />
             {draft.status === "PUBLISHED" ? "Move to draft" : "Publish"}
@@ -282,30 +282,6 @@ export default function SmartLinkEditor({
         </div>
       </div>
 
-      {activeSection !== "Page" && (
-        <div className="sticky bottom-3 z-40 mt-6 rounded-2xl border border-zinc-200/90 bg-white/95 p-3 shadow-[0_14px_40px_rgba(24,24,27,0.16)] backdrop-blur lg:hidden">
-          <div className="mb-2 flex items-center justify-between gap-3 px-1">
-            <p className="text-[11px] font-bold text-zinc-500">{dirty ? "Unsaved Smart Link changes" : "Smart Link settings are saved"}</p>
-            <StatusBadge status={draft.status} />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Button disabled={!dirty || saving} onClick={() => void saveSmartLink()} className="text-zinc-900">
-              {saved ? <Check size={16} /> : <Save size={16} />}
-              {saving ? "Saving…" : saved ? "Saved" : "Save"}
-            </Button>
-            <Button
-              variant={draft.status === "PUBLISHED" ? "secondary" : "primary"}
-              disabled={saving || publishBlocked}
-              title={publishBlocked ? "Save Page changes before changing publish state." : undefined}
-              onClick={() => void saveSmartLink(draft.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED")}
-              className="font-black"
-            >
-              <Send size={16} />
-              {draft.status === "PUBLISHED" ? "Draft" : "Publish"}
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

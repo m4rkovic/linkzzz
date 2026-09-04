@@ -27,7 +27,13 @@ const mockVisitor: VisitorLocation = {
   flag: "🇷🇸",
 };
 
-export default function ProfileEditor({ smartLinkScoped = false }: { smartLinkScoped?: boolean }) {
+export default function ProfileEditor({
+  smartLinkScoped = false,
+  showPreview = true,
+}: {
+  smartLinkScoped?: boolean;
+  showPreview?: boolean;
+}) {
   const { profile, setProfile, saveProfile, saving, dirty } = useProfile();
   const { pushToast } = useToast();
   const [saved, setSaved] = useState(false);
@@ -91,8 +97,37 @@ export default function ProfileEditor({ smartLinkScoped = false }: { smartLinkSc
   }
 
   return (
-    <div className="grid w-full min-w-0 max-w-full gap-6 2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8">
+    <div className={`grid w-full min-w-0 max-w-full gap-6 ${showPreview ? "2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8" : ""}`}>
       <div className="min-w-0 space-y-6">
+        <section className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-brand-violet-strong">
+                Profile editor
+              </p>
+              <p aria-live="polite" className="mt-1 text-xs font-semibold">
+                {saved && <span className="text-emerald-700">Changes saved.</span>}
+                {saveError && <span className="text-red-700">{saveError}</span>}
+                {!saved && !saveError && (
+                  <span className={dirty ? "text-amber-700" : "text-zinc-500"}>
+                    {dirty ? "Unsaved profile changes" : "All profile changes are saved"}
+                  </span>
+                )}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={saveChanges}
+              disabled={saving || !dirty}
+              className="flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-lime px-5 text-sm font-black text-zinc-950 shadow-[0_8px_24px_rgba(200,255,77,0.22)] transition hover:bg-brand-lime-strong disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+            >
+              <Save size={17} />
+              {saving ? "Saving..." : "Save changes"}
+            </button>
+          </div>
+        </section>
+
         {!smartLinkScoped && <ProfilePublishingSection />}
 
         <section className="w-full min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-4 sm:p-6">
@@ -237,36 +272,15 @@ export default function ProfileEditor({ smartLinkScoped = false }: { smartLinkSc
         <SocialLinksEditor />
         <ProfileStatsEditor />
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-          {saved && (
-            <p className="text-center text-sm font-medium text-emerald-600 sm:mr-auto sm:text-left">
-              Changes saved.
-            </p>
-          )}
-
-          {saveError && (
-            <p className="text-center text-sm font-medium text-red-600 sm:mr-auto sm:text-left">
-              {saveError}
-            </p>
-          )}
-
-          <button
-            type="button"
-            onClick={saveChanges}
-            disabled={saving || !dirty}
-            className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Save size={17} />
-            {saving ? "Saving..." : "Save changes"}
-          </button>
-        </div>
       </div>
 
-      <ProfilePreviewFrame
-        profile={profile}
-        visitor={mockVisitor}
-        badge={profile.status === "PUBLISHED" ? "Live" : "Preview"}
-      />
+      {showPreview && (
+        <ProfilePreviewFrame
+          profile={profile}
+          visitor={mockVisitor}
+          badge={profile.status === "PUBLISHED" ? "Live" : "Preview"}
+        />
+      )}
     </div>
   );
 }

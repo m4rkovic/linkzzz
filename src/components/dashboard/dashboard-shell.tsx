@@ -20,7 +20,7 @@ export default function DashboardShell({
 
   return (
     <ToastProvider>
-      <div className="min-h-dvh w-full max-w-full overflow-x-hidden bg-zinc-50 xl:pl-64">
+      <div className="min-h-dvh w-full max-w-full overflow-x-clip bg-zinc-50 xl:pl-64">
       {/* DESKTOP SIDEBAR
           Keep the fixed sidebar for truly wide screens only. At 1024px the
           old lg breakpoint left too little room for editors and caused page
@@ -58,7 +58,7 @@ export default function DashboardShell({
       <div className="min-h-dvh w-full min-w-0 max-w-full">
         <Topbar onMenuClick={() => setMobileMenuOpen(true)} username={username} />
 
-        <main className="w-full min-w-0 max-w-full overflow-x-hidden px-3 py-4 sm:px-5 sm:py-6 md:px-6 xl:px-8 xl:py-8">
+        <main className="w-full min-w-0 max-w-full overflow-x-clip px-3 py-4 sm:px-5 sm:py-6 md:px-6 xl:px-8 xl:py-8">
           <div className="w-full min-w-0 max-w-full">{children}</div>
         </main>
       </div>

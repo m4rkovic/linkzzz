@@ -32,7 +32,7 @@ const mockVisitor: VisitorLocation = {
   flag: "🇷🇸",
 };
 
-export default function AppearanceEditor() {
+export default function AppearanceEditor({ showPreview = true }: { showPreview?: boolean }) {
   const editor = useAppearanceEditor();
   const [requestedPanel, setRequestedPanel] = useState<AppearancePanel>("layout");
   const [resetOpen, setResetOpen] = useState(false);
@@ -42,8 +42,43 @@ export default function AppearanceEditor() {
     : "layout";
 
   return (
-    <div className="grid w-full min-w-0 max-w-full gap-6 2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8">
+    <div className={`grid w-full min-w-0 max-w-full gap-6 ${showPreview ? "2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:gap-8" : ""}`}>
       <div className="min-w-0">
+        <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-brand-violet-strong">
+                Appearance editor
+              </p>
+              <p aria-live="polite" className="mt-1 text-xs font-semibold">
+                {editor.dirty && !editor.saving && !editor.saveError && !editor.saved && (
+                  <span className="text-amber-700">Unsaved appearance changes</span>
+                )}
+                {editor.saved && <span className="text-emerald-700">Changes saved.</span>}
+                {editor.saveError && <span className="text-red-700">{editor.saveError}</span>}
+                {!editor.dirty && !editor.saved && !editor.saveError && (
+                  <span className="text-zinc-500">All appearance changes are saved</span>
+                )}
+              </p>
+            </div>
+
+            <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+              <Button variant="secondary" onClick={() => setResetOpen(true)}>
+                <RotateCcw size={16} /> Reset
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => void editor.saveChanges()}
+                disabled={editor.saving || !editor.dirty}
+                className="sm:min-w-36"
+              >
+                <Save size={16} />
+                {editor.saving ? "Saving..." : "Save changes"}
+              </Button>
+            </div>
+          </div>
+        </section>
+
         <div className="grid min-w-0 gap-4 lg:grid-cols-[156px_minmax(0,1fr)]">
           <div className="min-w-0 lg:sticky lg:top-24 lg:self-start">
             <AppearanceEditorNavigation
@@ -133,47 +168,16 @@ export default function AppearanceEditor() {
           </div>
         </div>
 
-        <div className="sticky bottom-3 z-30 mt-4 rounded-2xl border border-zinc-200/90 bg-white/95 p-3 shadow-[0_14px_40px_rgba(24,24,27,0.12)] backdrop-blur sm:p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button
-              variant="secondary"
-              onClick={() => setResetOpen(true)}
-              className="sm:shrink-0"
-            >
-              <RotateCcw size={16} /> Reset
-            </Button>
-
-            <div className="min-h-5 flex-1 text-center sm:text-left">
-              {editor.dirty && !editor.saving && !editor.saveError && !editor.saved && (
-                <p className="text-xs font-semibold text-amber-700">Unsaved appearance changes</p>
-              )}
-              {editor.saved && (
-                <p className="text-xs font-semibold text-emerald-700">Changes saved.</p>
-              )}
-              {editor.saveError && (
-                <p className="text-xs font-semibold text-red-700">{editor.saveError}</p>
-              )}
-            </div>
-
-            <Button
-              variant="primary"
-              onClick={() => void editor.saveChanges()}
-              disabled={editor.saving || !editor.dirty}
-              className="sm:min-w-36 sm:shrink-0"
-            >
-              <Save size={16} />
-              {editor.saving ? "Saving..." : "Save changes"}
-            </Button>
-          </div>
-        </div>
       </div>
 
-      <ProfilePreviewFrame
-        profile={editor.profile}
-        visitor={mockVisitor}
-        badge={editor.layoutMode === "visual" ? "Visual" : "Classic"}
-        subtitle="Appearance updates instantly"
-      />
+      {showPreview && (
+        <ProfilePreviewFrame
+          profile={editor.profile}
+          visitor={mockVisitor}
+          badge={editor.layoutMode === "visual" ? "Visual" : "Classic"}
+          subtitle="Appearance updates instantly"
+        />
+      )}
 
       <ConfirmDialog
         open={resetOpen}

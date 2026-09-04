@@ -9,7 +9,7 @@ import PageBlocksEditor from "@/components/profile/page-blocks-editor";
 import ProfileEditor from "@/components/profile/profile-editor";
 import ProfilePreviewFrame from "@/components/ui/profile-preview-frame";
 import { useProfile } from "@/features/profile/profile-context";
-import type { VisitorLocation } from "@/types/profile";
+import type { PublicProfileData, VisitorLocation } from "@/types/profile";
 
 import type { PageSection } from "./types";
 
@@ -30,6 +30,8 @@ export function PageWorkspace({
 }) {
   const { profile } = useProfile();
   const [mobileMode, setMobileMode] = useState<"edit" | "preview">("edit");
+  const [cardPreviewProfile, setCardPreviewProfile] = useState<PublicProfileData>(profile);
+  const previewProfile = pageSection === "Cards" ? cardPreviewProfile : profile;
 
   return (
     <div className="min-w-0">
@@ -104,7 +106,7 @@ export function PageWorkspace({
       <div className={`${mobileMode === "preview" ? "block 2xl:hidden" : "hidden"} mt-4`}>
         <div className="mx-auto max-w-[430px] rounded-2xl border border-zinc-200 bg-white p-3 sm:p-4">
           <ProfilePreviewFrame
-            profile={profile}
+            profile={previewProfile}
             visitor={previewVisitor}
             title="Page preview"
             subtitle="Unsaved Page changes are included"
@@ -114,17 +116,32 @@ export function PageWorkspace({
       </div>
 
       <div className={mobileMode === "preview" ? "hidden 2xl:block" : "block"}>
-        <div className={pageSection === "Profile" ? "mt-4" : "hidden"}>
-          <ProfileEditor smartLinkScoped />
-        </div>
-        <div className={pageSection === "Appearance" ? "mt-4" : "hidden"}>
-          <AppearanceEditor />
-        </div>
-        <div className={pageSection === "Cards" ? "mt-4" : "hidden"}>
-          <LinksEditor />
-        </div>
-        <div className={pageSection === "Blocks" ? "mt-4" : "hidden"}>
-          <PageBlocksEditor />
+        <div className="mt-4 grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_420px] 2xl:items-start 2xl:gap-8">
+          <div className="min-w-0">
+            <div className={pageSection === "Profile" ? "block" : "hidden"}>
+              <ProfileEditor smartLinkScoped showPreview={false} />
+            </div>
+            <div className={pageSection === "Appearance" ? "block" : "hidden"}>
+              <AppearanceEditor showPreview={false} />
+            </div>
+            <div className={pageSection === "Cards" ? "block" : "hidden"}>
+              <LinksEditor showPreview={false} onPreviewProfileChange={setCardPreviewProfile} />
+            </div>
+            <div className={pageSection === "Blocks" ? "block" : "hidden"}>
+              <PageBlocksEditor />
+            </div>
+          </div>
+
+          <div className="hidden min-w-0 2xl:block">
+            <ProfilePreviewFrame
+              profile={previewProfile}
+              visitor={previewVisitor}
+              title="Live page preview"
+              subtitle="Follows you while Page settings change"
+              badge={profile.status === "PUBLISHED" ? "Live" : "Draft"}
+              stickyFrom="2xl"
+            />
+          </div>
         </div>
       </div>
     </div>

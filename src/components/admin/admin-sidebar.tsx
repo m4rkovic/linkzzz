@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import SignOutButton from "@/components/auth/sign-out-button";
+import LinkzzzBrand from "@/components/ui/linkzzz-brand";
 import { usePathname } from "next/navigation";
 
 import {
@@ -35,20 +36,15 @@ export default function AdminSidebar({
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-zinc-800 bg-zinc-950 text-white">
-      {/* LOGO */}
       <div className="flex h-20 shrink-0 items-center border-b border-zinc-800 px-6">
         <div>
-          <p className="text-xl font-black tracking-tight">
-            LINKZZZ
-          </p>
-
-          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          <LinkzzzBrand href="/admin" tone="light" />
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
             Administration
           </p>
         </div>
       </div>
 
-      {/* NAVIGATION */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
         {navigation.map((item) => {
           const Icon = item.icon;
@@ -75,11 +71,10 @@ export default function AdminSidebar({
         })}
       </nav>
 
-      {/* ADMIN INFO */}
       <div className="shrink-0 border-t border-zinc-800 p-3">
         <div className="mb-3 rounded-2xl bg-zinc-900 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-xs font-bold text-zinc-950">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-xs font-bold text-zinc-950 ring-2 ring-brand-lime/30">
               AD
             </div>
 
