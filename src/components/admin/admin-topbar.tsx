@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Menu, Plus } from "lucide-react";
+import LinkzzzBrand from "@/components/ui/linkzzz-brand";
 
 type AdminTopbarProps = {
   onMenuClick: () => void;
@@ -20,11 +21,9 @@ export default function AdminTopbar({ onMenuClick }: AdminTopbarProps) {
           <Menu size={20} />
         </button>
 
-        <div className="min-w-0 xl:hidden">
-          <p className="truncate text-base font-black tracking-tight text-zinc-950">LINKZZZ</p>
-          <p className="hidden text-[10px] font-semibold uppercase tracking-wider text-zinc-400 sm:block">Admin</p>
-        </div>
+        <LinkzzzBrand href="/admin" />
 
+        <div className="hidden h-9 w-px shrink-0 bg-zinc-200 xl:block" aria-hidden="true" />
         <div className="hidden min-w-0 xl:block">
           <p className="text-sm text-zinc-500">Administration</p>
           <h1 className="truncate font-semibold text-zinc-950">Linkzzz Control Panel</h1>
@@ -39,7 +38,6 @@ export default function AdminTopbar({ onMenuClick }: AdminTopbarProps) {
           <Plus size={17} />
           <span className="hidden sm:inline">Create user</span>
         </Link>
-
       </div>
     </header>
   );
