@@ -8,7 +8,7 @@ type Props = {
 
 export default function AnalyticsPeriodTabs({ value, onChange }: Props) {
   return (
-    <div className="grid max-w-full grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1 sm:grid-cols-5" role="tablist" aria-label="Analytics period">
+    <div className="grid max-w-full grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1 sm:flex sm:w-fit" role="tablist" aria-label="Analytics period">
       {ANALYTICS_PERIODS.map((period) => {
         const active = period.value === value;
 
@@ -19,7 +19,7 @@ export default function AnalyticsPeriodTabs({ value, onChange }: Props) {
             role="tab"
             aria-selected={active}
             onClick={() => onChange(period.value)}
-            className={`min-h-10 min-w-0 rounded-lg px-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 sm:px-4 ${
+            className={`min-h-10 min-w-0 rounded-lg px-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 sm:shrink-0 sm:px-4 ${
               active
                 ? "bg-white text-zinc-950 shadow-sm"
                 : "text-zinc-500 hover:text-zinc-800"

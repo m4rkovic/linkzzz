@@ -70,19 +70,19 @@ export function PageWorkspace({
         </div>
 
         <nav
-          className={`${mobileMode === "preview" ? "hidden 2xl:grid" : "grid"} mt-3 min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(132px,auto)] sm:items-end`}
+          className={`${mobileMode === "preview" ? "hidden 2xl:flex" : "grid md:flex"} mt-3 min-w-0 gap-3 md:items-center md:gap-2`}
           aria-label="Landing Page sections"
         >
-          <div className="min-w-0">
-            <span className="block pl-1 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400">Content</span>
-            <div className="mt-1.5 grid min-w-0 grid-cols-3 gap-1.5">
+          <div className="min-w-0 md:flex md:items-center md:gap-2">
+            <span className="block pl-1 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 md:shrink-0">Content</span>
+            <div className="mt-1.5 grid min-w-0 grid-cols-3 gap-1.5 md:mt-0 md:flex md:items-center md:gap-2">
               {(["Profile", "Cards", "Blocks"] as const).map((section) => (
                 <button
                   key={section}
                   type="button"
                   onClick={() => setPageSection(section)}
                   aria-current={pageSection === section ? "page" : undefined}
-                  className={`min-h-10 min-w-0 rounded-xl px-2 py-2 text-xs font-bold leading-4 sm:px-3 sm:text-sm ${
+                  className={`min-h-10 min-w-0 rounded-xl px-2 py-2 text-xs font-bold leading-4 md:shrink-0 md:px-3 md:text-sm ${
                     pageSection === section
                       ? "bg-brand-violet-strong text-white"
                       : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
@@ -94,13 +94,15 @@ export function PageWorkspace({
             </div>
           </div>
 
-          <div className="min-w-0">
-            <span className="block pl-1 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400">Design</span>
+          <span aria-hidden="true" className="mx-1 hidden h-7 w-px shrink-0 bg-zinc-200 md:block" />
+
+          <div className="min-w-0 md:flex md:items-center md:gap-2">
+            <span className="block pl-1 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 md:shrink-0 md:pl-0">Design</span>
             <button
               type="button"
               onClick={() => setPageSection("Appearance")}
               aria-current={pageSection === "Appearance" ? "page" : undefined}
-              className={`mt-1.5 min-h-10 w-full min-w-0 rounded-xl px-3 text-xs font-bold sm:text-sm ${
+              className={`mt-1.5 min-h-10 w-full min-w-0 rounded-xl px-3 text-xs font-bold md:mt-0 md:w-auto md:shrink-0 md:text-sm ${
                 pageSection === "Appearance"
                   ? "bg-brand-violet-strong text-white"
                   : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"

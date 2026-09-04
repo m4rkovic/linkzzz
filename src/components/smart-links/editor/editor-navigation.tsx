@@ -50,25 +50,29 @@ export function EditorNavigation({
 
   return (
     <nav
-      className="grid min-w-0 grid-cols-2 gap-2 rounded-2xl border border-zinc-200 bg-white p-2 sm:grid-cols-3"
+      className="grid min-w-0 grid-cols-2 gap-2 rounded-2xl border border-zinc-200 bg-white p-2 sm:grid-cols-3 md:flex md:items-center md:border-0 md:bg-transparent md:p-0 md:pb-2"
       aria-label="Smart Link sections"
       data-editor-navigation="compact"
     >
-      {sections.map(({ id, label, icon: Icon }) => (
-        <button
-          key={id}
-          type="button"
-          onClick={() => onSelect(id)}
-          aria-current={activeSection === id ? "page" : undefined}
-          className={`inline-flex min-h-10 min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 text-left text-xs font-bold transition sm:px-3 sm:text-sm ${
-            activeSection === id
-              ? "bg-brand-violet-strong text-white shadow-lg shadow-brand-violet/15"
-              : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
-          }`}
-        >
-          <Icon size={16} className="shrink-0" />
-          <span className="min-w-0 truncate">{label}</span>
-        </button>
+      {sections.map(({ id, label, icon: Icon }, index) => (
+        <div key={id} className="contents">
+          {index > 0 && sections[index - 1]?.group !== sections[index]?.group && (
+            <span aria-hidden="true" className="hidden h-6 w-px bg-zinc-200 md:block" />
+          )}
+          <button
+            type="button"
+            onClick={() => onSelect(id)}
+            aria-current={activeSection === id ? "page" : undefined}
+            className={`inline-flex min-h-10 min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 text-left text-xs font-bold transition sm:px-3 sm:text-sm md:w-auto md:shrink-0 ${
+              activeSection === id
+                ? "bg-brand-violet-strong text-white shadow-lg shadow-brand-violet/15"
+                : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
+            }`}
+          >
+            <Icon size={16} className="shrink-0" />
+            <span className="min-w-0 truncate">{label}</span>
+          </button>
+        </div>
       ))}
     </nav>
   );
