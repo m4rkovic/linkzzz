@@ -7,6 +7,10 @@ import {
   isCustomDomainError,
 } from "@/server/domains/custom-domain-errors";
 import { releaseCustomDomainAsAdmin } from "@/server/domains/custom-domain-service";
+import {
+  getRequestCorrelationId,
+  logServerError,
+} from "@/server/observability/server-logger";
 import { hasValidRequestOrigin } from "@/server/security/request";
 
 export async function DELETE(
@@ -48,10 +52,10 @@ export async function DELETE(
       );
     }
 
-    console.error("Admin custom domain release failed.", {
+    logServerError("admin.custom_domain.release_failed", error, {
+      requestId: getRequestCorrelationId(request.headers),
       actorUserId: session.user.id,
       customDomainId: id,
-      error,
     });
     return NextResponse.json(
       { error: "Custom domain release failed.", code: "DOMAIN_RELEASE_FAILED" },
