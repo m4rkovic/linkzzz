@@ -11,6 +11,7 @@ import {
 } from "../src/server/business/plans";
 import {
   getAllowedSubscriptionActions,
+  getSubscriptionAccess,
   getSubscriptionTransition,
   isSubscriptionRenewalMonths,
   SUBSCRIPTION_RENEWAL_TERMS,
@@ -99,6 +100,31 @@ test("subscription renewal terms have one canonical validator", () => {
   }
   assert.equal(isSubscriptionRenewalMonths(2), false);
   assert.equal(isSubscriptionRenewalMonths("3"), false);
+});
+
+test("subscription access uses effective expiry and stop state", () => {
+  const now = new Date("2026-09-03T12:00:00.000Z");
+  const future = new Date("2026-10-03T12:00:00.000Z");
+  const past = new Date("2026-08-03T12:00:00.000Z");
+
+  assert.deepEqual(getSubscriptionAccess("ACTIVE", future, now), {
+    hasAccess: true,
+  });
+  assert.deepEqual(getSubscriptionAccess("CANCEL_AT_PERIOD_END", future, now), {
+    hasAccess: true,
+  });
+  assert.deepEqual(getSubscriptionAccess("ACTIVE", past, now), {
+    hasAccess: false,
+    reason: "EXPIRED",
+  });
+  assert.deepEqual(getSubscriptionAccess("EXPIRED", future, now), {
+    hasAccess: false,
+    reason: "EXPIRED",
+  });
+  assert.deepEqual(getSubscriptionAccess("STOPPED", future, now), {
+    hasAccess: false,
+    reason: "STOPPED",
+  });
 });
 
 test("subscription transitions are enforced from the effective server status", () => {
