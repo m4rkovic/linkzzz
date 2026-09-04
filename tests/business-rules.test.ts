@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  assessPlanChange,
+  assessPageCardPlanChange,
   assessSmartLinkPlanChange,
   canCreateSmartLink,
   canSavePageCards,
@@ -71,7 +71,7 @@ test("grandfathered page-card overage can shrink or stay flat but cannot grow", 
 });
 
 test("Page Card downgrade assessment preserves data and reports overage", () => {
-  assert.deepEqual(assessPlanChange("PRO", "BASIC", 17), {
+  assert.deepEqual(assessPageCardPlanChange("PRO", "BASIC", 17), {
     fromPlan: "PRO",
     toPlan: "BASIC",
     currentCount: 17,

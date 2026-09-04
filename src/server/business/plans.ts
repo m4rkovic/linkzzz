@@ -115,7 +115,7 @@ export type DowngradeAssessment = {
   linksToRemoveBeforeAddingNew: number;
 };
 
-export function assessPlanChange(
+export function assessPageCardPlanChange(
   fromPlan: Plan,
   toPlan: Plan,
   currentCount: number,

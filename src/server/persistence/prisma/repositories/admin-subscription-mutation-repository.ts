@@ -4,7 +4,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { AdminError } from "@/server/admin/admin-errors";
 import { addMonthsClampedUtc } from "@/server/business/date-math";
 import {
-  assessPlanChange,
+  assessPageCardPlanChange,
   assessSmartLinkPlanChange,
 } from "@/server/business/plans";
 import {
@@ -194,7 +194,7 @@ export class PrismaAdminSubscriptionMutationRepository
             (max, page) => Math.max(max, page._count.cards),
             0,
           );
-          const pageCardAssessment = assessPlanChange(
+          const pageCardAssessment = assessPageCardPlanChange(
             subscription.plan,
             action.plan,
             maxPageCardCount,
