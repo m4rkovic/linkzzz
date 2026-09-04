@@ -5,6 +5,7 @@ import type {
   AdminCustomerReadRecord,
   AdminReadRepository,
 } from "@/server/services/contracts";
+import { logServerWarning } from "@/server/observability/server-logger";
 
 export class PrismaAdminReadRepository implements AdminReadRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -47,7 +48,7 @@ export class PrismaAdminReadRepository implements AdminReadRepository {
     return customers.flatMap((customer) => {
       const subscription = customer.subscription;
       if (!subscription) {
-        console.error("Skipping customer without subscription in admin read model.", {
+        logServerWarning("admin.customer.missing_subscription", {
           userId: customer.id,
         });
         return [];
