@@ -1,6 +1,7 @@
 "use client";
 
 import { Menu } from "lucide-react";
+import LinkzzzBrand from "@/components/ui/linkzzz-brand";
 
 type TopbarProps = {
   onMenuClick: () => void;
@@ -26,9 +27,10 @@ export default function Topbar({ onMenuClick, username }: TopbarProps) {
         >
           <Menu size={20} />
         </button>
-        <div className="min-w-0 xl:hidden">
-          <p className="truncate text-base font-black tracking-tight text-zinc-950">LINKZZZ</p>
-        </div>
+
+        <LinkzzzBrand href="/dashboard" />
+
+        <div className="hidden h-9 w-px shrink-0 bg-zinc-200 xl:block" aria-hidden="true" />
         <div className="hidden min-w-0 xl:block">
           <p className="text-sm text-zinc-500">Workspace</p>
           <h1 className="truncate font-semibold text-zinc-950">@{username}</h1>
@@ -40,7 +42,7 @@ export default function Topbar({ onMenuClick, username }: TopbarProps) {
           <p className="truncate text-sm font-semibold text-zinc-900">@{username}</p>
           <p className="truncate text-xs text-zinc-500">Linkzzz workspace</p>
         </div>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-sm font-bold text-white">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-sm font-bold text-white ring-2 ring-brand-lime/40">
           {initials}
         </div>
       </div>
