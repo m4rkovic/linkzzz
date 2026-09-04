@@ -1,7 +1,7 @@
 import type { AuditWriter } from "@/server/audit/types";
 import type { Plan } from "@/server/business/plans";
 import type {
-  SubscriptionRenewalMonths,
+  SubscriptionMutation,
   SubscriptionStatus,
 } from "@/server/business/subscriptions";
 import type { AccountStatus, UserRole } from "@/server/types/auth";
@@ -46,18 +46,11 @@ export interface SubscriptionRepository {
   upsert(record: SubscriptionRecord): Promise<SubscriptionRecord>;
 }
 
-export type AdminSubscriptionMutation =
-  | { type: "RENEW"; months: SubscriptionRenewalMonths }
-  | { type: "STOP_RENEWAL" }
-  | { type: "RESUME_RENEWAL" }
-  | { type: "STOP_IMMEDIATELY" }
-  | { type: "CHANGE_PLAN"; plan: Plan };
-
 export interface AdminSubscriptionMutationRepository {
   apply(
     actorUserId: string,
     userId: string,
-    action: AdminSubscriptionMutation,
+    action: SubscriptionMutation,
   ): Promise<void>;
 }
 

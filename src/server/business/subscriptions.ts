@@ -1,3 +1,5 @@
+import type { Plan } from "@/server/business/plans";
+
 export type SubscriptionStatus =
   | "ACTIVE"
   | "CANCEL_AT_PERIOD_END"
@@ -23,6 +25,13 @@ export type SubscriptionAction =
   | "RESUME_RENEWAL"
   | "STOP_IMMEDIATELY"
   | "CHANGE_PLAN";
+
+export type SubscriptionMutation =
+  | { type: "RENEW"; months: SubscriptionRenewalMonths }
+  | { type: "STOP_RENEWAL" }
+  | { type: "RESUME_RENEWAL" }
+  | { type: "STOP_IMMEDIATELY" }
+  | { type: "CHANGE_PLAN"; plan: Plan };
 
 export type SubscriptionAccessDecision = {
   hasAccess: boolean;
