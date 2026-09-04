@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { AccountSummary } from "@/features/account/account-types";
+import { getEffectiveSubscriptionStatus } from "@/server/business/subscriptions";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 
 const shortDateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -30,12 +31,10 @@ export async function getAccountSummary(
   if (!user || !subscription) return null;
 
   const expiresAt = subscription.expiresAt;
-  const effectiveStatus =
-    expiresAt &&
-    expiresAt.getTime() < Date.now() &&
-    subscription.status !== "STOPPED"
-      ? "EXPIRED"
-      : subscription.status;
+  const effectiveStatus = getEffectiveSubscriptionStatus(
+    subscription.status,
+    expiresAt,
+  );
 
   return {
     username: user.username,
@@ -47,6 +46,6 @@ export async function getAccountSummary(
       : `Since ${shortDateFormatter.format(subscription.startedAt)}`,
     expiresLabel: expiresAt ? longDateFormatter.format(expiresAt) : "No expiry date",
     autoRenew: subscription.autoRenew,
-    linksUsed: smartLinkCount,
+    smartLinksUsed: smartLinkCount,
   };
 }
