@@ -101,18 +101,6 @@ export interface AdminReadRepository {
 }
 
 export interface ProfileRepository {
-  // Legacy single-page compatibility methods. New SmartLink editor code must use
-  // the smartLinkId-scoped methods below.
-  findByUserId(userId: string): Promise<PersistedProfileData | null>;
-  findVersionedByUserId(userId: string): Promise<VersionedProfileRecord | null>;
-  findBySlug(slug: string): Promise<{ userId: string; profile: PersistedProfileData } | null>;
-  upsert(userId: string, profile: PersistedProfileData): Promise<PersistedProfileData>;
-  updateIfRevision(
-    userId: string,
-    profile: PersistedProfileData,
-    expectedRevision: number,
-  ): Promise<ConditionalProfileWriteResult>;
-
   findVersionedBySmartLinkIdForUser(
     smartLinkId: string,
     userId: string,

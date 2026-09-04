@@ -1,8 +1,8 @@
 import "server-only";
 
-import { getServerDependencies } from "@/server/persistence/dependencies";
 import { resolveScheduleWindow } from "@/features/scheduling/schedule";
-import { getPublicProfileBySlug } from "@/server/profile/profile-service";
+import { getServerDependencies } from "@/server/persistence/dependencies";
+import { getPublicProfileForSmartLink } from "@/server/profile/public-profile-service";
 import { getPublicSmartLinkBySlug } from "@/server/smart-links/smart-link-service";
 
 export type LeadCaptureResult =
@@ -19,11 +19,13 @@ export async function captureEmailLead(
     return { ok: false, code: "INVALID_EMAIL", message: "Enter a valid email address." };
   }
 
-  const [smartLink, profile] = await Promise.all([
-    getPublicSmartLinkBySlug(slug),
-    getPublicProfileBySlug(slug),
-  ]);
-  if (!smartLink || smartLink.type !== "LANDING_PAGE" || !profile) {
+  const smartLink = await getPublicSmartLinkBySlug(slug);
+  if (!smartLink || smartLink.type !== "LANDING_PAGE") {
+    return { ok: false, code: "NOT_FOUND", message: "Landing page not found." };
+  }
+
+  const profile = await getPublicProfileForSmartLink(smartLink.id, smartLink.userId);
+  if (!profile) {
     return { ok: false, code: "NOT_FOUND", message: "Landing page not found." };
   }
 
