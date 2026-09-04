@@ -100,7 +100,7 @@ export default function UserDetails({
       <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <OverviewCard icon={UserRound} label="Plan" value={getPlanDefinition(user.plan).name} />
         <OverviewCard icon={CalendarDays} label="Expires" value={formatAdminDate(user.periodEnd)} />
-        <OverviewCard icon={RefreshCw} label="Auto renewal" value={user.autoRenew ? "Enabled" : "Disabled"} />
+        <OverviewCard icon={RefreshCw} label="Renewal preference" value={user.autoRenew ? "Enabled" : "Disabled"} />
         <OverviewCard icon={Link2} label="Smart Links" value={getPlanUsageLabel(user.plan, user.smartLinksUsed)} />
       </div>
 

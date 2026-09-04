@@ -60,7 +60,7 @@ export default function SubscriptionCard({ account }: { account: AccountSummary 
       <div className="grid gap-3 border-t border-zinc-100 bg-zinc-50/40 p-4 sm:grid-cols-3 sm:p-5">
         <AccountOverviewCard icon={CalendarDays} label="Current period" value={account.periodLabel} />
         <AccountOverviewCard icon={Clock3} label="Expires" value={account.expiresLabel} />
-        <AccountOverviewCard icon={RefreshCw} label="Auto renewal" value={account.autoRenew ? "Enabled" : "Disabled"} />
+        <AccountOverviewCard icon={RefreshCw} label="Renewal preference" value={account.autoRenew ? "Enabled" : "Disabled"} />
       </div>
     </section>
   );

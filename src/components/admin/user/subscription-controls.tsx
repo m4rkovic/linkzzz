@@ -57,8 +57,12 @@ export default function SubscriptionControls({
         <div className="mt-7 border-t border-zinc-100 pt-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-zinc-900">Automatic renewal</p>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">{user.autoRenew ? "Subscription currently renews automatically." : "Automatic renewal is currently disabled."}</p>
+              <p className="text-sm font-semibold text-zinc-900">Renewal preference</p>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                {user.autoRenew
+                  ? "Renewal is enabled for this subscription. Period extensions are still applied manually by an administrator."
+                  : "Renewal is disabled for this subscription. The current period remains unchanged unless an administrator renews it."}
+              </p>
             </div>
 
             {canResumeRenewal ? (
