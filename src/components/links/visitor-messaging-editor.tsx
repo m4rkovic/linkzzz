@@ -59,15 +59,26 @@ export default function VisitorMessagingEditor() {
 
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
-      <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-lime-soft text-zinc-950">
-          <MessageCircleMore size={17} />
-        </span>
-        <div>
-          <h2 className="text-base font-bold text-zinc-950">Visitor messaging</h2>
-          <p className="mt-0.5 text-xs leading-5 text-zinc-500">
-            Add lightweight availability cues without implying real-time presence.
-          </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-lime-soft text-zinc-950">
+            <MessageCircleMore size={17} />
+          </span>
+          <div>
+            <h2 className="text-base font-bold text-zinc-950">Visitor messaging</h2>
+            <p className="mt-0.5 text-xs leading-5 text-zinc-500">
+              Add lightweight availability cues without implying real-time presence.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <span aria-live="polite" className={`text-xs font-semibold ${error ? "text-red-700" : saved ? "text-emerald-700" : dirty ? "text-amber-700" : "text-zinc-500"}`}>
+            {error ? "Check the error below" : saved ? "Changes saved" : dirty ? "Unsaved changes" : "All changes saved"}
+          </span>
+          <Button variant="accent" onClick={() => void save()} disabled={saving || !dirty} className="w-full sm:w-auto">
+            {saved ? <Check size={16} /> : <Save size={16} />}
+            {saving ? "Saving…" : saved ? "Saved" : "Save messaging"}
+          </Button>
         </div>
       </div>
 
@@ -139,13 +150,9 @@ export default function VisitorMessagingEditor() {
         </p>
       )}
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-5">
-        <p className="text-xs text-zinc-400">These labels appear near the public profile identity.</p>
-        <Button variant="accent" onClick={() => void save()} disabled={saving || !dirty}>
-          {saved ? <Check size={16} /> : <Save size={16} />}
-          {saving ? "Saving…" : saved ? "Saved" : "Save messaging"}
-        </Button>
-      </div>
+      <p className="mt-5 border-t border-zinc-100 pt-5 text-xs text-zinc-400">
+        These labels appear near the public profile identity.
+      </p>
     </section>
   );
 }

@@ -28,9 +28,10 @@ export default function Topbar({ onMenuClick, username }: TopbarProps) {
           <Menu size={20} />
         </button>
 
-        <LinkzzzBrand href="/dashboard" />
+        <div className="xl:hidden">
+          <LinkzzzBrand href="/dashboard" />
+        </div>
 
-        <div className="hidden h-9 w-px shrink-0 bg-zinc-200 xl:block" aria-hidden="true" />
         <div className="hidden min-w-0 xl:block">
           <p className="text-sm text-zinc-500">Workspace</p>
           <h1 className="truncate font-semibold text-zinc-950">@{username}</h1>

@@ -98,8 +98,8 @@ export default function LinkEditorForm({ draft, setDraft, error, onSave, onCance
         </nav>
 
         <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 pb-4">
-            <div>
+          <div className="mb-5 flex flex-col gap-3 border-b border-zinc-100 pb-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-brand-violet-strong">
                 Card editor
               </p>
@@ -107,11 +107,35 @@ export default function LinkEditorForm({ draft, setDraft, error, onSave, onCance
                 Edit one group at a time instead of scrolling through the whole card setup.
               </p>
             </div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-lime-soft px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-zinc-800">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-lime-strong" />
-              Live preview
-            </span>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <span className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-lime-soft px-3 text-[10px] font-black uppercase tracking-[0.1em] text-zinc-800">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-lime-strong" />
+                Live preview
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-brand-violet-soft px-3 text-sm font-bold text-brand-violet-strong transition hover:bg-brand-violet/20 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20"
+                >
+                  <X size={16} /> Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={onSave}
+                  className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-brand-lime px-3 text-sm font-black text-zinc-950 transition hover:bg-brand-lime-strong focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-lime/30"
+                >
+                  <Save size={16} /> Save
+                </button>
+              </div>
+            </div>
           </div>
+
+          {error && (
+            <div role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {error}
+            </div>
+          )}
 
           {activePanel === "basics" && (
             <div className="space-y-7">
@@ -162,28 +186,6 @@ export default function LinkEditorForm({ draft, setDraft, error, onSave, onCance
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm">
-        <button
-          type="button"
-          onClick={onSave}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-lime px-4 text-sm font-black text-zinc-950 transition hover:bg-brand-lime-strong focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-lime/30"
-        >
-          <Save size={16} /> Save
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-violet-soft px-4 text-sm font-bold text-brand-violet-strong transition hover:bg-brand-violet/20 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20"
-        >
-          <X size={16} /> Cancel
-        </button>
-      </div>
     </div>
   );
 }

@@ -101,7 +101,18 @@ export default function CampaignEditor() {
             </div>
           </div>
         </div>
-        {campaign.enabled && <CampaignStateBadge state={campaignState} />}
+        <div className="flex flex-col gap-2 sm:items-end">
+          <div className="flex min-h-6 items-center justify-between gap-3 sm:justify-end">
+            <span aria-live="polite" className={`text-xs font-semibold ${error ? "text-red-700" : saved ? "text-emerald-700" : dirty ? "text-amber-700" : "text-zinc-500"}`}>
+              {error ? "Check the error below" : saved ? "Changes saved" : dirty ? "Unsaved changes" : "All changes saved"}
+            </span>
+            {campaign.enabled && <CampaignStateBadge state={campaignState} />}
+          </div>
+          <Button variant="accent" onClick={() => void save()} disabled={saving || !dirty} className="w-full sm:w-auto">
+            {saved ? <Check size={16} /> : <Save size={16} />}
+            {saving ? "Saving…" : saved ? "Saved" : "Save engagement"}
+          </Button>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-5 xl:grid-cols-2">
@@ -211,15 +222,9 @@ export default function CampaignEditor() {
         </p>
       )}
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-5">
-        <p className="text-xs text-zinc-400">
-          Campaign settings use the same scheduling clock as timed cards and blocks.
-        </p>
-        <Button variant="accent" onClick={() => void save()} disabled={saving || !dirty}>
-          {saved ? <Check size={16} /> : <Save size={16} />}
-          {saving ? "Saving…" : saved ? "Saved" : "Save engagement"}
-        </Button>
-      </div>
+      <p className="mt-5 border-t border-zinc-100 pt-5 text-xs text-zinc-400">
+        Campaign settings use the same scheduling clock as timed cards and blocks.
+      </p>
     </section>
   );
 }
