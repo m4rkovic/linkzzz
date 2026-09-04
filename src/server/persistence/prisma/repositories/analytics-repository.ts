@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import type {
   AnalyticsEventRecord,
   AnalyticsDashboardSummary,
@@ -40,7 +41,12 @@ export class PrismaAnalyticsRepository implements AnalyticsRepository {
     if (!smartLink || smartLink.status !== "PUBLISHED") return false;
     if (smartLink.user.accountStatus !== "ACTIVE") return false;
     const subscription = smartLink.user.subscription;
-    if (!subscription || !["ACTIVE", "CANCEL_AT_PERIOD_END"].includes(subscription.status) || subscription.endsAt.getTime() <= Date.now()) return false;
+    if (
+      !subscription ||
+      !getSubscriptionAccess(subscription.status, subscription.endsAt).hasAccess
+    ) {
+      return false;
+    }
 
     const tracking = smartLink.trackingConfig as { internalAnalytics?: unknown } | null;
     if (tracking?.internalAnalytics === false) return false;

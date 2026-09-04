@@ -58,9 +58,10 @@ test("geo BLOCK prevents resolution", () => {
   assert.deepEqual(result, { type: "BLOCK" });
 });
 
-test("STANDARD shield previews known crawlers and blocks generic automation", () => {
+test("STANDARD shield previews known crawlers, allows ambiguous traffic and blocks automation", () => {
   const shield = { enabled: true, mode: "STANDARD" as const, verifiedCrawlerPolicy: "ALLOW" as const };
   assert.equal(resolveTrafficShield(shield, "KNOWN_CRAWLER"), "PREVIEW");
+  assert.equal(resolveTrafficShield(shield, "UNKNOWN"), "ALLOW");
   assert.equal(resolveTrafficShield(shield, "AUTOMATION"), "BLOCK");
 });
 
@@ -69,6 +70,20 @@ test("STRICT shield still previews known and ambiguous traffic while blocking au
   assert.equal(resolveTrafficShield(shield, "KNOWN_CRAWLER"), "PREVIEW");
   assert.equal(resolveTrafficShield(shield, "UNKNOWN"), "PREVIEW");
   assert.equal(resolveTrafficShield(shield, "AUTOMATION"), "BLOCK");
+});
+
+test("verified crawler policy overrides both Shield modes", () => {
+  for (const mode of ["STANDARD", "STRICT"] as const) {
+    for (const policy of ["ALLOW", "PREVIEW", "BLOCK"] as const) {
+      assert.equal(
+        resolveTrafficShield(
+          { enabled: true, mode, verifiedCrawlerPolicy: policy },
+          "VERIFIED_CRAWLER",
+        ),
+        policy,
+      );
+    }
+  }
 });
 
 test("known crawler, generic automation and unknown traffic classification stay distinct", () => {

@@ -27,11 +27,16 @@ export function resolveTrafficShield(
     return shield.verifiedCrawlerPolicy;
   }
 
-  // Social/search unfurlers need a renderable preview in both Shield modes.
-  // Missing User-Agent is ambiguous rather than proof of automation, so it is
-  // also served the neutral preview instead of being hard-blocked.
-  if (traffic === "KNOWN_CRAWLER" || traffic === "UNKNOWN") {
+  // Social/search unfurlers get a neutral response in both modes so they never
+  // resolve the real destination. A missing User-Agent is ambiguous rather
+  // than proof of automation: Standard preserves compatibility, while Strict
+  // keeps the destination hidden behind the same neutral preview.
+  if (traffic === "KNOWN_CRAWLER") {
     return "PREVIEW";
+  }
+
+  if (traffic === "UNKNOWN") {
+    return shield.mode === "STRICT" ? "PREVIEW" : "ALLOW";
   }
 
   return "BLOCK";

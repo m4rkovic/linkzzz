@@ -34,8 +34,8 @@ export function ShieldSection({
             className={inputClass}
             disabled={!shield.enabled}
           >
-            <option value="STANDARD">Standard</option>
-            <option value="STRICT">Strict</option>
+            <option value="STANDARD">Standard — allow unknown traffic</option>
+            <option value="STRICT">Strict — preview unknown traffic</option>
           </select>
         </Field>
         <Field label="Verified crawler policy">
