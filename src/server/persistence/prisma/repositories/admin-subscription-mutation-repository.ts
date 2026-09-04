@@ -9,14 +9,12 @@ import {
 } from "@/server/business/plans";
 import {
   getSubscriptionTransition,
+  type SubscriptionMutation,
   type SubscriptionStatus,
 } from "@/server/business/subscriptions";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
-import type {
-  AdminSubscriptionMutation,
-  AdminSubscriptionMutationRepository,
-} from "@/server/services/contracts";
+import type { AdminSubscriptionMutationRepository } from "@/server/services/contracts";
 
 export class PrismaAdminSubscriptionMutationRepository
   implements AdminSubscriptionMutationRepository {
@@ -25,7 +23,7 @@ export class PrismaAdminSubscriptionMutationRepository
   async apply(
     actorUserId: string,
     userId: string,
-    action: AdminSubscriptionMutation,
+    action: SubscriptionMutation,
   ): Promise<void> {
     await this.db.$transaction(async (tx) => {
       await lockUserMutation(tx, userId);
@@ -323,7 +321,7 @@ async function writeUserAudit(
 }
 
 function invalidTransitionMessage(
-  action: AdminSubscriptionMutation["type"],
+  action: SubscriptionMutation["type"],
   status: SubscriptionStatus,
 ) {
   const actionLabel = action.replaceAll("_", " ").toLowerCase();

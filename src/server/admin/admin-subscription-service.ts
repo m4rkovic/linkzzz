@@ -3,13 +3,13 @@ import "server-only";
 import { AdminError } from "@/server/admin/admin-errors";
 import { getAdminUser } from "@/server/admin/admin-service";
 import type { AuthenticatedSession } from "@/server/auth/auth-service";
+import type { SubscriptionMutation } from "@/server/business/subscriptions";
 import { getServerDependencies } from "@/server/persistence/dependencies";
-import type { AdminSubscriptionMutation } from "@/server/services/contracts";
 import type { AdminUserAction } from "@/types/admin-api";
 
 export function isAdminSubscriptionAction(
   action: AdminUserAction,
-): action is AdminSubscriptionMutation {
+): action is SubscriptionMutation {
   switch (action.type) {
     case "RENEW":
     case "STOP_RENEWAL":
@@ -25,7 +25,7 @@ export function isAdminSubscriptionAction(
 export async function performAdminSubscriptionAction(
   admin: AuthenticatedSession,
   userId: string,
-  action: AdminSubscriptionMutation,
+  action: SubscriptionMutation,
 ) {
   const dependencies = await getServerDependencies();
   await dependencies.adminSubscriptions.apply(admin.user.id, userId, action);
