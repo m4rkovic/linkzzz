@@ -5,7 +5,7 @@ export function EditorSection({ title, description, icon: Icon, children }: { ti
   return (
     <section>
       <div className="mb-4 flex items-start gap-3">
-        {Icon && <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600"><Icon size={16} /></div>}
+        {Icon && <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-violet-soft text-brand-violet-strong"><Icon size={16} /></div>}
         <div><h3 className="text-sm font-bold text-zinc-950">{title}</h3><p className="mt-1 text-xs leading-5 text-zinc-400">{description}</p></div>
       </div>
       {children}
@@ -18,7 +18,7 @@ export function StatusBadge({ children }: { children: ReactNode }) {
 }
 
 export function ActionButton({ label, onClick, danger = false, children }: { label: string; onClick: () => void; danger?: boolean; children: ReactNode }) {
-  return <button type="button" title={label} aria-label={label} onClick={onClick} className={`flex h-10 w-9 items-center justify-center rounded-xl transition sm:w-10 ${danger ? "text-zinc-400 hover:bg-red-50 hover:text-red-600" : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800"}`}>{children}</button>;
+  return <button type="button" title={label} aria-label={label} onClick={onClick} className={`flex h-10 w-9 items-center justify-center rounded-xl transition sm:w-10 ${danger ? "text-zinc-400 hover:bg-red-50 hover:text-red-600" : "text-zinc-400 hover:bg-brand-violet-soft hover:text-brand-violet-strong"}`}>{children}</button>;
 }
 
 export function CardLayoutIcon({ layout, selected }: { layout: LinkCardLayout; selected: boolean }) {
@@ -33,7 +33,7 @@ export function CardLayoutIcon({ layout, selected }: { layout: LinkCardLayout; s
 
 export function AspectRatioButton({ label, ratio, selected, onClick }: { label: string; ratio: LinkCardAspectRatio; selected: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`flex min-h-[90px] flex-col items-center justify-center rounded-xl border p-3 transition ${selected ? "border-zinc-950 bg-zinc-950 text-white" : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400"}`}>
+    <button type="button" onClick={onClick} className={`flex min-h-[90px] flex-col items-center justify-center rounded-xl border p-3 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 ${selected ? "border-brand-violet-strong bg-brand-violet-strong text-white shadow-sm" : "border-zinc-200 bg-white text-zinc-700 hover:border-brand-violet/50 hover:bg-brand-violet-soft/40"}`}>
       <AspectRatioShape ratio={ratio} selected={selected} />
       <span className="mt-3 text-[11px] font-bold">{label}</span>
     </button>
