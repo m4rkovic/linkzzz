@@ -4,7 +4,6 @@ import test from "node:test";
 import {
   assessPlanChange,
   assessSmartLinkPlanChange,
-  canCreateLink,
   canCreateSmartLink,
   canSavePageCards,
   getPageCardLimit,
@@ -38,17 +37,10 @@ test("Smart Link limits follow Basic, Pro and Enterprise capacity", () => {
   });
 });
 
-test("Landing Page link limits are 10, 30 and 100", () => {
+test("Landing Page Card limits are 10, 30 and 100", () => {
   assert.equal(getPageCardLimit("BASIC"), 10);
   assert.equal(getPageCardLimit("PRO"), 30);
   assert.equal(getPageCardLimit("ENTERPRISE"), 100);
-  assert.equal(canCreateLink("BASIC", 9).allowed, true);
-  assert.deepEqual(canCreateLink("BASIC", 10), {
-    allowed: false,
-    limit: 10,
-    currentCount: 10,
-    reason: "LINK_LIMIT_REACHED",
-  });
 });
 
 test("grandfathered page-card overage can shrink or stay flat but cannot grow", () => {
@@ -78,7 +70,7 @@ test("grandfathered page-card overage can shrink or stay flat but cannot grow", 
   assert.equal(canSavePageCards("BASIC", 10, 11).allowed, false);
 });
 
-test("page-link downgrade assessment preserves data and reports overage", () => {
+test("Page Card downgrade assessment preserves data and reports overage", () => {
   assert.deepEqual(assessPlanChange("PRO", "BASIC", 17), {
     fromPlan: "PRO",
     toPlan: "BASIC",

@@ -32,21 +32,12 @@ export function getPageCardLimit(plan: Plan) {
   return PAGE_CARD_LIMITS[plan];
 }
 
-/** @deprecated Use getPageCardLimit for page-card limits. */
-export function getPlanLinkLimit(plan: Plan) {
-  return getPageCardLimit(plan);
-}
-
 export type LinkLimitDecision = {
   allowed: boolean;
   limit: number;
   currentCount: number;
   reason?: "LINK_LIMIT_REACHED";
 };
-
-export function canCreateLink(plan: Plan, currentCount: number): LinkLimitDecision {
-  return makeLimitDecision(getPageCardLimit(plan), currentCount);
-}
 
 export type PageCardSaveDecision = {
   allowed: boolean;
