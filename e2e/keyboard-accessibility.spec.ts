@@ -137,6 +137,17 @@ test("mobile Landing Page editor switches between edit and preview", async ({ pa
   await loginAsCustomer(page);
   await openAppearanceEditor(page);
 
+  for (const navigation of [
+    page.locator('nav[data-editor-navigation="compact"]'),
+    page.getByRole("navigation", { name: "Landing Page sections" }),
+    page.getByRole("navigation", { name: "Appearance settings" }),
+  ]) {
+    await expect(navigation).toBeVisible();
+    expect(
+      await navigation.evaluate((element) => element.scrollWidth <= element.clientWidth),
+    ).toBe(true);
+  }
+
   const preview = page.getByRole("button", { name: "Show inline preview", exact: true });
   await expect(preview).toBeVisible();
   await preview.click();

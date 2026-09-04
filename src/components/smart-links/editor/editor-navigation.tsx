@@ -49,26 +49,26 @@ export function EditorNavigation({
   }
 
   return (
-    <nav className="flex min-w-0 gap-2 overflow-x-auto pb-2" aria-label="Smart Link sections" data-editor-navigation="compact">
-      {sections.map(({ id, label, icon: Icon }, index) => (
-        <div key={id} className="flex shrink-0 items-center gap-2">
-          {index > 0 && sections[index - 1]?.group !== sections[index]?.group && (
-            <span aria-hidden="true" className="h-6 w-px bg-zinc-200" />
-          )}
-          <button
-            type="button"
-            onClick={() => onSelect(id)}
-            aria-current={activeSection === id ? "page" : undefined}
-            className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-bold transition ${
-              activeSection === id
-                ? "bg-brand-violet-strong text-white shadow-lg shadow-brand-violet/15"
-                : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
-            }`}
-          >
-            <Icon size={16} />
-            <span>{label}</span>
-          </button>
-        </div>
+    <nav
+      className="grid min-w-0 grid-cols-2 gap-2 rounded-2xl border border-zinc-200 bg-white p-2 sm:grid-cols-3"
+      aria-label="Smart Link sections"
+      data-editor-navigation="compact"
+    >
+      {sections.map(({ id, label, icon: Icon }) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => onSelect(id)}
+          aria-current={activeSection === id ? "page" : undefined}
+          className={`inline-flex min-h-10 min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 text-left text-xs font-bold transition sm:px-3 sm:text-sm ${
+            activeSection === id
+              ? "bg-brand-violet-strong text-white shadow-lg shadow-brand-violet/15"
+              : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
+          }`}
+        >
+          <Icon size={16} className="shrink-0" />
+          <span className="min-w-0 truncate">{label}</span>
+        </button>
       ))}
     </nav>
   );

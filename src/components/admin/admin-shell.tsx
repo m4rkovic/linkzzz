@@ -16,7 +16,7 @@ export default function AdminShell({ children }: AdminShellProps) {
 
   return (
     <ToastProvider>
-      <div className="min-h-dvh w-full max-w-full overflow-x-hidden bg-zinc-50 xl:pl-64">
+      <div className="min-h-dvh w-full max-w-full overflow-x-clip bg-zinc-50 xl:pl-64">
       <div className="fixed inset-y-0 left-0 z-40 hidden w-64 xl:block">
         <AdminSidebar />
       </div>
@@ -48,7 +48,7 @@ export default function AdminShell({ children }: AdminShellProps) {
       <div className="min-h-dvh w-full min-w-0 max-w-full">
         <AdminTopbar onMenuClick={() => setMobileMenuOpen(true)} />
 
-        <main className="w-full min-w-0 max-w-full overflow-x-hidden px-3 py-4 sm:px-5 sm:py-6 md:px-6 xl:px-8 xl:py-8">
+        <main className="w-full min-w-0 max-w-full overflow-x-clip px-3 py-4 sm:px-5 sm:py-6 md:px-6 xl:px-8 xl:py-8">
           <div className="w-full min-w-0 max-w-full">{children}</div>
         </main>
       </div>
