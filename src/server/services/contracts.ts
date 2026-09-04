@@ -284,21 +284,18 @@ export type AssetRecord = {
 
 export interface AssetRepository {
   findById(id: string): Promise<AssetRecord | null>;
-  findByIdsForUser(userId: string, ids: string[]): Promise<AssetRecord[]>;
   findByIdsForSmartLink(
     userId: string,
     smartLinkId: string,
     ids: string[],
   ): Promise<AssetRecord[]>;
   create(asset: AssetRecord): Promise<AssetRecord>;
-  createForUser(userId: string, asset: Omit<AssetRecord, "smartLinkId">): Promise<AssetRecord>;
   createForSmartLink(
     userId: string,
     smartLinkId: string,
     asset: Omit<AssetRecord, "smartLinkId">,
   ): Promise<AssetRecord>;
   delete(id: string): Promise<void>;
-  deleteUnusedForUser(userId: string, ids: string[]): Promise<AssetRecord[]>;
   deleteUnusedForSmartLink(
     userId: string,
     smartLinkId: string,

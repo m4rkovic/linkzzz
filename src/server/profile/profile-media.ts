@@ -89,24 +89,6 @@ export function preserveUnpersistedProfileMedia(
   };
 }
 
-export async function cleanupReplacedProfileAssets(
-  userId: string,
-  previous: PersistedProfileData | null,
-  next: PersistedProfileData,
-  dependencies: ProfileMediaDependencies,
-) {
-  if (!previous || !dependencies.assets) return;
-
-  const candidates = getRemovedAssetIds(previous, next);
-  if (!candidates.length) return;
-
-  const removed = await dependencies.assets.deleteUnusedForUser(
-    userId,
-    candidates,
-  );
-  await removeStoredAssets(removed);
-}
-
 export async function cleanupReplacedSmartLinkAssets(
   userId: string,
   smartLinkId: string,
