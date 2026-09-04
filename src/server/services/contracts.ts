@@ -4,6 +4,7 @@ import type {
   SubscriptionMutation,
   SubscriptionStatus,
 } from "@/server/business/subscriptions";
+import type { SmartLinkModerationMutation } from "@/server/smart-links/smart-link-lifecycle";
 import type { AccountStatus, UserRole } from "@/server/types/auth";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 import type { SmartLinkEditableData, SmartLinkRecord } from "@/types/smart-link";
@@ -67,16 +68,11 @@ export interface AdminAccountMutationRepository {
   ): Promise<void>;
 }
 
-export type AdminSmartLinkMutation = {
-  smartLinkId: string;
-  status: "PUBLISHED" | "DISABLED";
-};
-
 export interface AdminSmartLinkMutationRepository {
   apply(
     actorUserId: string,
     userId: string,
-    action: AdminSmartLinkMutation,
+    action: SmartLinkModerationMutation,
   ): Promise<void>;
 }
 
