@@ -1,15 +1,11 @@
 import type { PlanId } from "@/features/plans/plan-catalog";
+import type { SubscriptionStatus } from "@/server/business/subscriptions";
+import type { AccountStatus } from "@/server/types/auth";
 import type { SmartLinkStatus, SmartLinkType } from "@/types/smart-link";
 
 export type AdminPlan = PlanId;
-
-export type AdminSubscriptionStatus =
-  | "ACTIVE"
-  | "CANCEL_AT_PERIOD_END"
-  | "EXPIRED"
-  | "STOPPED";
-
-export type AdminAccountStatus = "ACTIVE" | "SUSPENDED" | "DISABLED";
+export type AdminSubscriptionStatus = SubscriptionStatus;
+export type AdminAccountStatus = AccountStatus;
 
 export type AdminHistoryItem = {
   id: string | number;

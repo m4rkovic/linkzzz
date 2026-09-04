@@ -4,6 +4,19 @@ export type SubscriptionStatus =
   | "EXPIRED"
   | "STOPPED";
 
+export const SUBSCRIPTION_RENEWAL_TERMS = [1, 3, 6, 12] as const;
+export type SubscriptionRenewalMonths =
+  (typeof SUBSCRIPTION_RENEWAL_TERMS)[number];
+
+export function isSubscriptionRenewalMonths(
+  value: unknown,
+): value is SubscriptionRenewalMonths {
+  return (
+    typeof value === "number" &&
+    SUBSCRIPTION_RENEWAL_TERMS.includes(value as SubscriptionRenewalMonths)
+  );
+}
+
 export type SubscriptionAction =
   | "RENEW"
   | "STOP_RENEWAL"
