@@ -13,6 +13,8 @@ import {
 import {
   getAllowedSubscriptionActions,
   getSubscriptionTransition,
+  isSubscriptionRenewalMonths,
+  SUBSCRIPTION_RENEWAL_TERMS,
 } from "../src/server/business/subscriptions";
 import { PLAN_CATALOG } from "../src/features/plans/plan-catalog";
 
@@ -96,6 +98,15 @@ test("Smart Link downgrade assessment reports workspace overage", () => {
     exceedsNewLimit: true,
     linksToRemoveBeforeAddingNew: 10,
   });
+});
+
+test("subscription renewal terms have one canonical validator", () => {
+  assert.deepEqual([...SUBSCRIPTION_RENEWAL_TERMS], [1, 3, 6, 12]);
+  for (const months of SUBSCRIPTION_RENEWAL_TERMS) {
+    assert.equal(isSubscriptionRenewalMonths(months), true);
+  }
+  assert.equal(isSubscriptionRenewalMonths(2), false);
+  assert.equal(isSubscriptionRenewalMonths("3"), false);
 });
 
 test("subscription transitions are enforced from the effective server status", () => {

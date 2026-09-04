@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import type { AdminHistoryItem, AdminPlan, AdminUserModel } from "@/features/admin/admin-types";
+import type { SubscriptionRenewalMonths } from "@/server/business/subscriptions";
 import type {
   AdminHistorySnapshot,
   AdminUserAction,
@@ -75,7 +76,8 @@ export function useAdminUser(
     loading,
     error,
     reload: load,
-    renewSubscription: (months: number) => action({ type: "RENEW", months: months as 1 | 3 | 6 | 12 }, "Subscription renewed"),
+    renewSubscription: (months: SubscriptionRenewalMonths) =>
+      action({ type: "RENEW", months }, "Subscription renewed"),
     stopRenewal: () => action({ type: "STOP_RENEWAL" }, "Renewal stopped"),
     resumeRenewal: () => action({ type: "RESUME_RENEWAL" }, "Renewal resumed"),
     stopImmediately: () => action({ type: "STOP_IMMEDIATELY" }, "Subscription stopped"),

@@ -19,6 +19,7 @@ import {
 } from "@/server/admin/admin-subscription-service";
 import { getCurrentSession } from "@/server/auth/current-session";
 import { requireAdmin } from "@/server/auth/guards";
+import { isSubscriptionRenewalMonths } from "@/server/business/subscriptions";
 import { hasValidRequestOrigin } from "@/server/security/request";
 import type { AdminUserAction } from "@/types/admin-api";
 
@@ -109,7 +110,7 @@ function isAdminUserAction(value: unknown): value is AdminUserAction {
   const body = value as Record<string, unknown>;
   switch (body.type) {
     case "RENEW":
-      return [1, 3, 6, 12].includes(Number(body.months));
+      return isSubscriptionRenewalMonths(body.months);
     case "CHANGE_PLAN":
       return isPlanId(body.plan);
     case "SET_SMART_LINK_STATUS":

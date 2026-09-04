@@ -1,6 +1,9 @@
 import type { AccountStatus } from "@/server/types/auth";
 import type { Plan } from "@/server/business/plans";
-import type { SubscriptionStatus } from "@/server/business/subscriptions";
+import type {
+  SubscriptionRenewalMonths,
+  SubscriptionStatus,
+} from "@/server/business/subscriptions";
 import type { SmartLinkStatus, SmartLinkType } from "@/types/smart-link";
 
 export type AdminSmartLinkSnapshot = {
@@ -42,7 +45,7 @@ export type AdminUserListItem = Omit<AdminUserSnapshot, "smartLinks"> & {
 };
 
 export type AdminUserAction =
-  | { type: "RENEW"; months: 1 | 3 | 6 | 12 }
+  | { type: "RENEW"; months: SubscriptionRenewalMonths }
   | { type: "STOP_RENEWAL" }
   | { type: "RESUME_RENEWAL" }
   | { type: "STOP_IMMEDIATELY" }

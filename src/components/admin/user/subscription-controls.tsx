@@ -3,7 +3,11 @@ import { AlertTriangle, CalendarDays, CheckCircle2, Clock3, PauseCircle, PlayCir
 import type { AdminPlan, AdminUserModel } from "@/features/admin/admin-types";
 import { PLAN_CATALOG, PLAN_ORDER } from "@/features/plans/plan-catalog";
 import { formatAdminDate, getExpiryLabel, getPlanLimit, getPlanUsageLabel } from "@/features/admin/subscription-rules";
-import { getAllowedSubscriptionActions } from "@/server/business/subscriptions";
+import {
+  getAllowedSubscriptionActions,
+  SUBSCRIPTION_RENEWAL_TERMS,
+  type SubscriptionRenewalMonths,
+} from "@/server/business/subscriptions";
 
 export default function SubscriptionControls({
   user,
@@ -13,7 +17,7 @@ export default function SubscriptionControls({
   onRequestPlanChange,
 }: {
   user: AdminUserModel;
-  onRenew: (months: number) => void;
+  onRenew: (months: SubscriptionRenewalMonths) => void;
   onStopRenewal: () => void;
   onResumeRenewal: () => void;
   onRequestPlanChange: (plan: AdminPlan) => void;
@@ -42,7 +46,7 @@ export default function SubscriptionControls({
         <div className="mt-6">
           <p className="text-sm font-semibold text-zinc-900">Renew subscription</p>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-            {[1, 3, 6, 12].map((months) => (
+            {SUBSCRIPTION_RENEWAL_TERMS.map((months) => (
               <button key={months} type="button" onClick={() => onRenew(months)} className="min-h-11 rounded-xl bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800">
                 +{months} {months === 1 ? "month" : "months"}
               </button>
