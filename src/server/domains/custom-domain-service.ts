@@ -6,6 +6,14 @@ import {
   CustomDomainError,
 } from "@/server/domains/custom-domain-errors";
 import {
+  DOMAIN_REVERIFICATION_INTERVAL_MS,
+  getDomainReverificationDueAt,
+  getPendingDomainClaimExpiry,
+  isCustomDomainVerificationCurrent,
+  isPendingDomainClaimExpired,
+  PENDING_DOMAIN_CLAIM_TTL_MS,
+} from "@/server/domains/custom-domain-lifecycle";
+import {
   getRequestHostname,
   isApplicationHostname,
 } from "@/server/domains/host-routing";
@@ -14,7 +22,10 @@ import {
   normalizeCustomDomain,
 } from "@/server/domains/custom-domain-validation";
 import { getServerDependencies } from "@/server/persistence/dependencies";
-import type { CustomDomainRecord } from "@/server/services/contracts";
+import type {
+  CustomDomainClaimResult,
+  CustomDomainRecord,
+} from "@/server/services/contracts";
 
 export async function listCustomDomains(userId: string, smartLinkId: string) {
   const repositories = await getServerDependencies();
@@ -27,7 +38,18 @@ export async function listCustomDomains(userId: string, smartLinkId: string) {
 export async function resolveActiveCustomDomain(domain: string) {
   const repositories = await getServerDependencies();
   if (!repositories.customDomains) return null;
-  return repositories.customDomains.findActiveSlugByDomain(domain);
+  return repositories.customDomains.findActiveSlugByDomain(
+    domain,
+    new Date(Date.now() - DOMAIN_REVERIFICATION_INTERVAL_MS),
+  );
+}
+
+export async function listCustomDomainsForAdmin() {
+  const repositories = await getServerDependencies();
+  if (!repositories.customDomains) {
+    throw new Error("Custom domain persistence is unavailable.");
+  }
+  return repositories.customDomains.listForAdmin(200);
 }
 
 export async function isSmartLinkHostAllowed(headers: Headers, slug: string) {
@@ -49,21 +71,14 @@ export async function addCustomDomain(
   }
   await requireEditableSmartLink(repositories, userId, smartLinkId);
 
-  const existing = await repositories.customDomains.findByDomain(domain);
-  if (existing) {
-    throw new CustomDomainError(
-      "DOMAIN_ALREADY_CONNECTED",
-      "This domain is already connected to a Smart Link.",
-    );
-  }
-
-  let record: CustomDomainRecord;
+  let claim: CustomDomainClaimResult | null;
   try {
-    record = await repositories.customDomains.createForSmartLink(
+    claim = await repositories.customDomains.claimForSmartLink(
       userId,
       smartLinkId,
       domain,
       randomBytes(24).toString("base64url"),
+      new Date(Date.now() - PENDING_DOMAIN_CLAIM_TTL_MS),
     );
   } catch (error) {
     if (isPrismaUniqueConstraintError(error)) {
@@ -74,16 +89,28 @@ export async function addCustomDomain(
     }
     throw error;
   }
+  if (!claim) {
+    throw new CustomDomainError(
+      "DOMAIN_ALREADY_CONNECTED",
+      "This domain is already connected to a Smart Link.",
+    );
+  }
 
   await repositories.audit.write({
     actorUserId: userId,
     targetUserId: userId,
-    action: "CUSTOM_DOMAIN_ADDED",
+    action: claim.reclaimed
+      ? "CUSTOM_DOMAIN_RECLAIMED"
+      : "CUSTOM_DOMAIN_ADDED",
     resourceType: "CUSTOM_DOMAIN",
-    resourceId: record.id,
-    metadata: { domain, smartLinkId },
+    resourceId: claim.record.id,
+    metadata: {
+      domain,
+      smartLinkId,
+      previousOwnerUserId: claim.previousOwnerUserId ?? null,
+    },
   });
-  return record;
+  return claim.record;
 }
 
 export async function verifyCustomDomain(
@@ -104,6 +131,12 @@ export async function verifyCustomDomain(
     throw new CustomDomainError(
       "DOMAIN_NOT_FOUND",
       "Custom domain not found for this Smart Link.",
+    );
+  }
+  if (isPendingDomainClaimExpired(owned)) {
+    throw new CustomDomainError(
+      "DOMAIN_CLAIM_EXPIRED",
+      "This verification reservation expired. Renew the claim before checking DNS.",
     );
   }
 
@@ -170,10 +203,10 @@ export async function setCustomDomainActive(
       "Custom domain not found for this Smart Link.",
     );
   }
-  if (active && !owned.verifiedAt) {
+  if (active && !isCustomDomainVerificationCurrent(owned)) {
     throw new CustomDomainError(
       "DOMAIN_NOT_VERIFIED",
-      "Verify the domain before activating it.",
+      "Verify or re-verify the domain before activating it.",
     );
   }
 
@@ -245,6 +278,38 @@ export async function removeCustomDomain(
   });
 }
 
+export async function releaseCustomDomainAsAdmin(
+  actorUserId: string,
+  customDomainId: string,
+) {
+  const repositories = await getServerDependencies();
+  if (!repositories.customDomains) {
+    throw new Error("Custom domain persistence is unavailable.");
+  }
+
+  const released = await repositories.customDomains.releaseById(customDomainId);
+  if (!released) {
+    throw new CustomDomainError(
+      "DOMAIN_NOT_FOUND",
+      "Custom domain was not found.",
+    );
+  }
+
+  await repositories.audit.write({
+    actorUserId,
+    targetUserId: released.ownerUserId,
+    action: "CUSTOM_DOMAIN_RELEASED",
+    resourceType: "CUSTOM_DOMAIN",
+    resourceId: released.domain.id,
+    metadata: {
+      domain: released.domain.domain,
+      smartLinkId: released.domain.smartLinkId,
+    },
+  });
+
+  return released.domain;
+}
+
 async function requireEditableSmartLink(
   repositories: Awaited<ReturnType<typeof getServerDependencies>>,
   userId: string,
@@ -274,6 +339,26 @@ export function customDomainDnsInstructions(record: CustomDomainRecord) {
       name: record.domain,
       value: getCustomDomainRoutingTarget(),
     },
+  };
+}
+
+export function customDomainView(record: CustomDomainRecord, now = new Date()) {
+  const claimExpiresAt = getPendingDomainClaimExpiry(record);
+  const verificationDueAt = getDomainReverificationDueAt(record);
+
+  return {
+    id: record.id,
+    smartLinkId: record.smartLinkId,
+    domain: record.domain,
+    status: record.status,
+    verifiedAt: record.verifiedAt?.toISOString() ?? null,
+    claimExpiresAt: claimExpiresAt?.toISOString() ?? null,
+    claimExpired: isPendingDomainClaimExpired(record, now),
+    verificationDueAt: verificationDueAt?.toISOString() ?? null,
+    verificationRequired:
+      Boolean(record.verifiedAt) &&
+      !isCustomDomainVerificationCurrent(record, now),
+    dns: customDomainDnsInstructions(record),
   };
 }
 

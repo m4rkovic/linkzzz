@@ -7,7 +7,7 @@ import { getPageCardLimit } from "@/server/business/plans";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import { getOwnSmartLink } from "@/server/smart-links/smart-link-service";
 import {
-  customDomainDnsInstructions,
+  customDomainView,
   listCustomDomains,
 } from "@/server/domains/custom-domain-service";
 
@@ -63,14 +63,7 @@ export default async function SmartLinkEditorPage({ params, searchParams }: Smar
       initialSection={initialSection}
       initialPageSection={initialPageSection}
       pageLinkLimit={pageLinkLimit}
-      initialDomains={domains.map((domain) => ({
-        id: domain.id ?? domain.domain,
-        smartLinkId: domain.smartLinkId,
-        domain: domain.domain,
-        status: domain.status,
-        verifiedAt: domain.verifiedAt?.toISOString() ?? null,
-        dns: customDomainDnsInstructions(domain),
-      }))}
+      initialDomains={domains.map((domain) => customDomainView(domain))}
     />
   );
 }

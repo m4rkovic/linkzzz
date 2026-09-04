@@ -296,23 +296,46 @@ export interface AssetRepository {
 }
 
 export type CustomDomainRecord = {
-  id?: string;
+  id: string;
   smartLinkId: string;
   domain: string;
   status: "PENDING" | "VERIFIED" | "ACTIVE" | "DISABLED";
   verificationToken: string;
-  verifiedAt?: Date | null;
+  verifiedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type AdminCustomDomainRecord = CustomDomainRecord & {
+  ownerUserId: string;
+  ownerUsername: string;
+  smartLinkTitle: string;
+  smartLinkSlug: string;
+};
+
+export type CustomDomainClaimResult = {
+  record: CustomDomainRecord;
+  reclaimed: boolean;
+  previousOwnerUserId?: string;
 };
 
 export interface CustomDomainRepository {
-  findByDomain(domain: string): Promise<CustomDomainRecord | null>;
-  findActiveSlugByDomain(domain: string): Promise<string | null>;
-  listForUser(userId: string): Promise<CustomDomainRecord[]>;
+  findActiveSlugByDomain(domain: string, verifiedAfter: Date): Promise<string | null>;
   listForSmartLink(userId: string, smartLinkId: string): Promise<CustomDomainRecord[]>;
-  createForSmartLink(userId: string, smartLinkId: string, domain: string, verificationToken: string): Promise<CustomDomainRecord>;
-  upsert(record: CustomDomainRecord): Promise<CustomDomainRecord>;
+  listForAdmin(limit: number): Promise<AdminCustomDomainRecord[]>;
+  claimForSmartLink(
+    userId: string,
+    smartLinkId: string,
+    domain: string,
+    verificationToken: string,
+    expiredBefore: Date,
+  ): Promise<CustomDomainClaimResult | null>;
   setStatusForSmartLink(userId: string, smartLinkId: string, domain: string, status: CustomDomainRecord["status"], verifiedAt?: Date | null): Promise<CustomDomainRecord | null>;
   deleteForSmartLink(userId: string, smartLinkId: string, domain: string): Promise<boolean>;
+  releaseById(id: string): Promise<{
+    domain: CustomDomainRecord;
+    ownerUserId: string;
+  } | null>;
 }
 
 export type ProvisionCustomerInput = {
