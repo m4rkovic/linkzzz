@@ -6,7 +6,6 @@ import {
   Link2,
   Palette,
   Save,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import GeoRoutingEditor from "@/components/links/geo-routing-editor";
