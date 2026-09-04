@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { AdminError } from "@/server/admin/admin-errors";
+import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
 import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
 import type {
@@ -55,12 +56,11 @@ export class PrismaAdminAccountMutationRepository
             );
           }
 
-          const now = new Date();
-          if (
-            subscription.status === "STOPPED" ||
-            subscription.status === "EXPIRED" ||
-            subscription.endsAt.getTime() <= now.getTime()
-          ) {
+          const access = getSubscriptionAccess(
+            subscription.status,
+            subscription.endsAt,
+          );
+          if (!access.hasAccess) {
             throw new AdminError(
               "SUBSCRIPTION_REACTIVATION_REQUIRED",
               "Renew the subscription before reactivating this account.",
