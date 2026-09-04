@@ -1,5 +1,3 @@
-import { getPlatformIcon } from "@/config/platforms";
-
 import type { PersistedProfileData } from "@/types/persisted-profile";
 import type { PublicProfileData } from "@/types/profile";
 
@@ -24,13 +22,9 @@ export function hydrateProfile(
             : undefined,
         }
       : undefined,
-    socials: profile.socials.map((social) => ({
-      ...social,
-      icon: getPlatformIcon(social.platform ?? "custom"),
-    })),
+    socials: profile.socials.map((social) => ({ ...social })),
     links: profile.links.map((link) => ({
       ...link,
-      icon: getPlatformIcon(link.platform ?? "custom"),
       geoDestinations: link.geoDestinations.map((destination) => ({
         ...destination,
       })),

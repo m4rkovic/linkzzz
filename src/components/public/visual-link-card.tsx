@@ -5,6 +5,7 @@ import { ExternalLink } from "lucide-react";
 
 import { ClassicLinkButton } from "@/components/public/classic-profile-renderer";
 import UserContentImage from "@/components/ui/user-content-image";
+import { PlatformIcon } from "@/config/platforms";
 import {
     addAlpha,
     getAspectRatioValue,
@@ -215,9 +216,6 @@ export function VisualLinkCard({
     const descriptionColor = custom?.descriptionColor ?? textColor;
     const imageScale = Math.max(100, Math.min(125, custom?.imageScale ?? 100));
 
-    const Icon =
-        link.icon;
-
     const resolvedUrl =
         resolveLinkUrl(
             link,
@@ -396,7 +394,6 @@ export function VisualLinkCard({
             {/* PLATFORM BADGE */}
             {(link.showPlatformIcon ??
                 true) &&
-                Icon &&
                 badgeStyle !==
                 "none" && (
                     <div
@@ -432,7 +429,8 @@ export function VisualLinkCard({
                                     : "none",
                         }}
                     >
-                        <Icon
+                        <PlatformIcon
+                            platform={link.platform ?? "custom"}
                             size={
                                 isPreview
                                     ? 15
@@ -451,7 +449,7 @@ export function VisualLinkCard({
             {/* PROMOTIONAL BADGE */}
             {promoBadgeText && (
                 <div
-                    className={`absolute z-20 max-w-[65%] truncate font-bold uppercase tracking-[0.08em] ${isPreview ? "top-3 px-2 py-1 text-[8px]" : "top-4 px-2.5 py-1.5 text-[10px]"} ${badgePosition === "top-left" && (link.showPlatformIcon ?? true) && Icon ? (isPreview ? "right-3" : "right-4") : (isPreview ? "left-3" : "left-4")}`}
+                    className={`absolute z-20 max-w-[65%] truncate font-bold uppercase tracking-[0.08em] ${isPreview ? "top-3 px-2 py-1 text-[8px]" : "top-4 px-2.5 py-1.5 text-[10px]"} ${badgePosition === "top-left" && (link.showPlatformIcon ?? true) ? (isPreview ? "right-3" : "right-4") : (isPreview ? "left-3" : "left-4")}`}
                     style={{
                         borderRadius: "999px",
                         backgroundColor: promoBadgeBackground,

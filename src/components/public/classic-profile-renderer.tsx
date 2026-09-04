@@ -7,6 +7,7 @@ import { useScheduleClock } from "@/features/scheduling/use-schedule-clock";
 import { hasScheduleWindow } from "@/features/scheduling/schedule";
 import type { CSSProperties } from "react";
 import { ExternalLink, MapPin } from "lucide-react";
+import { PlatformIcon } from "@/config/platforms";
 
 import {
     LinkzzzFooter,
@@ -287,9 +288,6 @@ export function ClassicLinkButton({
     const appearance =
         profile.appearance;
 
-    const Icon =
-        link.icon;
-
     const resolvedUrl =
         resolveLinkUrl(
             link,
@@ -354,7 +352,7 @@ export function ClassicLinkButton({
         >
             {(link.showPlatformIcon ??
                 true) &&
-                Icon && (
+                (
                     <div
                         className={`flex shrink-0 items-center justify-center rounded-xl ${isPreview
                             ? "h-9 w-9"
@@ -371,7 +369,8 @@ export function ClassicLinkButton({
                                 appearance.buttonTextColor,
                         }}
                     >
-                        <Icon
+                        <PlatformIcon
+                            platform={link.platform ?? "custom"}
                             size={
                                 isPreview
                                     ? 16

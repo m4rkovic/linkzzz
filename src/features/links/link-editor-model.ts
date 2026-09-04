@@ -1,6 +1,6 @@
 import type { LinkCardCustomStyle, LinkCardLayout, PublicProfileData, PublicProfileLink } from "@/types/profile";
 import type { CardStyleDraft, LinkDraft } from "@/features/links/link-editor-types";
-import { detectPlatform, getPlatformIcon, platformToProviderId } from "@/config/platforms";
+import { detectPlatform, platformToProviderId } from "@/config/platforms";
 import { normalizeProviderDestination } from "@/features/destinations/provider-registry";
 import { validateLinkAvailability } from "@/features/links/link-availability";
 import { DEFAULT_SENSITIVE_CONTENT_WARNING } from "@/features/links/sensitive-content";
@@ -165,7 +165,6 @@ export function createLinkFromDraft(id: string, draft: LinkDraft): PublicProfile
     url: draft.url,
     visible: true,
     platform: draft.platform,
-    icon: getPlatformIcon(draft.platform),
     layout: draft.layout,
     aspectRatio: draft.aspectRatio,
     imageUrl: draft.imageUrl || undefined,
@@ -193,7 +192,6 @@ export function applyDraftToLink(link: PublicProfileLink, draft: LinkDraft): Pub
     description: draft.description || undefined,
     url: draft.url,
     platform: draft.platform,
-    icon: getPlatformIcon(draft.platform),
     layout: draft.layout,
     aspectRatio: draft.aspectRatio,
     imageUrl: draft.imageUrl || undefined,

@@ -5,7 +5,7 @@ import { Eye, EyeOff, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 
 import { DestinationPicker } from "@/components/destinations/destination-picker";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
-import { getPlatformIcon, platformToProviderId, providerToPlatformId } from "@/config/platforms";
+import { PlatformIcon, platformToProviderId, providerToPlatformId } from "@/config/platforms";
 import { getDestinationProvider } from "@/features/destinations/provider-registry";
 import { useProfile } from "@/features/profile/profile-context";
 import type { PublicSocialLink } from "@/types/profile";
@@ -44,7 +44,6 @@ export default function SocialLinksEditor() {
       url: draft.url,
       visible: true,
       platform,
-      icon: getPlatformIcon(platform),
     };
     updateSocials((current) => [...current, newSocial]);
     setAdding(false);
@@ -72,7 +71,6 @@ export default function SocialLinksEditor() {
       name: draft.label?.trim() || definition.name,
       url: draft.url,
       platform,
-      icon: getPlatformIcon(platform),
     } : social));
     cancelEdit();
   }
@@ -118,7 +116,6 @@ export default function SocialLinksEditor() {
 
       <div className="mt-6 space-y-3">
         {socials.map((social) => {
-          const Icon = social.icon;
           const editing = editingId === social.id;
           return (
             <article key={social.id} className="rounded-2xl border border-zinc-200 p-4">
@@ -133,7 +130,7 @@ export default function SocialLinksEditor() {
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-white"><Icon size={17} /></div>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-white"><PlatformIcon platform={social.platform ?? "custom"} size={17} /></div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-semibold text-zinc-900">{social.name}</p>

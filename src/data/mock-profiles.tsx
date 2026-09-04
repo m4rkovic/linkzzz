@@ -1,4 +1,3 @@
-import { getPlatformIcon } from "@/config/platforms";
 import { defaultAppearance } from "@/config/profile-defaults";
 
 import type {
@@ -31,7 +30,6 @@ const skyHookProfile: PublicProfileData = {
       platform: "instagram",
       url: "https://instagram.com/",
       visible: true,
-      icon: getPlatformIcon("instagram"),
     },
     {
       id: "youtube",
@@ -39,7 +37,6 @@ const skyHookProfile: PublicProfileData = {
       platform: "youtube",
       url: "https://youtube.com/",
       visible: true,
-      icon: getPlatformIcon("youtube"),
     },
     {
       id: "spotify",
@@ -47,7 +44,6 @@ const skyHookProfile: PublicProfileData = {
       platform: "spotify",
       url: "https://open.spotify.com/",
       visible: true,
-      icon: getPlatformIcon("spotify"),
     },
     {
       id: "facebook",
@@ -55,7 +51,6 @@ const skyHookProfile: PublicProfileData = {
       platform: "facebook",
       url: "https://facebook.com/",
       visible: true,
-      icon: getPlatformIcon("facebook"),
     },
   ],
 
@@ -67,7 +62,6 @@ const skyHookProfile: PublicProfileData = {
       url: "https://open.spotify.com/",
       visible: true,
       platform: "spotify",
-      icon: getPlatformIcon("spotify"),
       layout: "featured",
       imageUrl: undefined,
       imageAlt: "Sky Hook on Spotify",
@@ -88,7 +82,6 @@ const skyHookProfile: PublicProfileData = {
       url: "https://instagram.com/",
       visible: true,
       platform: "instagram",
-      icon: getPlatformIcon("instagram"),
       layout: "half",
       imageUrl: undefined,
       imageAlt: "Sky Hook Instagram",
@@ -109,7 +102,6 @@ const skyHookProfile: PublicProfileData = {
       url: "https://youtube.com/",
       visible: true,
       platform: "youtube",
-      icon: getPlatformIcon("youtube"),
       layout: "half",
       imageUrl: undefined,
       imageAlt: "Sky Hook YouTube",
@@ -141,8 +133,8 @@ export function getMockProfileBySlug(
 }
 
 /**
- * Returns an independent mock profile tree for mutable client state.
- * React component references used as icons are intentionally preserved.
+ * Returns an independent mock profile tree for mutable client state without
+ * introducing non-serializable UI references.
  */
 export function createMockProfileBySlug(
   slug: string,
