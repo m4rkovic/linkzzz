@@ -16,7 +16,7 @@ import {
   getVisitorCountryCode,
   resolvePublicProfileGeoRouting,
 } from "@/server/geo/geo-routing";
-import { getPublicProfileBySlug } from "@/server/profile/profile-service";
+import { getPublicProfileForSmartLink } from "@/server/profile/public-profile-service";
 import { withSmartLinkOutboundRoutes } from "@/server/smart-links/outbound-routing";
 import { resolveSmartLink } from "@/server/smart-links/redirect-resolver";
 import { getSmartLinkRequestContext } from "@/server/smart-links/request-context";
@@ -29,8 +29,9 @@ const getCachedPublicSmartLinkBySlug = cache(async (slug: string) =>
   getPublicSmartLinkBySlug(slug),
 );
 
-const getCachedPublicProfileBySlug = cache(async (slug: string) =>
-  getPublicProfileBySlug(slug),
+const getCachedPublicProfileForSmartLink = cache(
+  async (smartLinkId: string, userId: string) =>
+    getPublicProfileForSmartLink(smartLinkId, userId),
 );
 
 export const resolveCachedActiveCustomDomain = cache(async (host: string) =>
@@ -55,8 +56,8 @@ export async function buildPublicSmartLinkMetadata(
     };
   }
 
-  const profile = smartLink && slug
-    ? await getCachedPublicProfileBySlug(slug)
+  const profile = smartLink
+    ? await getCachedPublicProfileForSmartLink(smartLink.id, smartLink.userId)
     : null;
 
   if (!profile) {
@@ -130,7 +131,10 @@ export async function renderSmartLinkRuntime(
     );
   }
 
-  const profile = await getCachedPublicProfileBySlug(slug);
+  const profile = await getCachedPublicProfileForSmartLink(
+    smartLink.id,
+    smartLink.userId,
+  );
   if (!profile) notFound();
 
   const countryCode = getVisitorCountryCode(requestHeaders);
