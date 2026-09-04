@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { defaultAppearance } from "@/config/profile-defaults";
+import { MAX_PAGE_LINK_LIMIT } from "@/features/plans/plan-catalog";
 import { validateProfilePayload } from "@/server/profile/profile-validation";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 
@@ -202,6 +203,20 @@ test("profile payload parser keeps all supported nested values", () => {
     result.value.engagement?.visitorMessaging?.customResponseTime,
     "Usually within two hours",
   );
+});
+
+test("profile payload parser uses the maximum plan link limit", () => {
+  const value = profile();
+  const template = value.links[0]!;
+  value.links = Array.from({ length: MAX_PAGE_LINK_LIMIT + 1 }, (_, index) => ({
+    ...structuredClone(template),
+    id: `link-${index}`,
+  }));
+
+  const result = validateProfilePayload(value);
+
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.error, "Profile links are invalid.");
 });
 
 function assertNoUnknownFields(value: Record<string, unknown>) {

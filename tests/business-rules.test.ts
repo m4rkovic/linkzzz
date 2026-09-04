@@ -16,13 +16,17 @@ import {
   isSubscriptionRenewalMonths,
   SUBSCRIPTION_RENEWAL_TERMS,
 } from "../src/server/business/subscriptions";
-import { PLAN_CATALOG } from "../src/features/plans/plan-catalog";
+import {
+  MAX_PAGE_LINK_LIMIT,
+  PLAN_CATALOG,
+} from "../src/features/plans/plan-catalog";
 
 test("plan catalog exposes the current customer-facing prices", () => {
   assert.equal(PLAN_CATALOG.BASIC.priceUsdMonthly, 40);
   assert.equal(PLAN_CATALOG.PRO.priceUsdMonthly, 80);
   assert.equal(PLAN_CATALOG.ENTERPRISE.priceUsdMonthly, 150);
   assert.equal(PLAN_CATALOG.ENTERPRISE.smartLinkDisplay, "200+");
+  assert.equal(MAX_PAGE_LINK_LIMIT, PLAN_CATALOG.ENTERPRISE.pageLinkLimit);
 });
 
 test("Smart Link limits follow Basic, Pro and Enterprise capacity", () => {

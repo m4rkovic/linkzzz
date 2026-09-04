@@ -1,4 +1,5 @@
 import { validateSlug } from "@/server/validation/slug";
+import { MAX_PAGE_LINK_LIMIT } from "@/features/plans/plan-catalog";
 import { isIsoDateTime, validateScheduleWindow } from "@/features/scheduling/schedule";
 import { validateExternalUrl } from "@/server/validation/url";
 import {
@@ -69,7 +70,10 @@ export function validateProfilePayload(
     return invalid("Profile status is invalid.");
   }
 
-  if (!Array.isArray(profile.links) || profile.links.length > 100) {
+  if (
+    !Array.isArray(profile.links) ||
+    profile.links.length > MAX_PAGE_LINK_LIMIT
+  ) {
     return invalid("Profile links are invalid.");
   }
 
