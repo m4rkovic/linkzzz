@@ -28,13 +28,6 @@ export class PrismaAssetRepository implements AssetRepository {
     return this.db.asset.findUnique({ where: { id } });
   }
 
-  async findByIdsForUser(userId: string, ids: string[]) {
-    if (!ids.length) return [];
-    return this.db.asset.findMany({
-      where: { id: { in: ids }, smartLink: { userId } },
-    });
-  }
-
   async findByIdsForSmartLink(userId: string, smartLinkId: string, ids: string[]) {
     if (!ids.length) return [];
     return this.db.asset.findMany({
@@ -44,16 +37,6 @@ export class PrismaAssetRepository implements AssetRepository {
 
   async create(asset: AssetRecord) {
     return this.db.asset.create({ data: asset });
-  }
-
-  async createForUser(userId: string, asset: Omit<AssetRecord, "smartLinkId">) {
-    const smartLink = await this.db.smartLink.findFirst({
-      where: { userId, type: "LANDING_PAGE" },
-      orderBy: { createdAt: "asc" },
-      select: { id: true },
-    });
-    if (!smartLink) throw new Error("Landing Page SmartLink not found.");
-    return this.create({ ...asset, smartLinkId: smartLink.id });
   }
 
   async createForSmartLink(
@@ -71,18 +54,6 @@ export class PrismaAssetRepository implements AssetRepository {
 
   async delete(id: string) {
     await this.db.asset.deleteMany({ where: { id } });
-  }
-
-  async deleteUnusedForUser(userId: string, ids: string[]) {
-    const pages = await this.db.page.findMany({
-      where: { smartLink: { userId } },
-      select: { contentBlocks: true },
-    });
-    const protectedIds = collectPageBlockAssetIds(pages.map((page) => page.contentBlocks));
-    return this.deleteUnused(
-      { smartLink: { userId } },
-      ids.filter((id) => !protectedIds.has(id)),
-    );
   }
 
   async deleteUnusedForSmartLink(userId: string, smartLinkId: string, ids: string[]) {
