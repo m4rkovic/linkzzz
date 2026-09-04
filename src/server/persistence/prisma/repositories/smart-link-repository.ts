@@ -2,7 +2,11 @@ import "server-only";
 
 import { defaultAppearance } from "@/config/profile-defaults";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
-import { canCreateSmartLink, getPageCardLimit } from "@/server/business/plans";
+import {
+  canCreateSmartLink,
+  getPageCardLimit,
+  SMART_LINK_LIMIT_REASON,
+} from "@/server/business/plans";
 import { PageCardDuplicateLimitError } from "@/server/business/quota-errors";
 import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
@@ -97,7 +101,7 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
       if (!decision.allowed) {
         return {
           ok: false as const,
-          reason: "LIMIT_REACHED" as const,
+          reason: SMART_LINK_LIMIT_REASON,
           plan: quota.plan,
           limit: decision.limit,
         };
@@ -189,7 +193,7 @@ export class PrismaSmartLinkRepository implements SmartLinkRepository {
       if (!decision.allowed) {
         return {
           ok: false as const,
-          reason: "LIMIT_REACHED" as const,
+          reason: SMART_LINK_LIMIT_REASON,
           plan: quota.plan,
           limit: decision.limit,
         };

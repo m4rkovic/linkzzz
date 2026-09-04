@@ -34,7 +34,7 @@ test("Smart Link limits follow Basic, Pro and Enterprise capacity", () => {
     allowed: false,
     limit: 50,
     currentCount: 50,
-    reason: "LINK_LIMIT_REACHED",
+    reason: "SMART_LINK_LIMIT_REACHED",
   });
 });
 

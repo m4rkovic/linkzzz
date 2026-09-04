@@ -2,6 +2,10 @@ import "server-only";
 
 import type { AuthenticatedSession } from "@/server/auth/auth-service";
 import { getPlanDefinition } from "@/features/plans/plan-catalog";
+import {
+  SMART_LINK_LIMIT_REASON,
+  type SmartLinkLimitReason,
+} from "@/server/business/plans";
 import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import { validateSlug } from "@/server/validation/slug";
@@ -37,7 +41,7 @@ export type CreateSmartLinkResult =
       code:
         | "INVALID_INPUT"
         | "SLUG_TAKEN"
-        | "SMART_LINK_LIMIT_REACHED"
+        | SmartLinkLimitReason
         | "SUBSCRIPTION_INACTIVE";
       message: string;
     };
@@ -49,7 +53,7 @@ export type DuplicateSmartLinkResult =
       code:
         | "NOT_FOUND"
         | "SMART_LINK_DISABLED"
-        | "SMART_LINK_LIMIT_REACHED"
+        | SmartLinkLimitReason
         | "SUBSCRIPTION_INACTIVE"
         | "SLUG_TAKEN";
       message: string;
@@ -163,7 +167,7 @@ export async function createOwnSmartLink(
     }
     return {
       ok: false,
-      code: "SMART_LINK_LIMIT_REACHED",
+      code: SMART_LINK_LIMIT_REASON,
       message: `Your ${getPlanDefinition(create.plan).name} plan allows up to ${create.limit} Smart Links.`,
     };
   }
@@ -323,10 +327,10 @@ export async function duplicateOwnSmartLink(
         message: "An active subscription is required to duplicate a link.",
       };
     }
-    if (duplicate.reason === "LIMIT_REACHED") {
+    if (duplicate.reason === SMART_LINK_LIMIT_REASON) {
       return {
         ok: false,
-        code: "SMART_LINK_LIMIT_REACHED",
+        code: SMART_LINK_LIMIT_REASON,
         message: `Your ${getPlanDefinition(duplicate.plan).name} plan allows up to ${duplicate.limit} Smart Links.`,
       };
     }

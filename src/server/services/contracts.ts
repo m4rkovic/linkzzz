@@ -1,5 +1,5 @@
 import type { AuditWriter } from "@/server/audit/types";
-import type { Plan } from "@/server/business/plans";
+import type { Plan, SmartLinkLimitReason } from "@/server/business/plans";
 import type {
   SubscriptionMutation,
   SubscriptionStatus,
@@ -116,7 +116,7 @@ export type ConditionalSmartLinkWriteResult =
 
 type SmartLinkQuotaRejection =
   | { ok: false; reason: "SUBSCRIPTION_INACTIVE" }
-  | { ok: false; reason: "LIMIT_REACHED"; plan: Plan; limit: number };
+  | { ok: false; reason: SmartLinkLimitReason; plan: Plan; limit: number };
 
 export type CreateSmartLinkWithinLimitResult =
   | { ok: true; smartLink: SmartLinkRecord }
