@@ -3,9 +3,9 @@
 **Datum:** 2026-09-05  
 **Bazni integracioni commit:** `bd955a2d62efab825334dc2ca7a80e432d5e260b`  
 **Radna grana:** `audit/phase3-hardening-20260905`  
-**Status validacije grane:** core gate green pre poslednjih E2E fixeva; funkcionalni browser rerun je sledeći gate.
+**Status validacije grane:** lokalni core + DB-backed functional E2E su GREEN posle svih browser fixeva; GitHub Actions quality gate je dodat i čeka prvi runner dokaz.
 
-> Ovo je živi audit ledger nad aktuelnim kodom. Originalni audit i follow-up iz prethodnih dana ostaju istorijski trag, ali više nisu pouzdan opis trenutnog stanja.
+> Ovo je živi audit ledger nad aktuelnim kodom. Originalni audit i follow-up ostaju istorijski trag, ali više nisu pouzdan opis trenutnog stanja.
 
 ---
 
@@ -18,20 +18,18 @@ Na ovoj grani su implementirani dodatni paketi:
 - **Phase 3.10:** observability completion + centralizovan API request-session resolution;
 - **Phase 3.11:** public Landing Page server shell + ograničeni client islands;
 - **Phase 3.12 expand:** eksplicitna Page/PageCard polja + relacijska gallery asset liveness, uz rollback-compatible legacy dual-write;
-- **Phase 4.1:** uklonjen globalni root `connection()` i razdvojen static marketing `/` od dynamic custom-domain runtime-a;
-- **Phase 4.2:** CSP policy izolovana po surface-u; production marketing može raditi sa `script-src 'none'`, dok aplikacione/public runtime rute zadržavaju per-request nonce;
-- **Phase 5.1:** zajednički accessible `DialogShell`, focus trap/restore, Escape/backdrop politika i nested-dialog zaštita;
-- **Phase 5.2:** keyboard tab semantics za analytics/card design i širi reusable form semantics pass;
-- **Phase 6.1:** `*.tsbuildinfo` ignorisan i dev prewarm prebačen na opt-in;
-- **Phase 6.2:** read-only production deployment smoke + one-command validation runner.
+- **Phase 4:** CSP izolacija po surface-u i host-aware root runtime bez krhkog custom-domain internal rewrite-a;
+- **Phase 5:** shared dialog/focus primitive + targeted keyboard/form semantics pass;
+- **Phase 6.1:** lokalni DX cleanup;
+- **Phase 6.2:** deployed production smoke + one-command validation runner;
+- **Phase 6.3:** permanent GitHub PR quality gate sa odvojenim core i disposable-Postgres E2E jobovima.
 
 Najveći preostali posao pre release candidate-a:
 
-1. ponoviti funkcionalni E2E nakon tri konkretna fixa iz prvog browser run-a;
-2. manual desktop/mobile + visual diff review;
-3. deployed Preview production smoke;
-4. CI gate + formatter politika;
-5. kasniji **Phase 3.12 contract cleanup** tek posle sigurnog compatibility prozora.
+1. manual desktop/mobile smoke + visual diff review;
+2. Vercel Preview deployed production smoke;
+3. potvrditi prvi GitHub Actions quality-gate run, pa ukloniti privremeni audit-branch trigger;
+4. kasniji **Phase 3.12 contract cleanup** tek posle sigurnog production compatibility prozora.
 
 ---
 
@@ -67,20 +65,20 @@ Najveći preostali posao pre release candidate-a:
 
 ## 3. Phase 3.10 — Observability completion
 
-**Status:** ✅ IMPLEMENTIRANO / 🟡 BROWSER FIX RERUN PENDING
+**Status:** ✅ IMPLEMENTIRANO / ✅ UNIT + FUNCTIONAL E2E GREEN
 
 - typed `InvalidImageError` odvaja user validation od storage/infrastructure failure-a;
 - unexpected asset storage/persistence/cleanup failure dobija structured log + request correlation;
 - centralizovan request-session helper uklanja cookie/session copy-paste iz API ruta;
 - AST contract test sprečava lokalni `catch -> 500` bez logovanja ili rethrow-a;
 - expected parse/validation/auth 4xx se namerno ne tretira kao server error spam;
-- prvi E2E run otkrio je da se native `Headers.get` pozivao bez objektnog binding-a, što je izazivalo `ERR_INVALID_THIS`; poziv je ispravljen i dodat je regression unit test sa pravim `Headers` objektom.
+- prvi E2E run otkrio je unbound native `Headers.get` i `ERR_INVALID_THIS`; poziv je ispravljen i dodat regression unit test sa pravim `Headers` objektom.
 
 ---
 
 ## 4. Phase 3.11 — Public renderer decomposition
 
-**Status:** ✅ IMPLEMENTIRANO ARHITEKTONSKI / ⏳ ČEKA FINALNI BROWSER/DEPLOYED SMOKE
+**Status:** ✅ IMPLEMENTIRANO / ✅ FUNCTIONAL E2E GREEN / ⏳ DEPLOYED + VISUAL REVIEW OSTAJU
 
 Public SmartLink više ne hidrira kompletan profile renderer kao jedan veliki client boundary.
 
@@ -106,7 +104,7 @@ Editor/preview ostaje client-heavy namerno, jer je interaktivni workspace.
 
 ## 5. Phase 3.12 — Persistence expand/contract
 
-**Status:** 🟢 EXPAND KORAK IMPLEMENTIRAN / 🟡 FUNKCIONALNI RERUN PENDING  
+**Status:** 🟢 EXPAND KORAK IMPLEMENTIRAN / ✅ DB-BACKED FUNCTIONAL E2E GREEN  
 **Contract cleanup:** ⏸ NAMERNO ODLOŽEN ZA KASNIJI RELEASE
 
 ### Novi first-class persistence model
@@ -117,9 +115,7 @@ Editor/preview ostaje client-heavy namerno, jer je interaktivni workspace.
 
 Asset ownership/liveness više ne zavisi samo od JSON scanner-a.
 
-### Važna rollback korekcija
-
-Uveden je expand/contract model:
+### Rollback-safe expand korak
 
 1. migracija dodaje nove kolone/relacije;
 2. postojeći podaci se backfill-uju;
@@ -131,30 +127,36 @@ Tek nakon stabilnog production prozora ide zaseban contract release koji prestaj
 
 ### E2E nalaz i fix
 
-Prvi funkcionalni E2E run otkrio je da server pravilno regeneriše ne-owned/client-supplied PageCard ID, ali Page-level `featuredLinkId` i campaign `primaryLinkId` ostaju na starom ID-u. `writePageChildren` sada vraća mapu client-id -> persisted-id, a profile repository u istoj transakciji remapuje engagement i dual-write legacy envelope pre finalnog readback-a.
+Prvi functional run otkrio je da server pravilno regeneriše ne-owned/client-supplied PageCard ID, ali Page-level `featuredLinkId` i campaign `primaryLinkId` ostaju na starom ID-u. `writePageChildren` sada vraća mapu client-id -> persisted-id, a profile repository u istoj transakciji remapuje engagement i dual-write legacy envelope pre finalnog readback-a. Targeted i full functional rerun su green.
 
 ---
 
-## 6. Phase 4 — CSP / rendering performance
+## 6. Phase 4 — CSP / host routing
 
-### 4.1 Static marketing vs dynamic runtime
+### 4.1 Host-aware root runtime
 
-**Status:** 🟢 IMPLEMENTIRANO / 🟡 CUSTOM-DOMAIN RERUN PENDING
+**Status:** ✅ IMPLEMENTIRANO / ✅ CUSTOM-DOMAIN PARITY GREEN
 
-- uklonjen root `await connection()`;
-- application-host `/` je eksplicitno `force-static`;
-- custom-domain `/` se u Proxy sloju interno rewrite-uje na dedicated dynamic runtime route;
-- interni `__linkzzz` runtime nije javno dostupan na application host-u;
-- auth/dashboard/public SmartLink rute ostaju dinamičke kroz sopstvene `headers/cookies/DB` potrebe.
+Prvobitni pokušaj sa `force-static` application root-om i custom-domain internal rewrite-om pokazao se krhkim u Next 16 dev/runtime putanji. Dva različita prenosa originalnog host konteksta kroz rewrite nisu pouzdano rešila parity 404.
 
-Prvi E2E parity run pokazao je da internal rewrite target ne sme da se oslanja na običan `Host` koji route vidi nakon rewrite-a. Proxy sada eksplicitno propagira normalizovan originalni custom hostname kroz interni request header, a dynamic runtime koristi taj host za domain resolution. Application-host direct access i dalje ostaje blokiran.
+Finalni model je jednostavniji i sigurniji:
+
+- root `/` je host-aware server entrypoint;
+- application host (`linkzzz.com`, localhost/IP u dev-u) renderuje marketing Landing Page;
+- custom-domain `/` direktno razrešava ACTIVE domen i renderuje isti SmartLink runtime kao platform slug;
+- custom-domain root više ne koristi internal rewrite;
+- stara `__linkzzz/custom-domain` runtime ruta je uklonjena;
+- application-host `/__linkzzz/*` ostaje blokiran kroz Proxy guard;
+- auth/dashboard/public slug rute zadržavaju sopstveni dinamički runtime.
+
+Tradeoff: application marketing root više nije `force-static`. To je nameran correctness-over-micro-optimization izbor dok ne postoji stabilno host routing rešenje koje ne ugrožava custom-domain parity.
 
 ### 4.2 CSP isolation
 
-**Status:** ✅ IMPLEMENTIRANO / CORE TESTOVI GREEN
+**Status:** ✅ IMPLEMENTIRANO / ✅ CORE TESTOVI GREEN
 
 - dynamic application/public runtime koristi nonce + `strict-dynamic`;
-- production marketing `/` nema potrebu za hydration JS i dobija `script-src 'none'`;
+- production marketing surface i dalje može koristiti `script-src 'none'` jer Landing Page nema obaveznu hydration funkcionalnost;
 - login/navigation sa marketinga radi kao native document navigation i ponovo ulazi u nonce-protected app surface;
 - development marketing zadržava lokalni Next HMR runtime;
 - CSP testovi proveravaju `script-src` direktivu, a ne pogrešno ceo policy string u kome `style-src` još namerno koristi `unsafe-inline`.
@@ -163,7 +165,7 @@ Prvi E2E parity run pokazao je da internal rewrite target ne sme da se oslanja n
 
 ## 7. Phase 5 — UI / Accessibility
 
-**Status:** ✅ TARGETED IMPLEMENTATION PASS / ⏳ MANUAL + VISUAL REVIEW OSTAJU
+**Status:** ✅ TARGETED IMPLEMENTATION PASS / ✅ FUNCTIONAL KEYBOARD COVERAGE GREEN / ⏳ MANUAL + VISUAL REVIEW OSTAJU
 
 Uveden je zajednički `DialogShell` sa portalom, ARIA semantikom, focus trap/restore, Escape/backdrop politikom, body scroll lock-om i nested-dialog zaštitom.
 
@@ -183,7 +185,8 @@ Dodatno:
 **Status:** ✅ IMPLEMENTIRANO
 
 - `*.tsbuildinfo` je u `.gitignore`;
-- dev core-route prewarm je OFF by default i uključuje se samo sa `LINKZZZ_DEV_PREWARM=1`.
+- dev core-route prewarm je OFF by default i uključuje se samo sa `LINKZZZ_DEV_PREWARM=1`;
+- lokalni Git auto-GC je ručno isključen tokom ovog release batch-a zbog OneDrive file-lock problema; dugoročno repo treba držati van OneDrive sync root-a.
 
 ### 6.2 Validation / deployed smoke
 
@@ -194,13 +197,26 @@ Dodatno:
 - Windows runner koristi npm JS entrypoint umesto direktnog `spawnSync("npm.cmd")`;
 - `e2e/production-smoke.spec.ts` radi read-only protiv Preview/Production URL-a bez E2E DB mutacija.
 
+### 6.3 GitHub Actions quality gate
+
+**Status:** 🟢 IMPLEMENTIRANO / 🟡 PRVI RUN PENDING
+
+`.github/workflows/quality-gate.yml` uvodi dva odvojena job-a:
+
+- **Core validation:** npm ci -> Prisma generate -> unit -> typecheck -> ESLint -> production build;
+- **Functional E2E:** disposable PostgreSQL 17 service + Chromium + functional Playwright sa jednim workerom.
+
+CI ne koristi Neon/Vercel production bazu niti production secrets. E2E job dobija zasebnu disposable PostgreSQL bazu. Playwright report/test-results se upload-uju samo na failure.
+
+Workflow je trajno namenjen PR/push događajima za `dev` i `main`. Audit branch je privremeno dodat u push trigger samo radi prvog runner proof-a; taj trigger treba ukloniti posle green run-a.
+
 ---
 
 ## 9. Validation ledger
 
 ### Core gate
 
-Na commit-u `74e98de` potvrđeno je:
+Lokalno potvrđeno nakon browser fixeva:
 
 - Prisma generate ✅
 - unit tests 177/177 ✅
@@ -208,36 +224,39 @@ Na commit-u `74e98de` potvrđeno je:
 - ESLint ✅
 - production build ✅
 
-Poslednji E2E fix commitovi su noviji od tog core gate-a, tako da pre merge-a mora postojati još jedan finalni exact-HEAD core/full pass.
+### Functional Playwright
 
-### Prvi functional Playwright run
-
-Rezultat:
+Prvi full run:
 
 - **40 passed**
 - **8 skipped**
 - **6 failed**
 
-Šest failova su tri ista uzroka na desktop/mobile projektima:
+Šest failova su bila tri ista uzroka duplirana na desktop/mobile:
 
 1. custom-domain API 500 zbog unbound native `Headers.get`;
 2. page-child engagement reference nije remapovan na novi server Card ID;
-3. custom-domain runtime parity 404 zbog gubitka originalnog custom host konteksta kroz internal rewrite.
+3. custom-domain runtime parity 404 kroz internal rewrite.
 
-Sva tri uzroka su implementaciono popravljena na trenutnoj grani i čekaju rerun.
+Posle fixeva:
 
-`pg` deprecation warning za paralelni `client.query()` ostaje tech debt za odvojeni cleanup; nije uzrok trenutnih test failova.
+- targeted logger/page-child/parity suite ✅
+- final custom-domain parity **2/2 ✅**
+- kompletan `test:e2e:functional -- --workers=1` ✅
+- exact-HEAD `validate:core` ✅
+
+`pg` deprecation warning za paralelni `client.query()` ostaje tech debt za odvojeni cleanup; nije uzrok test failova.
 
 ---
 
 ## 10. Sledeći gate
 
-Prvo pokrenuti samo tri pogođena E2E spec-a radi brzog feedback-a. Kada su zelena, pokrenuti kompletan functional suite sa jednim workerom. Posle toga:
+1. potvrditi prvi GitHub Actions quality-gate run;
+2. ukloniti privremeni audit-branch CI trigger;
+3. manual desktop/mobile smoke;
+4. visual diff review;
+5. Vercel Preview deployed production smoke;
+6. tek onda PR #57 ready/merge odluka;
+7. nakon production compatibility prozora planirati zaseban Phase 3.12 contract release.
 
-1. exact-HEAD `validate:core` ili `validate:full`;
-2. manual desktop/mobile smoke;
-3. visual diff review;
-4. Vercel Preview deployed production smoke;
-5. tek onda PR ready/merge odluka.
-
-Git je skladište istorije. Nije dokaz da kod radi. Zato PR ostaje draft dok browser/database gate stvarno ne bude zelen.
+Git istorija i lokalni green run nisu zamena za deployed validation. PR ostaje draft dok Preview smoke i završni manual/visual review nisu zatvoreni.
