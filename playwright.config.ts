@@ -4,8 +4,9 @@ import { requireIsolatedE2EDatabaseUrl } from "./e2e/environment";
 
 const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3100";
 const target = new URL(baseURL);
-const e2eDatabaseUrl = requireIsolatedE2EDatabaseUrl();
-const webServer = process.env.E2E_EXTERNAL_SERVER === "1"
+const externalServer = process.env.E2E_EXTERNAL_SERVER === "1";
+const e2eDatabaseUrl = externalServer ? null : requireIsolatedE2EDatabaseUrl();
+const webServer = externalServer
   ? undefined
   : {
       command:
@@ -18,7 +19,7 @@ const webServer = process.env.E2E_EXTERNAL_SERVER === "1"
       // scripts/start-e2e-server.ts validates isolation first, then replaces
       // DATABASE_URL only for the Prisma/Next child processes.
       env: {
-        E2E_DATABASE_URL: e2eDatabaseUrl,
+        E2E_DATABASE_URL: e2eDatabaseUrl!,
       },
     };
 
