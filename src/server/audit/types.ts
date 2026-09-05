@@ -24,6 +24,7 @@ export type AuditAction =
   | "SMART_LINK_SLUG_CHANGED"
   | "USER_DELETED"
   | "CUSTOM_DOMAIN_ADDED"
+  | "CUSTOM_DOMAIN_RECLAIMED"
   | "CUSTOM_DOMAIN_VERIFIED"
   | "CUSTOM_DOMAIN_ACTIVATED"
   | "CUSTOM_DOMAIN_DISABLED"
@@ -31,7 +32,9 @@ export type AuditAction =
   | "SMART_LINK_DELETED"
   | "SMART_LINK_DISABLED"
   | "SMART_LINK_ENABLED"
-  | "CUSTOM_DOMAIN_REMOVED";
+  | "CUSTOM_DOMAIN_REMOVED"
+  | "CUSTOM_DOMAIN_RELEASED"
+  | "ASSET_ORPHAN_SWEEP";
 
 export type AuditResourceType =
   | "USER"
@@ -39,7 +42,8 @@ export type AuditResourceType =
   | "SUBSCRIPTION"
   | "SESSION"
   | "SMART_LINK"
-  | "CUSTOM_DOMAIN";
+  | "CUSTOM_DOMAIN"
+  | "ASSET";
 
 export type AuditEventInput = {
   actorUserId: string;

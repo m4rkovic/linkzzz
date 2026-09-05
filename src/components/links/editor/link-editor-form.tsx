@@ -72,7 +72,7 @@ export default function LinkEditorForm({ draft, setDraft, error, onSave, onCance
           aria-label="Card settings"
           className="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-2 lg:sticky lg:top-24 lg:self-start"
         >
-          <div className="flex gap-1.5 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:block lg:space-y-1">
             {panels.map((panel) => {
               const Icon = panel.icon;
               const selected = panel.id === activePanel;
@@ -83,14 +83,14 @@ export default function LinkEditorForm({ draft, setDraft, error, onSave, onCance
                   type="button"
                   onClick={() => setActivePanel(panel.id)}
                   aria-current={selected ? "page" : undefined}
-                  className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/25 lg:flex lg:w-full lg:justify-start ${
+                  className={`inline-flex min-h-10 min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 text-left text-xs font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/25 sm:px-3 sm:text-sm lg:flex lg:w-full ${
                     selected
                       ? "bg-brand-violet-strong text-white shadow-sm"
                       : "text-zinc-600 hover:bg-white hover:text-zinc-950"
                   }`}
                 >
-                  <Icon size={15} aria-hidden="true" />
-                  {panel.label}
+                  <Icon size={15} aria-hidden="true" className="shrink-0" />
+                  <span className="min-w-0 truncate">{panel.label}</span>
                 </button>
               );
             })}

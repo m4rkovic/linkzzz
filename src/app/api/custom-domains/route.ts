@@ -7,7 +7,7 @@ import {
 } from "@/server/domains/custom-domain-errors";
 import {
   addCustomDomain,
-  customDomainDnsInstructions,
+  customDomainView,
   listCustomDomains,
   removeCustomDomain,
   setCustomDomainActive,
@@ -19,6 +19,7 @@ import {
   checkRateLimit,
   CUSTOM_DOMAIN_RATE_LIMIT,
 } from "@/server/security/rate-limit";
+import { logServerError } from "@/server/observability/server-logger";
 
 export async function GET(request: NextRequest) {
   const session = await customerSession(request);
@@ -64,10 +65,7 @@ export async function GET(request: NextRequest) {
   try {
     const domains = await listCustomDomains(session.user.id, smartLinkId);
     return NextResponse.json({
-      domains: domains.map((domain) => ({
-        ...domain,
-        dns: customDomainDnsInstructions(domain),
-      })),
+      domains: domains.map((domain) => customDomainView(domain)),
     });
   } catch (error) {
     return customDomainFailure(error, {
@@ -89,7 +87,7 @@ export async function POST(request: NextRequest) {
       prepared.domain,
     );
     return NextResponse.json(
-      { domain: { ...domain, dns: customDomainDnsInstructions(domain) } },
+      { domain: customDomainView(domain) },
       { status: 201 },
     );
   } catch (error) {
@@ -127,7 +125,7 @@ export async function PATCH(request: NextRequest) {
         );
 
     return NextResponse.json({
-      domain: { ...domain, dns: customDomainDnsInstructions(domain) },
+      domain: customDomainView(domain),
     });
   } catch (error) {
     return customDomainFailure(error, {
@@ -237,10 +235,7 @@ function customDomainFailure(
     );
   }
 
-  console.error("Custom domain operation failed.", {
-    ...context,
-    error,
-  });
+  logServerError("custom_domain.operation_failed", error, context);
   return NextResponse.json(
     {
       error: "Custom domain operation failed.",

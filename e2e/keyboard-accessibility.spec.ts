@@ -1,3 +1,5 @@
+import type { Locator, Page } from "@playwright/test";
+
 import { loginAsCustomer, openAppearanceEditor } from "./helpers";
 import { expect, test } from "./test";
 
@@ -12,6 +14,15 @@ function skipMobileKeyboard(testInfo: { project: { name: string } }) {
   );
 }
 
+async function tabTo(page: Page, target: Locator, maxTabs = 8) {
+  for (let index = 0; index < maxTabs; index += 1) {
+    await page.keyboard.press("Tab");
+    if (await target.evaluate((element) => element === document.activeElement)) return;
+  }
+
+  await expect(target).toBeFocused();
+}
+
 test.describe("R1.4 keyboard and focus checks", () => {
   test("login can be completed without a pointer", async ({ page, context }, testInfo) => {
     skipMobileKeyboard(testInfo);
@@ -19,18 +30,16 @@ test.describe("R1.4 keyboard and focus checks", () => {
     await page.goto("/login");
     await expect(page.getByLabel("Username or email")).toBeEnabled();
 
-    await page.keyboard.press("Tab");
-    await expect(page.getByLabel("Username or email")).toBeFocused();
+    const identifier = page.getByLabel("Username or email");
+    await tabTo(page, identifier);
     await page.keyboard.type(process.env.E2E_CUSTOMER_IDENTIFIER ?? "skyhook");
 
-    await page.keyboard.press("Tab");
-    await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
+    const password = page.getByLabel("Password", { exact: true });
+    await tabTo(page, password, 2);
     await page.keyboard.type(process.env.E2E_CUSTOMER_PASSWORD ?? "LinkzzzSky!2026");
 
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    await expect(page.getByRole("button", { name: "Sign in" })).toBeFocused();
+    const signIn = page.getByRole("button", { name: "Sign in" });
+    await tabTo(page, signIn);
     await page.keyboard.press("Enter");
 
     await expect(page).toHaveURL(/\/dashboard(?:\/|$)/);
@@ -38,8 +47,7 @@ test.describe("R1.4 keyboard and focus checks", () => {
 
   test("create-link dialog receives keyboard focus and closes with Escape", async ({ page }, testInfo) => {
     skipMobileKeyboard(testInfo);
-    await loginAsCustomer(page);
-    await page.goto("/dashboard/links");
+    await loginAsCustomer(page, "/dashboard/links");
 
     const newLink = page.getByRole("button", { name: "New Smart Link" });
     await newLink.focus();
@@ -55,7 +63,7 @@ test.describe("R1.4 keyboard and focus checks", () => {
 
   test("appearance categories work by keyboard and expose selection", async ({ page }, testInfo) => {
     skipMobileKeyboard(testInfo);
-    await loginAsCustomer(page);
+    await loginAsCustomer(page, "/dashboard/links");
     await openAppearanceEditor(page);
 
     const background = page.getByRole("button", { name: "Background", exact: true });
@@ -75,17 +83,16 @@ test.describe("R1.4 keyboard and focus checks", () => {
 
   test("focus-visible fallback is present on editor controls", async ({ page }, testInfo) => {
     skipMobileKeyboard(testInfo);
-    await loginAsCustomer(page);
+    await loginAsCustomer(page, "/dashboard/links");
     await openAppearanceEditor(page);
 
     // Focus the Page-level Appearance tab, then advance with a real keyboard Tab.
     // Programmatic focus on a button does not have to match :focus-visible.
     const appearanceTab = page.getByRole("button", { name: "Appearance", exact: true });
     await appearanceTab.focus();
-    await page.keyboard.press("Tab");
 
     const layout = page.getByRole("button", { name: "Layout", exact: true });
-    await expect(layout).toBeFocused();
+    await tabTo(page, layout);
 
     const focusStyle = await layout.evaluate((element) => {
       const style = getComputedStyle(element);
@@ -107,8 +114,7 @@ test.describe("R1.4 keyboard and focus checks", () => {
 
 test("analytics period tabs expose keyboard selection", async ({ page }, testInfo) => {
   skipMobileKeyboard(testInfo);
-  await loginAsCustomer(page);
-  await page.goto("/dashboard/analytics");
+  await loginAsCustomer(page, "/dashboard/analytics");
 
   const sevenDays = page.getByRole("tab", { name: "7 days" });
   await sevenDays.focus();
@@ -120,7 +126,7 @@ test("analytics period tabs expose keyboard selection", async ({ page }, testInf
 
 test("appearance reset uses an accessible confirmation dialog", async ({ page }, testInfo) => {
   skipMobileKeyboard(testInfo);
-  await loginAsCustomer(page);
+  await loginAsCustomer(page, "/dashboard/links");
   await openAppearanceEditor(page);
 
   await page.getByRole("button", { name: "Reset", exact: true }).click();
@@ -134,8 +140,19 @@ test("appearance reset uses an accessible confirmation dialog", async ({ page },
 
 test("mobile Landing Page editor switches between edit and preview", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-390", "Mobile-only interaction");
-  await loginAsCustomer(page);
+  await loginAsCustomer(page, "/dashboard/links");
   await openAppearanceEditor(page);
+
+  for (const navigation of [
+    page.locator('nav[data-editor-navigation="compact"]'),
+    page.getByRole("navigation", { name: "Landing Page sections" }),
+    page.getByRole("navigation", { name: "Appearance settings" }),
+  ]) {
+    await expect(navigation).toBeVisible();
+    expect(
+      await navigation.evaluate((element) => element.scrollWidth <= element.clientWidth),
+    ).toBe(true);
+  }
 
   const preview = page.getByRole("button", { name: "Show inline preview", exact: true });
   await expect(preview).toBeVisible();

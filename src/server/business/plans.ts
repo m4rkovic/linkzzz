@@ -5,6 +5,10 @@ import {
 
 export type Plan = PlanId;
 
+/** Stable error code shared by quota decisions, repositories, and API services. */
+export const SMART_LINK_LIMIT_REASON = "SMART_LINK_LIMIT_REACHED" as const;
+export type SmartLinkLimitReason = typeof SMART_LINK_LIMIT_REASON;
+
 export const SMART_LINK_LIMITS: Record<Plan, number> = {
   BASIC: PLAN_CATALOG.BASIC.smartLinkLimit,
   PRO: PLAN_CATALOG.PRO.smartLinkLimit,
@@ -36,7 +40,7 @@ export type LinkLimitDecision = {
   allowed: boolean;
   limit: number;
   currentCount: number;
-  reason?: "LINK_LIMIT_REACHED";
+  reason?: SmartLinkLimitReason;
 };
 
 export type PageCardSaveDecision = {
@@ -95,7 +99,7 @@ function makeLimitDecision(
       allowed: false,
       limit,
       currentCount: normalizedCount,
-      reason: "LINK_LIMIT_REACHED",
+      reason: SMART_LINK_LIMIT_REASON,
     };
   }
 

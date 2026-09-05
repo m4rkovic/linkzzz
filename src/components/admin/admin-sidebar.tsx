@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 
 import {
   LayoutDashboard,
+  Globe2,
   LogOut,
   ShieldCheck,
   Users,
@@ -26,6 +27,11 @@ const navigation = [
     name: "Users",
     href: "/admin/users",
     icon: Users,
+  },
+  {
+    name: "Domains",
+    href: "/admin/domains",
+    icon: Globe2,
   },
 ];
 

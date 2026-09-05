@@ -20,6 +20,10 @@ import {
 import { getCurrentSession } from "@/server/auth/current-session";
 import { requireAdmin } from "@/server/auth/guards";
 import { isSubscriptionRenewalMonths } from "@/server/business/subscriptions";
+import {
+  getRequestCorrelationId,
+  logServerError,
+} from "@/server/observability/server-logger";
 import { hasValidRequestOrigin } from "@/server/security/request";
 import type { AdminUserAction } from "@/types/admin-api";
 
@@ -93,10 +97,11 @@ export async function POST(
       );
     }
 
-    console.error("Admin action failed.", {
+    logServerError("admin.action.failed", error, {
+      requestId: getRequestCorrelationId(request.headers),
+      actorUserId: session.user.id,
       targetUserId: id,
       action: body.type,
-      error,
     });
     return NextResponse.json(
       { error: "Admin action failed.", code: "ADMIN_ACTION_FAILED" },

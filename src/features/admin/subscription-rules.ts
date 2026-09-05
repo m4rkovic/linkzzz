@@ -34,24 +34,6 @@ export function getExpiryLabel(date: Date, now = new Date()) {
   return `Expires in ${days} days`;
 }
 
-export function addMonthsClamped(sourceDate: Date, months: number) {
-  const sourceDay = sourceDate.getDate();
-  const target = new Date(sourceDate);
-
-  target.setDate(1);
-  target.setMonth(target.getMonth() + months);
-
-  const lastDayOfTargetMonth = new Date(
-    target.getFullYear(),
-    target.getMonth() + 1,
-    0,
-  ).getDate();
-
-  target.setDate(Math.min(sourceDay, lastDayOfTargetMonth));
-
-  return target;
-}
-
 export function formatAdminDate(date: Date) {
   return new Intl.DateTimeFormat("en-US", {
     day: "2-digit",

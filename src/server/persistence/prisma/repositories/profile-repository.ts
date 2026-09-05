@@ -3,6 +3,7 @@ import "server-only";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { writePageChildren } from "@/server/persistence/prisma/repositories/page-children-writer";
 import { toJson } from "@/server/persistence/prisma/repositories/json";
+import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock";
 import type { ProfileRepository } from "@/server/services/contracts";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 
@@ -109,6 +110,8 @@ export class PrismaProfileRepository implements ProfileRepository {
     const appearance = persistedAppearance(data);
 
     return this.db.$transaction(async (tx) => {
+      await lockUserMutation(tx, userId);
+
       const existingPage = await tx.page.findFirst({
         where: {
           smartLinkId,

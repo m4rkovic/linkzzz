@@ -2,7 +2,10 @@ import "server-only";
 
 import { getSubscriptionAccess } from "@/server/business/subscriptions";
 import { ensureDevelopmentAuthSeeded } from "@/server/auth/dev-seed";
-import { passwordHasher } from "@/server/auth/password-hasher";
+import {
+  DUMMY_LOGIN_PASSWORD_HASH,
+  passwordHasher,
+} from "@/server/auth/password-hasher";
 import {
   createSessionToken,
   getSessionExpiry,
@@ -57,6 +60,8 @@ export type ChangePasswordResult =
       retryAfterMs?: number;
     };
 
+const DUMMY_LOGIN_USER_ID = "00000000-0000-0000-0000-000000000000";
+
 function toPrincipal(user: UserRecord): AuthenticatedPrincipal {
   return {
     userId: user.id,
@@ -94,20 +99,15 @@ export async function loginWithPassword(input: {
   const dependencies = await getServerDependencies();
   await dependencies.sessions.deleteExpired(new Date());
   const user = await dependencies.users.findByLogin(normalizedIdentifier);
+  const passwordHash = await dependencies.passwords.getPasswordHash(
+    user?.id ?? DUMMY_LOGIN_USER_ID,
+  );
+  const validPassword = await passwordHasher.verify(
+    input.password,
+    passwordHash ?? DUMMY_LOGIN_PASSWORD_HASH,
+  );
 
-  if (!user) {
-    return { ok: false, code: "INVALID_CREDENTIALS" };
-  }
-
-  const passwordHash = await dependencies.passwords.getPasswordHash(user.id);
-
-  if (!passwordHash) {
-    return { ok: false, code: "INVALID_CREDENTIALS" };
-  }
-
-  const validPassword = await passwordHasher.verify(input.password, passwordHash);
-
-  if (!validPassword) {
+  if (!user || !passwordHash || !validPassword) {
     return { ok: false, code: "INVALID_CREDENTIALS" };
   }
 

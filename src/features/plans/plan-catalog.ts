@@ -44,6 +44,10 @@ export const PLAN_CATALOG: Record<PlanId, PlanDefinition> = {
 
 export const PLAN_ORDER: PlanId[] = ["BASIC", "PRO", "ENTERPRISE"];
 
+export const MAX_PAGE_LINK_LIMIT = Math.max(
+  ...PLAN_ORDER.map((plan) => PLAN_CATALOG[plan].pageLinkLimit),
+);
+
 export function getPlanDefinition(plan: PlanId) {
   return PLAN_CATALOG[plan];
 }

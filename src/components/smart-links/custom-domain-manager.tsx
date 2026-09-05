@@ -21,21 +21,24 @@ export default function CustomDomainManager({
   const [pendingRemoveDomain, setPendingRemoveDomain] = useState<string | null>(null);
   const { pushToast } = useToast();
 
-  async function addDomain() {
-    if (!input.trim()) return;
-    setBusy("add");
+  async function addDomain(domainInput = input, renewing = false) {
+    const domain = domainInput.trim();
+    if (!domain) return;
+    setBusy(renewing ? `RENEW:${domain}` : "add");
     setError("");
     try {
       const response = await fetch("/api/custom-domains", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ smartLinkId, domain: input }),
+        body: JSON.stringify({ smartLinkId, domain }),
       });
       const payload = await response.json().catch(() => null) as { domain?: CustomDomainView; error?: string } | null;
       if (!response.ok || !payload?.domain) throw new Error(payload?.error ?? "Could not add domain.");
-      setDomains((current) => [...current, payload.domain!]);
-      setInput("");
-      pushToast({ title: "Domain added", description: "Add the DNS records, then verify ownership.", tone: "success" });
+      setDomains((current) => current.some((item) => item.domain === domain)
+        ? current.map((item) => item.domain === domain ? payload.domain! : item)
+        : [...current, payload.domain!]);
+      if (!renewing) setInput("");
+      pushToast({ title: renewing ? "Domain claim renewed" : "Domain added", description: "Add the DNS records, then verify ownership.", tone: "success" });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not add domain.");
     } finally {
@@ -130,7 +133,7 @@ export default function CustomDomainManager({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="break-all text-sm font-black text-zinc-950">{item.domain}</p>
-                  <DomainStatus status={item.status} />
+                  <DomainStatus domain={item} />
                 </div>
                 {item.status === "ACTIVE" && (
                   <a href={`https://${item.domain}`} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-zinc-600 hover:text-zinc-950">
@@ -154,8 +157,9 @@ export default function CustomDomainManager({
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              {!item.verifiedAt && <DomainAction icon={RefreshCw} label="Check DNS" busy={busy === `VERIFY:${item.domain}`} onClick={() => action(item.domain, "VERIFY")} />}
-              {item.verifiedAt && item.status !== "ACTIVE" && <DomainAction icon={Power} label="Activate" busy={busy === `ACTIVATE:${item.domain}`} onClick={() => action(item.domain, "ACTIVATE")} />}
+              {item.claimExpired && <DomainAction icon={RefreshCw} label="Renew claim" busy={busy === `RENEW:${item.domain}`} onClick={() => addDomain(item.domain, true)} />}
+              {!item.claimExpired && (!item.verifiedAt || item.verificationRequired) && <DomainAction icon={RefreshCw} label={item.verificationRequired ? "Re-check DNS" : "Check DNS"} busy={busy === `VERIFY:${item.domain}`} onClick={() => action(item.domain, "VERIFY")} />}
+              {item.verifiedAt && !item.verificationRequired && item.status !== "ACTIVE" && <DomainAction icon={Power} label="Activate" busy={busy === `ACTIVATE:${item.domain}`} onClick={() => action(item.domain, "ACTIVATE")} />}
               {item.status === "ACTIVE" && <DomainAction icon={Power} label="Disable" busy={busy === `DISABLE:${item.domain}`} onClick={() => action(item.domain, "DISABLE")} />}
             </div>
           </div>
@@ -203,7 +207,12 @@ function DnsRow({ label, value, copied, onCopy }: { label: string; value: string
   );
 }
 
-function DomainStatus({ status }: { status: CustomDomainView["status"] }) {
+function DomainStatus({ domain }: { domain: CustomDomainView }) {
+  const status = domain.claimExpired
+    ? "CLAIM EXPIRED"
+    : domain.verificationRequired
+      ? "REVERIFY"
+      : domain.status;
   const style = status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : status === "VERIFIED" ? "bg-blue-100 text-blue-700" : status === "DISABLED" ? "bg-zinc-200 text-zinc-600" : "bg-amber-100 text-amber-700";
   return <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wider ${style}`}>{status}</span>;
 }

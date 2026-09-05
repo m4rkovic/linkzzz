@@ -53,12 +53,12 @@ export function createUniqueCustomer(
   };
 }
 
-export async function loginAsAdmin(page: Page) {
-  return loginViaApi(page, ADMIN_IDENTIFIER, ADMIN_PASSWORD, "ADMIN");
+export async function loginAsAdmin(page: Page, destination?: string) {
+  return loginViaApi(page, ADMIN_IDENTIFIER, ADMIN_PASSWORD, "ADMIN", destination);
 }
 
-export async function loginAsCustomer(page: Page) {
-  return loginViaApi(page, CUSTOMER_IDENTIFIER, CUSTOMER_PASSWORD, "CUSTOMER");
+export async function loginAsCustomer(page: Page, destination?: string) {
+  return loginViaApi(page, CUSTOMER_IDENTIFIER, CUSTOMER_PASSWORD, "CUSTOMER", destination);
 }
 
 export async function loginViaApi(
@@ -66,6 +66,7 @@ export async function loginViaApi(
   identifier: string,
   password: string,
   expectedRole?: "ADMIN" | "CUSTOMER",
+  destinationOverride?: string,
 ) {
   const origin = e2eOrigin();
   const response = await page.request.post(`${origin}/api/auth/login`, {
@@ -92,12 +93,16 @@ export async function loginViaApi(
     throw new Error(`Expected ${expectedRole} login, received ${payload.role}.`);
   }
 
-  const destination = payload.mustChangePassword
+  const defaultDestination = payload.mustChangePassword
     ? "/change-password"
     : payload.role === "ADMIN"
       ? "/admin"
       : "/dashboard";
-  await page.goto(destination, { waitUntil: "domcontentloaded" });
+  const destination = destinationOverride ?? defaultDestination;
+  // Wait for the protected destination to finish loading before a test starts
+  // another navigation. Returning at DOMContentLoaded allowed the initial
+  // dashboard navigation to race with an immediate page.goto() in mobile runs.
+  await page.goto(destination, { waitUntil: "load" });
   return payload;
 }
 
@@ -169,7 +174,9 @@ export async function countSmartLinkViews(slug: string) {
 }
 
 export async function openSeedLandingPageEditor(page: Page) {
-  await page.goto("/dashboard/links");
+  if (new URL(page.url()).pathname !== "/dashboard/links") {
+    await page.goto("/dashboard/links");
+  }
   const skyHookCard = page
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: "Sky Hook", exact: true }) });

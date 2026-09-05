@@ -1,10 +1,15 @@
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 
 const KEY_LENGTH = 64;
-const DEFAULT_N = 16_384;
+const DEFAULT_N = 32_768;
 const DEFAULT_R = 8;
-const DEFAULT_P = 1;
+const DEFAULT_P = 3;
 const MAX_MEMORY = 64 * 1024 * 1024;
+
+// A real, current-policy hash used only to make unknown-account login attempts
+// perform the same expensive password verification as known accounts.
+export const DUMMY_LOGIN_PASSWORD_HASH =
+  "scrypt$32768$8$3$bGlua3p6ei1sb2dpbi1kdW1teS12MQ$vf6Q-r--KXCx5ENQc4piZTPemtPKt8e8CN5e1qUL3I7gVkvBZMTt9Tz_Y-rmKmhGL79_mYs_2vROgWbpHBADQw";
 
 function deriveKey(
   password: string,
@@ -96,6 +101,18 @@ export class ScryptPasswordHasher {
     const actual = await deriveKey(password, salt, n, r, p);
 
     return actual.length === expected.length && timingSafeEqual(actual, expected);
+  }
+
+  needsRehash(encodedHash: string): boolean {
+    const parts = encodedHash.split("$");
+
+    return (
+      parts.length !== 6 ||
+      parts[0] !== "scrypt" ||
+      Number(parts[1]) !== DEFAULT_N ||
+      Number(parts[2]) !== DEFAULT_R ||
+      Number(parts[3]) !== DEFAULT_P
+    );
   }
 }
 

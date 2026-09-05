@@ -84,7 +84,7 @@ test("SmartLink validation rejects the same country in multiple geo rules", () =
   });
 });
 
-test("Shield treats missing user agent as unknown and known unfurlers as preview traffic", () => {
+test("Shield treats missing user agent as blocked in STRICT mode and known unfurlers as preview traffic", () => {
   assert.equal(classifyTraffic(new Headers()), "UNKNOWN");
   assert.equal(
     classifyTraffic(new Headers({ "user-agent": "facebookexternalhit/1.1" })),
@@ -95,7 +95,7 @@ test("Shield treats missing user agent as unknown and known unfurlers as preview
     "AUTOMATION",
   );
 
-  assert.equal(resolveTrafficShield(strictShield, "UNKNOWN"), "PREVIEW");
+  assert.equal(resolveTrafficShield(strictShield, "UNKNOWN"), "BLOCK");
   assert.equal(resolveTrafficShield(strictShield, "KNOWN_CRAWLER"), "PREVIEW");
   assert.equal(resolveTrafficShield(strictShield, "AUTOMATION"), "BLOCK");
 });

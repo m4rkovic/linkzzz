@@ -1,5 +1,5 @@
 import type { AuditWriter } from "@/server/audit/types";
-import type { Plan } from "@/server/business/plans";
+import type { Plan, SmartLinkLimitReason } from "@/server/business/plans";
 import type {
   SubscriptionMutation,
   SubscriptionStatus,
@@ -7,6 +7,7 @@ import type {
 import type { SmartLinkModerationMutation } from "@/server/smart-links/smart-link-lifecycle";
 import type { AccountStatus, UserRole } from "@/server/types/auth";
 import type { PersistedProfileData } from "@/types/persisted-profile";
+import type { AnalyticsDashboardData } from "@/types/analytics";
 import type { SmartLinkEditableData, SmartLinkRecord } from "@/types/smart-link";
 
 export type UserRecord = {
@@ -116,7 +117,7 @@ export type ConditionalSmartLinkWriteResult =
 
 type SmartLinkQuotaRejection =
   | { ok: false; reason: "SUBSCRIPTION_INACTIVE" }
-  | { ok: false; reason: "LIMIT_REACHED"; plan: Plan; limit: number };
+  | { ok: false; reason: SmartLinkLimitReason; plan: Plan; limit: number };
 
 export type CreateSmartLinkWithinLimitResult =
   | { ok: true; smartLink: SmartLinkRecord }
@@ -243,10 +244,11 @@ export interface AnalyticsRepository {
     slug: string,
     event: Omit<AnalyticsEventRecord, "smartLinkId">,
   ): Promise<boolean>;
-  listForUser(userId: string): Promise<AnalyticsEventRecord[]>;
   summarizeDashboard(userId: string): Promise<AnalyticsDashboardSummary>;
-  listForSmartLink(smartLinkId: string, from?: Date): Promise<AnalyticsEventRecord[]>;
-  listSmartLinksForUser(userId: string): Promise<AnalyticsSmartLinkRecord[]>;
+  getDashboardData(
+    userId: string,
+    scopeSmartLinkId?: string,
+  ): Promise<AnalyticsDashboardData | null>;
 }
 
 export type LeadSubmissionRecord = {
@@ -281,7 +283,6 @@ export interface AssetRepository {
     smartLinkId: string,
     ids: string[],
   ): Promise<AssetRecord[]>;
-  create(asset: AssetRecord): Promise<AssetRecord>;
   createForSmartLink(
     userId: string,
     smartLinkId: string,
@@ -293,26 +294,50 @@ export interface AssetRepository {
     smartLinkId: string,
     ids: string[],
   ): Promise<AssetRecord[]>;
+  deleteOrphaned(limit?: number): Promise<AssetRecord[]>;
 }
 
 export type CustomDomainRecord = {
-  id?: string;
+  id: string;
   smartLinkId: string;
   domain: string;
   status: "PENDING" | "VERIFIED" | "ACTIVE" | "DISABLED";
   verificationToken: string;
-  verifiedAt?: Date | null;
+  verifiedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type AdminCustomDomainRecord = CustomDomainRecord & {
+  ownerUserId: string;
+  ownerUsername: string;
+  smartLinkTitle: string;
+  smartLinkSlug: string;
+};
+
+export type CustomDomainClaimResult = {
+  record: CustomDomainRecord;
+  reclaimed: boolean;
+  previousOwnerUserId?: string;
 };
 
 export interface CustomDomainRepository {
-  findByDomain(domain: string): Promise<CustomDomainRecord | null>;
-  findActiveSlugByDomain(domain: string): Promise<string | null>;
-  listForUser(userId: string): Promise<CustomDomainRecord[]>;
+  findActiveSlugByDomain(domain: string, verifiedAfter: Date): Promise<string | null>;
   listForSmartLink(userId: string, smartLinkId: string): Promise<CustomDomainRecord[]>;
-  createForSmartLink(userId: string, smartLinkId: string, domain: string, verificationToken: string): Promise<CustomDomainRecord>;
-  upsert(record: CustomDomainRecord): Promise<CustomDomainRecord>;
+  listForAdmin(limit: number): Promise<AdminCustomDomainRecord[]>;
+  claimForSmartLink(
+    userId: string,
+    smartLinkId: string,
+    domain: string,
+    verificationToken: string,
+    expiredBefore: Date,
+  ): Promise<CustomDomainClaimResult | null>;
   setStatusForSmartLink(userId: string, smartLinkId: string, domain: string, status: CustomDomainRecord["status"], verifiedAt?: Date | null): Promise<CustomDomainRecord | null>;
   deleteForSmartLink(userId: string, smartLinkId: string, domain: string): Promise<boolean>;
+  releaseById(id: string): Promise<{
+    domain: CustomDomainRecord;
+    ownerUserId: string;
+  } | null>;
 }
 
 export type ProvisionCustomerInput = {
