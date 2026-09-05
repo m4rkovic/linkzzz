@@ -2,6 +2,8 @@
 
 import type { EditorSection, SectionDefinition } from "./types";
 
+const NAV_BUTTON_FOCUS = "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/25";
+
 export function EditorNavigation({
   sections,
   activeSection,
@@ -22,7 +24,7 @@ export function EditorNavigation({
           if (!groupSections.length) return null;
           return (
             <div key={group}>
-              <p className="px-3 pb-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400">{group}</p>
+              <p className="px-3 pb-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">{group}</p>
               <div className="space-y-1">
                 {groupSections.map(({ id, label, icon: Icon }) => (
                   <button
@@ -30,13 +32,13 @@ export function EditorNavigation({
                     type="button"
                     onClick={() => onSelect(id)}
                     aria-current={activeSection === id ? "page" : undefined}
-                    className={`inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-sm font-bold transition ${
+                    className={`inline-flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-sm font-bold transition ${NAV_BUTTON_FOCUS} ${
                       activeSection === id
                         ? "bg-brand-violet-strong text-white shadow-lg shadow-brand-violet/15"
                         : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
                     }`}
                   >
-                    <Icon size={16} />
+                    <Icon size={16} aria-hidden="true" />
                     <span>{label}</span>
                   </button>
                 ))}
@@ -63,13 +65,13 @@ export function EditorNavigation({
             type="button"
             onClick={() => onSelect(id)}
             aria-current={activeSection === id ? "page" : undefined}
-            className={`inline-flex min-h-10 min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 text-left text-xs font-bold transition sm:px-3 sm:text-sm md:w-auto md:shrink-0 ${
+            className={`inline-flex min-h-10 min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 text-left text-xs font-bold transition sm:px-3 sm:text-sm md:w-auto md:shrink-0 ${NAV_BUTTON_FOCUS} ${
               activeSection === id
                 ? "bg-brand-violet-strong text-white shadow-lg shadow-brand-violet/15"
                 : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
             }`}
           >
-            <Icon size={16} className="shrink-0" />
+            <Icon size={16} aria-hidden="true" className="shrink-0" />
             <span className="min-w-0 truncate">{label}</span>
           </button>
         </div>
