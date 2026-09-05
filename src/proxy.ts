@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import {
+  CUSTOM_DOMAIN_RUNTIME_HOST_HEADER,
   getRequestHostname,
   isAllowedCustomDomainPath,
   isApplicationHostname,
@@ -59,15 +60,26 @@ export function proxy(request: NextRequest) {
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
 
-  const response =
-    hostname && !isApplicationHost && pathname === "/"
-      ? NextResponse.rewrite(
-          new URL(INTERNAL_CUSTOM_DOMAIN_PATH, request.url),
-          { request: { headers: requestHeaders } },
-        )
-      : NextResponse.next({
-          request: { headers: requestHeaders },
-        });
+  const isCustomDomainRoot =
+    Boolean(hostname) && !isApplicationHost && pathname === "/";
+
+  // Next's internal rewrite target may observe the application server host
+  // rather than the original Host header. Preserve the normalized customer
+  // hostname explicitly so the dynamic runtime resolves the intended domain.
+  if (isCustomDomainRoot && hostname) {
+    requestHeaders.set(CUSTOM_DOMAIN_RUNTIME_HOST_HEADER, hostname);
+  } else {
+    requestHeaders.delete(CUSTOM_DOMAIN_RUNTIME_HOST_HEADER);
+  }
+
+  const response = isCustomDomainRoot
+    ? NextResponse.rewrite(
+        new URL(INTERNAL_CUSTOM_DOMAIN_PATH, request.url),
+        { request: { headers: requestHeaders } },
+      )
+    : NextResponse.next({
+        request: { headers: requestHeaders },
+      });
 
   response.headers.set("Content-Security-Policy", contentSecurityPolicy);
   applyTransportSecurity(response, request);
