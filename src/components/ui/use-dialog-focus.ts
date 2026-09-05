@@ -26,6 +26,10 @@ export function useDialogFocus<T extends HTMLElement>({
   initialFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const containerRef = useRef<T>(null);
+  const onCloseRef = useRef(onClose);
+  const closeOnEscapeRef = useRef(closeOnEscape);
+  onCloseRef.current = onClose;
+  closeOnEscapeRef.current = closeOnEscape;
 
   useEffect(() => {
     if (!open) return;
@@ -61,13 +65,13 @@ export function useDialogFocus<T extends HTMLElement>({
       // prevents nested dialogs from closing multiple layers at once.
       if (event.key === "Escape") {
         if (
-          closeOnEscape &&
-          onClose &&
+          closeOnEscapeRef.current &&
+          onCloseRef.current &&
           container.contains(document.activeElement)
         ) {
           event.preventDefault();
           event.stopPropagation();
-          onClose();
+          onCloseRef.current();
         }
         return;
       }
@@ -107,7 +111,7 @@ export function useDialogFocus<T extends HTMLElement>({
       }
       if (previous?.isConnected) previous.focus?.();
     };
-  }, [closeOnEscape, initialFocusRef, onClose, open]);
+  }, [initialFocusRef, open]);
 
   return containerRef;
 }
