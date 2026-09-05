@@ -97,7 +97,10 @@ export async function loginViaApi(
     : payload.role === "ADMIN"
       ? "/admin"
       : "/dashboard";
-  await page.goto(destination, { waitUntil: "domcontentloaded" });
+  // Wait for the protected destination to finish loading before a test starts
+  // another navigation. Returning at DOMContentLoaded allowed the initial
+  // dashboard navigation to race with an immediate page.goto() in mobile runs.
+  await page.goto(destination, { waitUntil: "load" });
   return payload;
 }
 
