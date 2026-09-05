@@ -8,7 +8,7 @@ test.describe("production deployment smoke", () => {
     "Production smoke targets an already deployed preview/production server.",
   );
 
-  test("marketing homepage is reachable with the static production CSP", async ({ page }) => {
+  test("marketing homepage is reachable with the strict marketing CSP", async ({ page }) => {
     const response = await page.goto("/");
     expect(response?.ok()).toBeTruthy();
     await expect(page.getByRole("heading", { name: /One Smart Link/i })).toBeVisible();
@@ -35,8 +35,8 @@ test.describe("production deployment smoke", () => {
     expect(scriptSrc).not.toContain("'unsafe-inline'");
   });
 
-  test("internal custom-domain runtime route is not public on the application host", async ({ request }) => {
-    const response = await request.get("/__linkzzz/custom-domain", { maxRedirects: 0 });
+  test("internal Linkzzz namespace is not public on the application host", async ({ request }) => {
+    const response = await request.get("/__linkzzz/internal-probe", { maxRedirects: 0 });
     expect(response.status()).toBe(404);
   });
 
