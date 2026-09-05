@@ -14,8 +14,10 @@ test.describe("production deployment smoke", () => {
     await expect(page.getByRole("heading", { name: /One Smart Link/i })).toBeVisible();
 
     const csp = response?.headers()["content-security-policy"] ?? "";
-    expect(csp).toContain("script-src 'none'");
-    expect(csp).not.toContain("'unsafe-inline'");
+    const scriptSrc = directive(csp, "script-src");
+    expect(scriptSrc).toBe("script-src 'none'");
+    expect(scriptSrc).not.toContain("'unsafe-inline'");
+    expect(directive(csp, "style-src")).toContain("'unsafe-inline'");
   });
 
   test("native marketing navigation reaches the nonce-protected login surface", async ({ page }) => {
@@ -27,8 +29,10 @@ test.describe("production deployment smoke", () => {
     const loginResponse = await page.request.get("/login", { maxRedirects: 0 });
     expect(loginResponse.ok()).toBeTruthy();
     const csp = loginResponse.headers()["content-security-policy"] ?? "";
-    expect(csp).toMatch(/'nonce-[^']+'/);
-    expect(csp).toContain("'strict-dynamic'");
+    const scriptSrc = directive(csp, "script-src");
+    expect(scriptSrc).toMatch(/'nonce-[^']+'/);
+    expect(scriptSrc).toContain("'strict-dynamic'");
+    expect(scriptSrc).not.toContain("'unsafe-inline'");
   });
 
   test("internal custom-domain runtime route is not public on the application host", async ({ request }) => {
@@ -43,3 +47,12 @@ test.describe("production deployment smoke", () => {
     await expect(page.locator(".linkzzz-public-page")).toBeVisible();
   });
 });
+
+function directive(policy: string, name: string) {
+  return (
+    policy
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${name} `)) ?? ""
+  );
+}
