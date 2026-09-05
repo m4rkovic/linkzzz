@@ -37,17 +37,20 @@ export function buildContentSecurityPolicy(
 
 /**
  * The application-host marketing page is intentionally static and has no
- * browser-side behavior that requires JavaScript. Blocking scripts entirely
- * avoids weakening the CSP just to hydrate a page whose links and anchors work
- * natively. Navigating into /login therefore performs a full document request
- * and re-enters the strict nonce policy used by the application surfaces.
+ * production browser-side behavior that requires JavaScript. Blocking scripts
+ * in production avoids weakening the CSP just to hydrate links and anchors
+ * that work natively. Development keeps the Next runtime/HMR available.
  */
 export function buildStaticMarketingContentSecurityPolicy(
   input: ContentSecurityPolicyOptions,
 ) {
   return buildPolicy({
-    scriptSources: ["'none'"],
-    connectSources: ["'self'"],
+    scriptSources: input.isDevelopment
+      ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
+      : ["'none'"],
+    connectSources: input.isDevelopment
+      ? ["'self'", "ws:", "wss:"]
+      : ["'self'"],
     frameSources: ["'self'"],
     isDevelopment: input.isDevelopment,
   });
