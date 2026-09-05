@@ -35,11 +35,11 @@ npx.cmd prisma db seed
 npm.cmd run dev
 ```
 
-`npm run dev` uses Turbopack and prewarms the core application routes in the
-background after startup. This moves most route compilation to startup instead
-of making the first click on every screen pay that cost. Set
-`LINKZZZ_DEV_PREWARM=0` only when you deliberately want raw on-demand
-compilation, or use `npm run dev:raw`.
+`npm run dev` uses Turbopack and compiles routes on demand. Core-route prewarm
+is intentionally **off by default** because eagerly compiling the protected
+route set made ordinary local startup/navigation heavier. Set
+`LINKZZZ_DEV_PREWARM=1` only when you explicitly want that route set compiled
+in the background after startup. `npm run dev:raw` bypasses the wrapper entirely.
 
 On Windows, keep the project outside OneDrive or another actively synchronized
 folder (for example `C:\dev\linkzzz`). File synchronization and real-time virus
@@ -69,7 +69,7 @@ npm.cmd run test:e2e:install
 npm.cmd run test:e2e
 ```
 
-Before running Playwright, set `E2E_DATABASE_URL` to a disposable PostgreSQL
+Before running the normal Playwright suite, set `E2E_DATABASE_URL` to a disposable PostgreSQL
 database that is separate from `DATABASE_URL`. The runner refuses to start when
 the value is missing or points to the normal application database. It applies
 migrations, seeds deterministic fixtures and removes only `e2e_`-prefixed
@@ -93,6 +93,23 @@ Run `npm.cmd run test:e2e:all` only after approved baselines exist.
 Do not preserve screenshot baselines captured while CSS failed to load. After a
 style-system recovery, generate the matrix once, inspect the new PNGs, and then
 run the visual suite as the actual regression check.
+
+## Deployed production smoke
+
+A small read-only smoke suite can target an already deployed Vercel Preview or
+production URL without touching its database:
+
+```powershell
+$env:E2E_EXTERNAL_SERVER="1"
+$env:E2E_BASE_URL="https://YOUR-PREVIEW.vercel.app"
+$env:E2E_PUBLIC_SMART_LINK_SLUG="skyhook" # optional known published fixture
+npm.cmd run test:e2e:production-smoke
+```
+
+External-server mode does not require `E2E_DATABASE_URL`. The smoke checks the
+static marketing/CSP boundary, native navigation into the nonce-protected login
+surface, internal custom-domain route isolation, and optionally one published
+Smart Link.
 
 ## Test artifacts
 
@@ -134,3 +151,5 @@ npm.cmd run env:check
 ```
 
 before a production deployment. Never trust forwarded proxy headers unless the deployment is explicitly configured to do so.
+
+Use `docs/PRODUCTION_RELEASE_RUNBOOK.md` for the migration, Preview smoke, promotion and rollback sequence. Production migrations use `prisma migrate deploy`; `migrate reset` is never a production operation.

@@ -3,29 +3,35 @@
 **Datum:** 2026-09-05  
 **Bazni integracioni commit:** `bd955a2d62efab825334dc2ca7a80e432d5e260b`  
 **Radna grana:** `audit/phase3-hardening-20260905`  
-**Status validacije ove grane:** implementation batch; mass validation još nije pokrenut.
+**Status validacije grane:** implementation batch; završni mass validation još nije pokrenut.
 
-> Ovo je živi audit ledger nad aktuelnim kodom. Originalni audit i follow-up više nisu pouzdan opis trenutnog stanja jer je veliki deo nalaza već integrisan ili sada implementiran na ovoj grani.
+> Ovo je živi audit ledger nad aktuelnim kodom. Originalni audit i follow-up iz prethodnih dana ostaju istorijski trag, ali više nisu pouzdan opis trenutnog stanja.
 
 ---
 
 ## 1. Executive status
 
-Najveći originalni rizici iz runtime/data-integrity/security faza više nisu dominantni problem. Tenant granice, admin mutacije, kvote, analytics ingest, geo/shield korektnost, custom-domain lifecycle, auth hardening i DB query support su značajno ojačani.
+Originalni kritični problemi oko tenant granica, admin mutacija, quota race-ova, auth hardeninga, analytics ingest-a, Geo/Shield korektnosti, custom-domain lifecycle-a i DB query support-a više nisu dominantni rizik.
 
-Na ovoj grani su dodatno implementirani:
+Na ovoj grani su implementirani dodatni paketi:
 
 - **Phase 3.10:** observability completion + centralizovan API request-session resolution;
-- **Phase 3.11:** javni Landing Page renderer dobija server-rendered shell i male client runtime islands umesto hidracije kompletnog javnog profila;
-- **Phase 3.12:** Page/PageCard media i runtime konfiguracija izlaze iz skrivenih `__*` JSON wrapper ključeva, a gallery asset liveness dobija relacijsku tabelu i FK.
+- **Phase 3.11:** public Landing Page server shell + ograničeni client islands;
+- **Phase 3.12 expand:** eksplicitna Page/PageCard polja + relacijska gallery asset liveness, uz rollback-compatible legacy dual-write;
+- **Phase 4.1:** uklonjen globalni root `connection()` i razdvojen static marketing `/` od dynamic custom-domain runtime-a;
+- **Phase 4.2:** CSP policy izolovana po surface-u; production marketing može raditi sa `script-src 'none'`, dok aplikacione/public runtime rute zadržavaju per-request nonce;
+- **Phase 5.1:** zajednički accessible `DialogShell`, focus trap/restore, Escape/backdrop politika i nested-dialog zaštita;
+- **Phase 5.2:** keyboard tab semantics za analytics period i konzistentniji focus-visible editor navigation;
+- **Phase 6.1:** `*.tsbuildinfo` ignorisan i dev prewarm prebačen na opt-in;
+- **Phase 6.2:** read-only production deployment smoke za eksterni Vercel/production URL.
 
-Glavni preostali tehnički dug posle ovog batch-a je:
+Najveći preostali posao pre release candidate-a:
 
-1. root `connection()` / CSP nonce strategija;
-2. preostali širi JSON domain modeli koji su legitimno dokument-style podaci, ali treba proceniti gde se isplati dalja normalizacija;
-3. fresh UI/accessibility pass posle nedavnih UI izmena;
-4. production-mode smoke E2E, CI i tooling;
-5. finalna mass validacija cele grane.
+1. mass validacija Prisma migracije i celog implementation batch-a;
+2. širi fresh UI contrast/responsive/screen-reader pass;
+3. CI gate + formatter politika;
+4. production environment/runbook operativna provera;
+5. kasniji **Phase 3.12 contract cleanup** tek posle sigurnog compatibility prozora.
 
 ---
 
@@ -33,36 +39,29 @@ Glavni preostali tehnički dug posle ovog batch-a je:
 
 ### Runtime / tenant / concurrency
 
-- **RT-005** — Prisma client/pool lifecycle hardenovan.
-- **RT-002** — custom-domain host/path gating postoji u `src/proxy.ts` i host-routing sloju.
-- **RT-003** — public outbound putanja poštuje geo/runtime odluke.
-- **RACE-001** — SmartLink kvote imaju server-side concurrency zaštitu.
-- **INT-001 / RACE-005** — admin account/subscription mutacije koriste transakcije + per-user lock.
-- **INT-105** — admin read i last-Landing-Page invariant su hardenovani.
+- Prisma client/pool lifecycle hardenovan;
+- custom-domain host/path gating postoji;
+- public outbound putanja poštuje Geo/runtime odluke;
+- SmartLink kvote imaju server-side concurrency zaštitu;
+- admin account/subscription mutacije koriste transakcije + per-user lock;
+- last-Landing-Page i related integrity invariants su hardenovani.
 
-### API / validation
+### API / validation / analytics
 
-- **API-002** — profile persistence koristi allowlist parser umesto vraćanja attacker-controlled objekta.
-- **API-003/004** — analytics ingest ima rate limit pre obrade i bounded body parsing.
-- **API-005 / OBS-002** — typed known errors + safe generic 500 za kritične admin/domain rute.
-
-### Analytics / DB / performance
-
-- **AN-001 / PERF-001/002** — analytics dashboard koristi SQL period summaries umesto lifetime raw-event agregacije u Node-u.
-- **SUB-002** — analytics access koristi centralni subscription access model.
-- **DB-001** — dodati query-support kompozitni indeksi.
-- **INT-102** — DB CHECK: ACTIVE custom domain zahteva `verifiedAt`.
-- **PERF-003** — PageCard/Social/Stat writes su batch-ovani.
+- profile persistence koristi allowlist parser;
+- analytics ingest ima rate-limit pre obrade + bounded body;
+- typed known errors + safe generic 500 postoje na kritičnim rutama;
+- analytics dashboard koristi SQL period summaries;
+- subscription access se rešava kroz centralni model;
+- query-support kompozitni indeksi su dodati.
 
 ### Auth / domains / assets / Shield
 
-- custom-domain PENDING TTL, reclaim i verification freshness su implementirani;
-- admin domain release + audit flow postoji;
-- asset quota i orphan sweeper postoje;
-- scrypt policy je podignut i postoji `needsRehash`;
-- unknown-account login koristi dummy real-policy hash;
+- scrypt policy + `needsRehash` + dummy login hash;
+- custom-domain PENDING TTL/reclaim/freshness + admin release flow;
+- asset quota + orphan sweep;
 - Traffic Shield STANDARD/STRICT imaju različitu semantiku;
-- known social/search crawler-i dobijaju preview po policy-ju.
+- verified/known crawler policy je centralizovan.
 
 ---
 
@@ -70,211 +69,194 @@ Glavni preostali tehnički dug posle ovog batch-a je:
 
 **Status:** ✅ IMPLEMENTIRANO / ⏳ ČEKA MASS VALIDATION
 
-### Implementirano
-
 - typed `InvalidImageError` odvaja user validation od storage/infrastructure failure-a;
-- unexpected asset storage failure → structured log + safe 500;
-- asset persistence failure → cleanup + structured log + safe 500;
-- rejected storage cleanup više se ne guta kroz `Promise.allSettled`;
-- request correlation ID propagira se u custom-domain lokalne error putanje;
-- centralizovan request session helper uklanja copy/paste cookie resolution iz API ruta;
-- AST contract test sprečava obrazac `catch -> status:500` bez `logServerError` ili rethrow-a.
-
-### Observability invariant
-
-Expected parse/validation/auth 4xx nije error-log događaj. Neočekivani exception koji route lokalno pretvara u 5xx mora biti logovan sa kontekstom ili rethrow-ovan ka Next `onRequestError` hook-u.
+- unexpected asset storage/persistence/cleanup failure dobija structured log + request correlation;
+- centralizovan request-session helper uklanja cookie/session copy-paste iz API ruta;
+- AST contract test sprečava lokalni `catch -> 500` bez logovanja ili rethrow-a;
+- expected parse/validation/auth 4xx se namerno ne tretira kao server error spam.
 
 ---
 
 ## 4. Phase 3.11 — Public renderer decomposition
 
-**Status:** ✅ IMPLEMENTIRANO ARHITEKTONSKI / ⏳ ČEKA MASS VALIDATION I BUNDLE MERENJE
+**Status:** ✅ IMPLEMENTIRANO ARHITEKTONSKI / ⏳ ČEKA BUILD/BROWSER MERENJE
 
-### Pre
+Public SmartLink više ne hidrira kompletan profile renderer kao jedan veliki client boundary.
 
-`public-profile.tsx` je bio `"use client"` boundary oko kompletnog javnog profila. Time su static identity, background, socials, stats, hero, footer i ostatak shell-a ulazili u hydration putanju zajedno sa stvarno interaktivnim delovima.
+Server renderuje statički shell:
 
-### Sada
-
-Public runtime koristi novi server component:
-
-- `src/components/public/public-profile-server.tsx`
-
-Server renderuje:
-
-- page shell i background;
-- classic identity;
-- visual hero/identity shell;
+- page/background;
+- hero i identity;
 - avatar/name/bio/location;
-- socials;
-- profile stats;
-- visitor messaging;
+- socials/stats/visitor messaging;
 - footer.
 
-Client islands su izdvojeni po odgovornosti:
+Client islands su ograničeni na stvarno interaktivne delove:
 
-- `public-profile-share.tsx` — Web Share / clipboard fallback;
-- `public-social-tracking.tsx` — external GA/Meta social-click event delegation;
-- `public-profile-link-runtime.tsx` — scheduling/focus/highlight i card interaction;
-- `public-profile-content-runtime.tsx` — countdown/scheduled blocks/email-capture runtime;
-- `public-visual-sticky-header.tsx` — IntersectionObserver + sticky share UI.
+- share/clipboard;
+- GA/Meta external click tracking;
+- schedule/focus/highlight runtime;
+- countdown/email capture/content runtime;
+- sticky-header observer.
 
-`public-runtime.tsx` sada renderuje `PublicProfileServer` umesto starog full-client `PublicProfile` boundary-ja.
-
-### Napomena
-
-Ovo je arhitektonski split, ali finalnu bundle/hydration uštedu ne proglašavamo dok se ne izmeri production build. Postojeći editor/preview rendereri ostaju client-heavy jer je to opravdan interaktivni workspace, a ne public money-page.
+Editor/preview ostaje client-heavy namerno, jer je interaktivni workspace.
 
 ---
 
-## 5. Phase 3.12 — Persistence model cleanup
+## 5. Phase 3.12 — Persistence expand/contract
 
-**Status:** ✅ IMPLEMENTIRANO MIGRACIONO / ⏳ ČEKA PRISMA GENERATE + MIGRATION/E2E VALIDATION
+**Status:** 🟢 EXPAND KORAK IMPLEMENTIRAN / ⏳ ČEKA PRISMA + MIGRATION/E2E VALIDATION  
+**Contract cleanup:** ⏸ NAMERNO ODLOŽEN ZA KASNIJI RELEASE
 
-### Uklonjeni skriveni Page JSON wrapper-i
+### Novi first-class persistence model
 
-Ranije je `Page.appearance` nosio:
-
-- `__media.avatarUrl`;
-- `__media.coverImageUrl`;
-- `__engagement`.
-
-Sada postoje eksplicitna polja:
-
-- `Page.avatarUrl`;
-- `Page.coverImageUrl`;
-- `Page.engagement`.
-
-Migracija backfill-uje postojeće podatke i uklanja te ključeve iz `appearance` JSON-a.
-
-### Uklonjeni PageCard wrapper-i
-
-Ranije je `PageCard.customStyle` bio transportni kontejner:
-
-- `value`;
-- `__imageUrl`;
-- `__imageAlt`;
-- `__availability`;
-- `__sensitiveContent`;
-- `__geo`.
-
-Sada PageCard direktno ima:
-
-- `imageUrl`;
-- `imageAlt`;
-- `availability`;
-- `sensitiveContent`;
-- `geoConfig`;
-- `customStyle` sadrži samo stvarni custom-style domain payload.
-
-Migracija podržava i wrapper-format i starije direct-customStyle redove pri backfill-u.
-
-### Gallery/media asset relacija
-
-Dodata je relacijska tabela:
+`Page` dobija eksplicitna polja za media/engagement, a `PageCard` za image/availability/sensitive-content/geo runtime podatke. Gallery asset liveness dobija relacijsku tabelu:
 
 `PageContentAssetReference(pageId, blockId, itemId, assetId, sortOrder)`
 
-sa FK vezama ka `Page` i `Asset`.
+Asset ownership/liveness više ne zavisi samo od JSON scanner-a.
 
-Efekti:
+### Važna rollback korekcija
 
-- gallery asset više nije "živ" samo zato što literal-key JSON scanner pronađe `imageAssetId`;
-- asset cleanup/orphan detection koristi Prisma relacije (`contentFor: none`);
-- page save u istoj transakciji rebuild-uje gallery asset references;
-- migration backfill-uje reference iz postojećeg `contentBlocks` JSON-a uz ownership join na isti SmartLink;
-- asset delete/cleanup više ne zavisi od JSON walker-a za ovaj invariant.
+Prvobitna verzija 3.12 migracije je odmah uklanjala `appearance.__media`, `appearance.__engagement` i PageCard `customStyle.__*` envelope. To bi učinilo rollback na pre-3.12 aplikaciju rizičnim.
 
-`contentBlocks` ostaje JSON dokument jer heterogeni block payload i dalje ima smisla kao document model. Asset ownership/liveness, međutim, više nije skriven samo u tom dokumentu.
+Sada je uveden expand/contract model:
 
----
+1. migracija dodaje nove kolone/relacije;
+2. postojeći podaci se backfill-uju;
+3. legacy JSON envelope se **ne briše** u ovom release-u;
+4. novi repository tokom compatibility prozora dual-write-uje legacy envelope + nova first-class polja;
+5. novi reader normalizuje envelope i ne izlaže `__*` ključeve public/domain sloju.
 
-## 6. Otvorene velike stavke
+Tek nakon stabilnog production prozora ide zaseban contract release koji prestaje sa legacy read/write i potom uklanja wrapper ključeve.
 
-### NEXT-002 — root `connection()` / CSP
-
-`src/app/layout.tsx` i dalje koristi `await connection()` zato što `src/proxy.ts` generiše per-request CSP nonce.
-
-Ovo nije bezbedan one-line delete. Sledeća faza mora zajedno da reši:
-
-- nonce strategiju;
-- dynamic/static granice;
-- third-party tracking CSP zahteve;
-- regression test za security headers.
-
-**Prioritet:** HIGH.
-
-### Persistence follow-up
-
-Phase 3.12 uklanja najproblematičniji `__*` transport debt i gallery asset JSON liveness. Preostali JSON (`appearance`, `contentBlocks`, SmartLink configs) treba normalizovati samo tamo gde postoji konkretna potreba za FK/index/query/constraint semantikom, ne zato što je JSON ideološki ružan.
-
-**Prioritet:** MEDIUM.
-
-### UI / Accessibility
-
-Stari audit brojke za contrast/modal fokus više se ne smeju tretirati kao aktuelne jer je UI značajno menjan. Potreban je fresh pass nad trenutnim interfejsom:
-
-- contrast;
-- reusable Dialog/focus trap/restore;
-- tabs/labels/live errors;
-- 320/360/390px edge cases;
-- keyboard + screen-reader smoke.
-
-**Prioritet:** MEDIUM-HIGH pre launch-a.
-
-### Tooling / release engineering
-
-- `tsconfig.tsbuildinfo` treba ignorisati;
-- Prettier/format check nije uveden;
-- production-mode E2E smoke još ne postoji;
-- GitHub CI gate treba dodati;
-- dev prewarm default treba ponovo proceniti.
-
-**Prioritet:** MEDIUM.
+Ovo je namerno sporije, ali omogućava razuman app rollback.
 
 ---
 
-## 7. Sledeći roadmap
+## 6. Phase 4 — CSP / rendering performance
 
-### Phase 4 — CSP / rendering performance
+### 4.1 Static marketing vs dynamic runtime
 
-1. definisati CSP nonce vs static/ISR strategiju;
-2. tek zatim ukloniti ili ograničiti root `connection()`;
-3. izmeriti public route JS payload/hydration posle Phase 3.11;
-4. profilisati public request query count.
+**Status:** ✅ IMPLEMENTIRANO / ⏳ ČEKA BUILD + DEPLOYED SMOKE
 
-### Phase 5 — Persistence / domain follow-up
+- uklonjen root `await connection()`;
+- application-host `/` je eksplicitno `force-static`;
+- custom-domain `/` se u Proxy sloju interno rewrite-uje na dedicated dynamic runtime route;
+- interni `__linkzzz` runtime nije javno dostupan na application host-u;
+- auth/dashboard/public SmartLink rute ostaju dinamičke kroz sopstvene `headers/cookies/DB` potrebe.
 
-1. proveriti migration/backfill na realnoj dev kopiji;
-2. ukloniti preostale legacy read fallback-e tek kad nema starih redova;
-3. normalizovati samo domenske JSON delove kojima treba DB invariant/query support.
+### 4.2 CSP isolation
 
-### Phase 6 — UI / A11y
+**Status:** ✅ IMPLEMENTIRANO / ⏳ ČEKA BROWSER VALIDATION
 
-1. fresh contrast audit;
-2. reusable Dialog primitive;
-3. keyboard/focus semantics;
-4. responsive edge pass.
+- dynamic application/public runtime koristi nonce + `strict-dynamic`;
+- production marketing `/` nema potrebu za hydration JS i dobija `script-src 'none'`;
+- login/navigation sa marketinga radi kao native document navigation i ponovo ulazi u nonce-protected app surface;
+- development marketing zadržava lokalni Next HMR runtime;
+- CSP contract testovi su dodati.
 
-### Phase 7 — Tooling / production readiness
+---
 
-1. CI gate;
-2. production-mode smoke E2E;
-3. Prettier/format check;
-4. production env/storage/rate-limit/domain runbook.
+## 7. Phase 5 — UI / Accessibility
 
-### Phase 8 — Final mass validation
+### 5.1 Dialog primitive
 
-Tek kada implementation batch bude završen:
+**Status:** ✅ IMPLEMENTIRANO / ⏳ ČEKA KEYBOARD/MANUAL VALIDATION
+
+Uveden je zajednički `DialogShell` koji centralizuje:
+
+- portal;
+- `role=dialog/alertdialog` + `aria-modal`;
+- labelled/described wiring;
+- initial focus;
+- Tab/Shift+Tab trap;
+- Escape policy;
+- backdrop dismissal policy;
+- body scroll lock;
+- focus restore;
+- nested-dialog zaštitu.
+
+Migrirani su confirm/admin confirm, destination provider picker, change-password, reset-password i suspend-user modali.
+
+### 5.2 Keyboard/focus semantics
+
+**Status:** ✅ PRVI PASS IMPLEMENTIRAN / 🟡 ŠIRI A11Y PASS OSTAJE
+
+- analytics period tabs koriste roving `tabIndex` + Left/Right/Home/End;
+- SmartLink editor navigation dobija konzistentan `focus-visible` ring;
+- deo sitnog low-contrast navigation teksta je podignut na čitljiviji ton.
+
+Još ostaje fresh pass nad kompletnim trenutnim UI-em za contrast, form hints/errors, screen-reader semantiku i 320/360/390px edge cases.
+
+---
+
+## 8. Phase 6 — Tooling / release engineering
+
+### 6.1 Local DX
+
+**Status:** ✅ IMPLEMENTIRANO
+
+- `*.tsbuildinfo` je u `.gitignore`;
+- dev core-route prewarm je OFF by default i uključuje se samo sa `LINKZZZ_DEV_PREWARM=1`.
+
+### 6.2 Deployed production smoke
+
+**Status:** ✅ IMPLEMENTIRANO / ⏳ NIJE POKRENUTO
+
+`e2e/production-smoke.spec.ts` radi protiv već deployovanog URL-a (`E2E_EXTERNAL_SERVER=1`) bez zahteva za disposable E2E bazom.
+
+Smoke proverava:
+
+- marketing `/` + production static CSP;
+- native `/ -> /login` navigaciju i nonce CSP login surface-a;
+- blokiranje internog custom-domain runtime path-a;
+- opcioni public SmartLink runtime preko `E2E_PUBLIC_SMART_LINK_SLUG`.
+
+### Još otvoreno
+
+- GitHub CI gate;
+- Prettier/format policy;
+- eventualno bundle-size budget posle prvog merenja.
+
+CI trigger se namerno ne uvodi usred ovog draft batch-a samo da automatski vrti testove koje smo eksplicitno odlučili da pokrenemo zajedno na kraju.
+
+---
+
+## 9. Phase 7 — Production readiness
+
+Pre release candidate-a mora postojati operativna potvrda za:
+
+- `dev -> Preview`, `main -> Production` Vercel branch mapping;
+- odvojene Preview/Production env vrednosti;
+- Neon backup/PITR ili provider snapshot pre DB migracije;
+- `prisma migrate deploy`, nikad reset u produkciji;
+- Upstash kao production rate-limit backend;
+- S3-compatible object storage umesto local adaptera;
+- trusted proxy/geo header konfiguraciju;
+- custom-domain DNS/SSL lifecycle;
+- logging/monitoring i rollback proceduru.
+
+Detaljan redosled treba pratiti iz production release runbook-a u `docs/PRODUCTION_RELEASE_RUNBOOK.md`.
+
+---
+
+## 10. Final mass validation gate
+
+Ovaj draft se ne mergeuje u `dev` dok sledeći paket nije zelen:
 
 1. `npx prisma generate`;
-2. migracije na izolovanoj E2E bazi;
+2. migracije na izolovanoj disposable DB;
 3. `npm test`;
 4. `npm run typecheck`;
 5. `npm run lint`;
-6. production build;
+6. `npm run build`;
 7. functional Playwright;
-8. visual regression / snapshot review;
-9. manual desktop/mobile smoke.
+8. keyboard/a11y smoke;
+9. visual diff review, bez slepog snapshot update-a;
+10. deployed production smoke na Vercel Preview-u;
+11. manual desktop/mobile smoke.
 
-Do tada ovaj PR ostaje draft i nijedna nova faza se ne proglašava release-ready samo zato što je kod upisan u Git. Git, nažalost, nije QA inženjer.
+Posle prvog zelenog mass gate-a uključuje se stalni GitHub CI quality gate. Nakon production compatibility prozora radi se zaseban Phase 3.12 contract cleanup.
+
+Git je skladište istorije. Nije dokaz da kod radi. Zato ovaj PR ostaje draft dok stvarno ne prođe gate.
