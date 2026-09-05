@@ -3,7 +3,7 @@
 **Datum:** 2026-09-05  
 **Bazni integracioni commit:** `bd955a2d62efab825334dc2ca7a80e432d5e260b`  
 **Radna grana:** `audit/phase3-hardening-20260905`  
-**Status validacije grane:** implementation batch; završni mass validation još nije pokrenut.
+**Status validacije grane:** core gate green pre poslednjih E2E fixeva; funkcionalni browser rerun je sledeći gate.
 
 > Ovo je živi audit ledger nad aktuelnim kodom. Originalni audit i follow-up iz prethodnih dana ostaju istorijski trag, ali više nisu pouzdan opis trenutnog stanja.
 
@@ -21,16 +21,16 @@ Na ovoj grani su implementirani dodatni paketi:
 - **Phase 4.1:** uklonjen globalni root `connection()` i razdvojen static marketing `/` od dynamic custom-domain runtime-a;
 - **Phase 4.2:** CSP policy izolovana po surface-u; production marketing može raditi sa `script-src 'none'`, dok aplikacione/public runtime rute zadržavaju per-request nonce;
 - **Phase 5.1:** zajednički accessible `DialogShell`, focus trap/restore, Escape/backdrop politika i nested-dialog zaštita;
-- **Phase 5.2:** keyboard tab semantics za analytics period i konzistentniji focus-visible editor navigation;
+- **Phase 5.2:** keyboard tab semantics za analytics/card design i širi reusable form semantics pass;
 - **Phase 6.1:** `*.tsbuildinfo` ignorisan i dev prewarm prebačen na opt-in;
-- **Phase 6.2:** read-only production deployment smoke za eksterni Vercel/production URL.
+- **Phase 6.2:** read-only production deployment smoke + one-command validation runner.
 
 Najveći preostali posao pre release candidate-a:
 
-1. mass validacija Prisma migracije i celog implementation batch-a;
-2. širi fresh UI contrast/responsive/screen-reader pass;
-3. CI gate + formatter politika;
-4. production environment/runbook operativna provera;
+1. ponoviti funkcionalni E2E nakon tri konkretna fixa iz prvog browser run-a;
+2. manual desktop/mobile + visual diff review;
+3. deployed Preview production smoke;
+4. CI gate + formatter politika;
 5. kasniji **Phase 3.12 contract cleanup** tek posle sigurnog compatibility prozora.
 
 ---
@@ -67,19 +67,20 @@ Najveći preostali posao pre release candidate-a:
 
 ## 3. Phase 3.10 — Observability completion
 
-**Status:** ✅ IMPLEMENTIRANO / ⏳ ČEKA MASS VALIDATION
+**Status:** ✅ IMPLEMENTIRANO / 🟡 BROWSER FIX RERUN PENDING
 
 - typed `InvalidImageError` odvaja user validation od storage/infrastructure failure-a;
 - unexpected asset storage/persistence/cleanup failure dobija structured log + request correlation;
 - centralizovan request-session helper uklanja cookie/session copy-paste iz API ruta;
 - AST contract test sprečava lokalni `catch -> 500` bez logovanja ili rethrow-a;
-- expected parse/validation/auth 4xx se namerno ne tretira kao server error spam.
+- expected parse/validation/auth 4xx se namerno ne tretira kao server error spam;
+- prvi E2E run otkrio je da se native `Headers.get` pozivao bez objektnog binding-a, što je izazivalo `ERR_INVALID_THIS`; poziv je ispravljen i dodat je regression unit test sa pravim `Headers` objektom.
 
 ---
 
 ## 4. Phase 3.11 — Public renderer decomposition
 
-**Status:** ✅ IMPLEMENTIRANO ARHITEKTONSKI / ⏳ ČEKA BUILD/BROWSER MERENJE
+**Status:** ✅ IMPLEMENTIRANO ARHITEKTONSKI / ⏳ ČEKA FINALNI BROWSER/DEPLOYED SMOKE
 
 Public SmartLink više ne hidrira kompletan profile renderer kao jedan veliki client boundary.
 
@@ -105,7 +106,7 @@ Editor/preview ostaje client-heavy namerno, jer je interaktivni workspace.
 
 ## 5. Phase 3.12 — Persistence expand/contract
 
-**Status:** 🟢 EXPAND KORAK IMPLEMENTIRAN / ⏳ ČEKA PRISMA + MIGRATION/E2E VALIDATION  
+**Status:** 🟢 EXPAND KORAK IMPLEMENTIRAN / 🟡 FUNKCIONALNI RERUN PENDING  
 **Contract cleanup:** ⏸ NAMERNO ODLOŽEN ZA KASNIJI RELEASE
 
 ### Novi first-class persistence model
@@ -118,9 +119,7 @@ Asset ownership/liveness više ne zavisi samo od JSON scanner-a.
 
 ### Važna rollback korekcija
 
-Prvobitna verzija 3.12 migracije je odmah uklanjala `appearance.__media`, `appearance.__engagement` i PageCard `customStyle.__*` envelope. To bi učinilo rollback na pre-3.12 aplikaciju rizičnim.
-
-Sada je uveden expand/contract model:
+Uveden je expand/contract model:
 
 1. migracija dodaje nove kolone/relacije;
 2. postojeći podaci se backfill-uju;
@@ -130,7 +129,9 @@ Sada je uveden expand/contract model:
 
 Tek nakon stabilnog production prozora ide zaseban contract release koji prestaje sa legacy read/write i potom uklanja wrapper ključeve.
 
-Ovo je namerno sporije, ali omogućava razuman app rollback.
+### E2E nalaz i fix
+
+Prvi funkcionalni E2E run otkrio je da server pravilno regeneriše ne-owned/client-supplied PageCard ID, ali Page-level `featuredLinkId` i campaign `primaryLinkId` ostaju na starom ID-u. `writePageChildren` sada vraća mapu client-id -> persisted-id, a profile repository u istoj transakciji remapuje engagement i dual-write legacy envelope pre finalnog readback-a.
 
 ---
 
@@ -138,7 +139,7 @@ Ovo je namerno sporije, ali omogućava razuman app rollback.
 
 ### 4.1 Static marketing vs dynamic runtime
 
-**Status:** ✅ IMPLEMENTIRANO / ⏳ ČEKA BUILD + DEPLOYED SMOKE
+**Status:** 🟢 IMPLEMENTIRANO / 🟡 CUSTOM-DOMAIN RERUN PENDING
 
 - uklonjen root `await connection()`;
 - application-host `/` je eksplicitno `force-static`;
@@ -146,48 +147,32 @@ Ovo je namerno sporije, ali omogućava razuman app rollback.
 - interni `__linkzzz` runtime nije javno dostupan na application host-u;
 - auth/dashboard/public SmartLink rute ostaju dinamičke kroz sopstvene `headers/cookies/DB` potrebe.
 
+Prvi E2E parity run pokazao je da internal rewrite target ne sme da se oslanja na običan `Host` koji route vidi nakon rewrite-a. Proxy sada eksplicitno propagira normalizovan originalni custom hostname kroz interni request header, a dynamic runtime koristi taj host za domain resolution. Application-host direct access i dalje ostaje blokiran.
+
 ### 4.2 CSP isolation
 
-**Status:** ✅ IMPLEMENTIRANO / ⏳ ČEKA BROWSER VALIDATION
+**Status:** ✅ IMPLEMENTIRANO / CORE TESTOVI GREEN
 
 - dynamic application/public runtime koristi nonce + `strict-dynamic`;
 - production marketing `/` nema potrebu za hydration JS i dobija `script-src 'none'`;
 - login/navigation sa marketinga radi kao native document navigation i ponovo ulazi u nonce-protected app surface;
 - development marketing zadržava lokalni Next HMR runtime;
-- CSP contract testovi su dodati.
+- CSP testovi proveravaju `script-src` direktivu, a ne pogrešno ceo policy string u kome `style-src` još namerno koristi `unsafe-inline`.
 
 ---
 
 ## 7. Phase 5 — UI / Accessibility
 
-### 5.1 Dialog primitive
+**Status:** ✅ TARGETED IMPLEMENTATION PASS / ⏳ MANUAL + VISUAL REVIEW OSTAJU
 
-**Status:** ✅ IMPLEMENTIRANO / ⏳ ČEKA KEYBOARD/MANUAL VALIDATION
+Uveden je zajednički `DialogShell` sa portalom, ARIA semantikom, focus trap/restore, Escape/backdrop politikom, body scroll lock-om i nested-dialog zaštitom.
 
-Uveden je zajednički `DialogShell` koji centralizuje:
+Dodatno:
 
-- portal;
-- `role=dialog/alertdialog` + `aria-modal`;
-- labelled/described wiring;
-- initial focus;
-- Tab/Shift+Tab trap;
-- Escape policy;
-- backdrop dismissal policy;
-- body scroll lock;
-- focus restore;
-- nested-dialog zaštitu.
-
-Migrirani su confirm/admin confirm, destination provider picker, change-password, reset-password i suspend-user modali.
-
-### 5.2 Keyboard/focus semantics
-
-**Status:** ✅ PRVI PASS IMPLEMENTIRAN / 🟡 ŠIRI A11Y PASS OSTAJE
-
-- analytics period tabs koriste roving `tabIndex` + Left/Right/Home/End;
-- SmartLink editor navigation dobija konzistentan `focus-visible` ring;
-- deo sitnog low-contrast navigation teksta je podignut na čitljiviji ton.
-
-Još ostaje fresh pass nad kompletnim trenutnim UI-em za contrast, form hints/errors, screen-reader semantiku i 320/360/390px edge cases.
+- customer/admin mobile drawers koriste isti focus sistem;
+- analytics i card-design tabs imaju roving keyboard navigation;
+- reusable editor switch/range/select/segmented controls imaju explicit labels/descriptions/radio/switch semantiku;
+- login/topbar/color picker/brand actions su dobili targeted focus i contrast cleanup.
 
 ---
 
@@ -200,63 +185,59 @@ Još ostaje fresh pass nad kompletnim trenutnim UI-em za contrast, form hints/er
 - `*.tsbuildinfo` je u `.gitignore`;
 - dev core-route prewarm je OFF by default i uključuje se samo sa `LINKZZZ_DEV_PREWARM=1`.
 
-### 6.2 Deployed production smoke
+### 6.2 Validation / deployed smoke
 
-**Status:** ✅ IMPLEMENTIRANO / ⏳ NIJE POKRENUTO
+**Status:** ✅ IMPLEMENTIRANO
 
-`e2e/production-smoke.spec.ts` radi protiv već deployovanog URL-a (`E2E_EXTERNAL_SERVER=1`) bez zahteva za disposable E2E bazom.
-
-Smoke proverava:
-
-- marketing `/` + production static CSP;
-- native `/ -> /login` navigaciju i nonce CSP login surface-a;
-- blokiranje internog custom-domain runtime path-a;
-- opcioni public SmartLink runtime preko `E2E_PUBLIC_SMART_LINK_SLUG`.
-
-### Još otvoreno
-
-- GitHub CI gate;
-- Prettier/format policy;
-- eventualno bundle-size budget posle prvog merenja.
-
-CI trigger se namerno ne uvodi usred ovog draft batch-a samo da automatski vrti testove koje smo eksplicitno odlučili da pokrenemo zajedno na kraju.
+- `npm run validate:core` radi Prisma generate -> unit -> typecheck -> lint -> production build;
+- `npm run validate:full` dodaje functional Playwright;
+- Windows runner koristi npm JS entrypoint umesto direktnog `spawnSync("npm.cmd")`;
+- `e2e/production-smoke.spec.ts` radi read-only protiv Preview/Production URL-a bez E2E DB mutacija.
 
 ---
 
-## 9. Phase 7 — Production readiness
+## 9. Validation ledger
 
-Pre release candidate-a mora postojati operativna potvrda za:
+### Core gate
 
-- `dev -> Preview`, `main -> Production` Vercel branch mapping;
-- odvojene Preview/Production env vrednosti;
-- Neon backup/PITR ili provider snapshot pre DB migracije;
-- `prisma migrate deploy`, nikad reset u produkciji;
-- Upstash kao production rate-limit backend;
-- S3-compatible object storage umesto local adaptera;
-- trusted proxy/geo header konfiguraciju;
-- custom-domain DNS/SSL lifecycle;
-- logging/monitoring i rollback proceduru.
+Na commit-u `74e98de` potvrđeno je:
 
-Detaljan redosled treba pratiti iz production release runbook-a u `docs/PRODUCTION_RELEASE_RUNBOOK.md`.
+- Prisma generate ✅
+- unit tests 177/177 ✅
+- TypeScript ✅
+- ESLint ✅
+- production build ✅
+
+Poslednji E2E fix commitovi su noviji od tog core gate-a, tako da pre merge-a mora postojati još jedan finalni exact-HEAD core/full pass.
+
+### Prvi functional Playwright run
+
+Rezultat:
+
+- **40 passed**
+- **8 skipped**
+- **6 failed**
+
+Šest failova su tri ista uzroka na desktop/mobile projektima:
+
+1. custom-domain API 500 zbog unbound native `Headers.get`;
+2. page-child engagement reference nije remapovan na novi server Card ID;
+3. custom-domain runtime parity 404 zbog gubitka originalnog custom host konteksta kroz internal rewrite.
+
+Sva tri uzroka su implementaciono popravljena na trenutnoj grani i čekaju rerun.
+
+`pg` deprecation warning za paralelni `client.query()` ostaje tech debt za odvojeni cleanup; nije uzrok trenutnih test failova.
 
 ---
 
-## 10. Final mass validation gate
+## 10. Sledeći gate
 
-Ovaj draft se ne mergeuje u `dev` dok sledeći paket nije zelen:
+Prvo pokrenuti samo tri pogođena E2E spec-a radi brzog feedback-a. Kada su zelena, pokrenuti kompletan functional suite sa jednim workerom. Posle toga:
 
-1. `npx prisma generate`;
-2. migracije na izolovanoj disposable DB;
-3. `npm test`;
-4. `npm run typecheck`;
-5. `npm run lint`;
-6. `npm run build`;
-7. functional Playwright;
-8. keyboard/a11y smoke;
-9. visual diff review, bez slepog snapshot update-a;
-10. deployed production smoke na Vercel Preview-u;
-11. manual desktop/mobile smoke.
+1. exact-HEAD `validate:core` ili `validate:full`;
+2. manual desktop/mobile smoke;
+3. visual diff review;
+4. Vercel Preview deployed production smoke;
+5. tek onda PR ready/merge odluka.
 
-Posle prvog zelenog mass gate-a uključuje se stalni GitHub CI quality gate. Nakon production compatibility prozora radi se zaseban Phase 3.12 contract cleanup.
-
-Git je skladište istorije. Nije dokaz da kod radi. Zato ovaj PR ostaje draft dok stvarno ne prođe gate.
+Git je skladište istorije. Nije dokaz da kod radi. Zato PR ostaje draft dok browser/database gate stvarno ne bude zelen.
