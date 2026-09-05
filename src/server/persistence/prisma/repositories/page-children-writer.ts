@@ -159,6 +159,8 @@ export async function writePageChildren(
   await writeSocialLinks(tx, pageId, data);
   await writePageStats(tx, pageId, data);
   await writePageContentAssetReferences(tx, pageId, data);
+
+  return cardIdMap;
 }
 
 async function writeSocialLinks(
