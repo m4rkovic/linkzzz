@@ -80,10 +80,28 @@ test("modal surfaces use the shared accessible dialog boundary", () => {
     "../src/components/admin/user/reset-password-modal.tsx",
     "../src/components/admin/user/suspend-user-modal.tsx",
     "../src/components/destinations/destination-picker.tsx",
+    "../src/components/dashboard/dashboard-shell.tsx",
+    "../src/components/admin/admin-shell.tsx",
   ];
 
   for (const path of modalFiles) {
     const source = readFileSync(new URL(path, import.meta.url), "utf8");
     assert.match(source, /DialogShell|ConfirmDialog/, path);
   }
+});
+
+test("editor subtabs expose keyboard-accessible tab semantics", () => {
+  const source = readFileSync(
+    new URL("../src/components/links/editor/link-editor-primitives.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /role="tablist"/);
+  assert.match(source, /role="tab"/);
+  assert.match(source, /aria-selected/);
+  assert.match(source, /tabIndex=/);
+  assert.match(source, /ArrowRight/);
+  assert.match(source, /ArrowLeft/);
+  assert.match(source, /Home/);
+  assert.match(source, /End/);
 });

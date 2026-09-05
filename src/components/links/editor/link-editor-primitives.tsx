@@ -1,4 +1,4 @@
-import type { ElementType, ReactNode } from "react";
+import type { ElementType, KeyboardEvent, ReactNode } from "react";
 import type { LinkCardAspectRatio, LinkCardLayout } from "@/types/profile";
 
 type EditorSubtab = {
@@ -19,7 +19,12 @@ export function EditorSubtabs({
   onChange: (tab: string) => void;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap gap-2 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-2" aria-label={label}>
+    <div
+      className="mb-5 flex flex-wrap gap-2 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-2"
+      role="tablist"
+      aria-label={label}
+      aria-orientation="horizontal"
+    >
       {tabs.map((tab) => {
         const selected = tab.id === activeTab;
 
@@ -27,18 +32,21 @@ export function EditorSubtabs({
           <button
             key={tab.id}
             type="button"
-            aria-pressed={selected}
+            role="tab"
+            aria-selected={selected}
+            tabIndex={selected ? 0 : -1}
             onClick={() => onChange(tab.id)}
+            onKeyDown={(event) => handleSubtabKeyDown(event, tabs, tab.id, onChange)}
             className={`min-w-[128px] flex-1 rounded-xl px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 ${
               selected
                 ? "bg-white text-zinc-950 shadow-sm ring-1 ring-brand-violet/20"
-                : "text-zinc-500 hover:bg-white/70 hover:text-zinc-800"
+                : "text-zinc-600 hover:bg-white/70 hover:text-zinc-900"
             }`}
           >
             <span className={`block text-xs font-black ${selected ? "text-brand-violet-strong" : "text-zinc-700"}`}>
               {tab.label}
             </span>
-            <span className="mt-0.5 block truncate text-[10px] leading-4 text-zinc-400">
+            <span className="mt-0.5 block truncate text-[10px] leading-4 text-zinc-500">
               {tab.description}
             </span>
           </button>
@@ -48,12 +56,39 @@ export function EditorSubtabs({
   );
 }
 
+function handleSubtabKeyDown(
+  event: KeyboardEvent<HTMLButtonElement>,
+  tabs: readonly EditorSubtab[],
+  currentId: string,
+  onChange: (tab: string) => void,
+) {
+  const currentIndex = tabs.findIndex((tab) => tab.id === currentId);
+  if (currentIndex < 0) return;
+
+  let nextIndex: number | undefined;
+  if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
+  if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+  if (event.key === "Home") nextIndex = 0;
+  if (event.key === "End") nextIndex = tabs.length - 1;
+  if (nextIndex === undefined) return;
+
+  event.preventDefault();
+  const nextTab = tabs[nextIndex];
+  if (!nextTab) return;
+
+  onChange(nextTab.id);
+  const tabButtons = Array.from(
+    event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? [],
+  );
+  tabButtons[nextIndex]?.focus();
+}
+
 export function EditorSection({ title, description, icon: Icon, children }: { title: string; description: string; icon?: ElementType; children: ReactNode }) {
   return (
     <section>
       <div className="mb-4 flex items-start gap-3">
-        {Icon && <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-violet-soft text-brand-violet-strong"><Icon size={16} /></div>}
-        <div><h3 className="text-sm font-bold text-zinc-950">{title}</h3><p className="mt-1 text-xs leading-5 text-zinc-400">{description}</p></div>
+        {Icon && <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-violet-soft text-brand-violet-strong"><Icon size={16} aria-hidden="true" /></div>}
+        <div><h3 className="text-sm font-bold text-zinc-950">{title}</h3><p className="mt-1 text-xs leading-5 text-zinc-500">{description}</p></div>
       </div>
       {children}
     </section>
@@ -61,11 +96,11 @@ export function EditorSection({ title, description, icon: Icon, children }: { ti
 }
 
 export function StatusBadge({ children }: { children: ReactNode }) {
-  return <span className="rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-semibold text-zinc-500">{children}</span>;
+  return <span className="rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-semibold text-zinc-600">{children}</span>;
 }
 
 export function ActionButton({ label, onClick, danger = false, children }: { label: string; onClick: () => void; danger?: boolean; children: ReactNode }) {
-  return <button type="button" title={label} aria-label={label} onClick={onClick} className={`flex h-10 w-9 items-center justify-center rounded-xl transition sm:w-10 ${danger ? "text-zinc-400 hover:bg-red-50 hover:text-red-600" : "text-zinc-400 hover:bg-brand-violet-soft hover:text-brand-violet-strong"}`}>{children}</button>;
+  return <button type="button" title={label} aria-label={label} onClick={onClick} className={`flex h-10 w-9 items-center justify-center rounded-xl transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 sm:w-10 ${danger ? "text-zinc-500 hover:bg-red-50 hover:text-red-600" : "text-zinc-500 hover:bg-brand-violet-soft hover:text-brand-violet-strong"}`}>{children}</button>;
 }
 
 export function CardLayoutIcon({ layout, selected }: { layout: LinkCardLayout; selected: boolean }) {
@@ -80,7 +115,7 @@ export function CardLayoutIcon({ layout, selected }: { layout: LinkCardLayout; s
 
 export function AspectRatioButton({ label, ratio, selected, onClick }: { label: string; ratio: LinkCardAspectRatio; selected: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`flex min-h-[90px] flex-col items-center justify-center rounded-xl border p-3 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 ${selected ? "border-brand-violet-strong bg-brand-violet-strong text-white shadow-sm" : "border-zinc-200 bg-white text-zinc-700 hover:border-brand-violet/50 hover:bg-brand-violet-soft/40"}`}>
+    <button type="button" aria-pressed={selected} onClick={onClick} className={`flex min-h-[90px] flex-col items-center justify-center rounded-xl border p-3 transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 ${selected ? "border-brand-violet-strong bg-brand-violet-strong text-white shadow-sm" : "border-zinc-200 bg-white text-zinc-700 hover:border-brand-violet/50 hover:bg-brand-violet-soft/40"}`}>
       <AspectRatioShape ratio={ratio} selected={selected} />
       <span className="mt-3 text-[11px] font-bold">{label}</span>
     </button>
