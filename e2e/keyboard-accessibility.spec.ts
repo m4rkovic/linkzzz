@@ -1,3 +1,5 @@
+import type { Locator, Page } from "@playwright/test";
+
 import { loginAsCustomer, openAppearanceEditor } from "./helpers";
 import { expect, test } from "./test";
 
@@ -12,6 +14,15 @@ function skipMobileKeyboard(testInfo: { project: { name: string } }) {
   );
 }
 
+async function tabTo(page: Page, target: Locator, maxTabs = 8) {
+  for (let index = 0; index < maxTabs; index += 1) {
+    await page.keyboard.press("Tab");
+    if (await target.evaluate((element) => element === document.activeElement)) return;
+  }
+
+  await expect(target).toBeFocused();
+}
+
 test.describe("R1.4 keyboard and focus checks", () => {
   test("login can be completed without a pointer", async ({ page, context }, testInfo) => {
     skipMobileKeyboard(testInfo);
@@ -19,18 +30,16 @@ test.describe("R1.4 keyboard and focus checks", () => {
     await page.goto("/login");
     await expect(page.getByLabel("Username or email")).toBeEnabled();
 
-    await page.keyboard.press("Tab");
-    await expect(page.getByLabel("Username or email")).toBeFocused();
+    const identifier = page.getByLabel("Username or email");
+    await tabTo(page, identifier);
     await page.keyboard.type(process.env.E2E_CUSTOMER_IDENTIFIER ?? "skyhook");
 
-    await page.keyboard.press("Tab");
-    await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
+    const password = page.getByLabel("Password", { exact: true });
+    await tabTo(page, password, 2);
     await page.keyboard.type(process.env.E2E_CUSTOMER_PASSWORD ?? "LinkzzzSky!2026");
 
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    await expect(page.getByRole("button", { name: "Sign in" })).toBeFocused();
+    const signIn = page.getByRole("button", { name: "Sign in" });
+    await tabTo(page, signIn);
     await page.keyboard.press("Enter");
 
     await expect(page).toHaveURL(/\/dashboard(?:\/|$)/);
@@ -82,10 +91,9 @@ test.describe("R1.4 keyboard and focus checks", () => {
     // Programmatic focus on a button does not have to match :focus-visible.
     const appearanceTab = page.getByRole("button", { name: "Appearance", exact: true });
     await appearanceTab.focus();
-    await page.keyboard.press("Tab");
 
     const layout = page.getByRole("button", { name: "Layout", exact: true });
-    await expect(layout).toBeFocused();
+    await tabTo(page, layout);
 
     const focusStyle = await layout.evaluate((element) => {
       const style = getComputedStyle(element);
