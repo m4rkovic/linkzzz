@@ -28,8 +28,16 @@ export function useDialogFocus<T extends HTMLElement>({
   const containerRef = useRef<T>(null);
   const onCloseRef = useRef(onClose);
   const closeOnEscapeRef = useRef(closeOnEscape);
-  onCloseRef.current = onClose;
-  closeOnEscapeRef.current = closeOnEscape;
+
+  // Keep the latest policy/callback available to the stable keydown listener
+  // without forcing the focus-lock effect to tear down on ordinary rerenders.
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    closeOnEscapeRef.current = closeOnEscape;
+  }, [closeOnEscape]);
 
   useEffect(() => {
     if (!open) return;
