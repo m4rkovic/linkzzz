@@ -42,3 +42,11 @@ test("request correlation IDs accept only bounded safe values", () => {
     undefined,
   );
 });
+
+test("request correlation IDs support native Headers without losing method binding", () => {
+  const headers = new Headers({
+    "x-request-id": "req_native_123",
+  });
+
+  assert.equal(getRequestCorrelationId(headers), "req_native_123");
+});
