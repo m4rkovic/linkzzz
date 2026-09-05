@@ -16,8 +16,7 @@ test("admin creates a Pro customer from the real form", async ({ page }) => {
   const customer = createUniqueCustomer("admin ui", { plan: "PRO" });
 
   try {
-    await loginAsAdmin(page);
-    await page.goto("/admin/users/new");
+    await loginAsAdmin(page, "/admin/users/new");
 
     await expect(page.getByLabel("Display name")).toBeEnabled();
     await page.getByLabel("Display name").fill(customer.displayName);
@@ -91,9 +90,13 @@ test("customer publishes a Landing Page that records a public view", async ({
     await loginAsAdmin(page);
     await createCustomerViaAdminApi(page, customer);
     await context.clearCookies();
-    await loginViaApi(page, customer.username, customer.password, "CUSTOMER");
-
-    await page.goto("/dashboard/links");
+    await loginViaApi(
+      page,
+      customer.username,
+      customer.password,
+      "CUSTOMER",
+      "/dashboard/links",
+    );
     const landingPage = page
       .getByRole("article")
       .filter({
@@ -153,9 +156,13 @@ test("mobile publish is blocked while Landing Page edits are unsaved", async ({
     await loginAsAdmin(page);
     await createCustomerViaAdminApi(page, customer);
     await context.clearCookies();
-    await loginViaApi(page, customer.username, customer.password, "CUSTOMER");
-
-    await page.goto("/dashboard/links");
+    await loginViaApi(
+      page,
+      customer.username,
+      customer.password,
+      "CUSTOMER",
+      "/dashboard/links",
+    );
     const landingPage = page
       .getByRole("article")
       .filter({
