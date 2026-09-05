@@ -62,6 +62,17 @@ npm.cmd test
 npm.cmd run build
 ```
 
+For the combined fail-fast release checks use:
+
+```powershell
+npm.cmd run validate:core
+npm.cmd run validate:full
+```
+
+`validate:core` runs Prisma generation, unit tests, typecheck, lint and the
+production build. `validate:full` adds the functional Playwright suite with one
+worker after the core gate.
+
 The Playwright suite uses Chromium for desktop tests and WebKit for the mobile iPhone profile, so install both browsers once per Playwright version:
 
 ```powershell
@@ -75,6 +86,11 @@ the value is missing or points to the normal application database. It applies
 migrations, seeds deterministic fixtures and removes only `e2e_`-prefixed
 customers. The application continues to use its normal runtime contracts; no
 authentication, rate-limit or storage behavior is changed to satisfy tests.
+
+When a full functional run exposes a small number of deterministic failures,
+rerun only those exact specs while fixing them, then finish with one complete
+functional run. This keeps the feedback loop short without treating a targeted
+rerun as the final release gate.
 
 The default `test:e2e` command runs functional and accessibility checks. Visual
 regression remains explicit because new screenshot baselines must be inspected
