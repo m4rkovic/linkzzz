@@ -13,7 +13,7 @@ import {
 import { isLinkDimmed, useFocusHighlight } from "@/features/links/use-focus-highlight";
 import { useScheduleClock } from "@/features/scheduling/use-schedule-clock";
 import { trackSmartLinkExternalEvent } from "@/components/public/smart-link-tracking";
-import { ClassicLinkButton } from "@/components/public/classic-profile-renderer";
+import PublicClassicLinkButton from "@/components/public/public-classic-link-button";
 import { BentoGrid, BentoGridItem } from "@/components/public/bento-grid";
 import { VisualLinkCard } from "@/components/public/visual-link-card";
 import { resolveVisualProfileLayout } from "@/components/public/visual-profile-layout";
@@ -55,7 +55,7 @@ export default function PublicProfileLinkRuntime({
         style={{ display: "grid", gap: `${profile.appearance.buttonSpacing}px` }}
       >
         {visibleLinks.map(({ link, state }) => (
-          <ClassicLinkButton
+          <PublicClassicLinkButton
             key={link.id}
             profile={profile}
             link={focusedLink?.id === link.id ? focusedLink : link}

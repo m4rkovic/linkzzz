@@ -1,217 +1,280 @@
 # LINKZZZ — AUDIT STATUS / ROADMAP REFRESH
 
 **Datum:** 2026-09-05  
-**Bazni commit:** `bd955a2d62efab825334dc2ca7a80e432d5e260b` (`main` i `dev` su bili poravnati na ovom commit-u)  
+**Bazni integracioni commit:** `bd955a2d62efab825334dc2ca7a80e432d5e260b`  
 **Radna grana:** `audit/phase3-hardening-20260905`  
-**Aktuelni branch commit:** `9ba3f20c01c411eb9fcf2f011d6baaeac35b840f`  
-**Osnova:** originalni `LINKZZZ_CODEBASE_AUDIT_REPORT(1).md` + follow-up od 2026-09-04 + direktna provera aktuelnog koda.
+**Status validacije ove grane:** implementation batch; mass validation još nije pokrenut.
 
-> Ovaj dokument je status ledger, ne novi šest-agent full audit od nule. Stavke označene kao zatvorene proverene su u aktuelnom kodu ili u integrisanom hardening batch-u. Novi branch nije masovno testiran u trenutku pisanja; poslednji integracioni commit pre ove grane navodi 172/172 unit testa, typecheck, lint, production build i 46 aktivnih Playwright testova kao prolazne.
+> Ovo je živi audit ledger nad aktuelnim kodom. Originalni audit i follow-up više nisu pouzdan opis trenutnog stanja jer je veliki deo nalaza već integrisan ili sada implementiran na ovoj grani.
 
 ---
 
 ## 1. Executive status
 
-Aplikacija je u znatno ozbiljnijem stanju nego na originalnom auditu. Najveći rizici iz Phase 0/1 više nisu dominantni problem: tenant granice, admin mutacije, kvote, geo/shield korektnost, analytics ingest, baza i auth hardening su značajno ojačani.
+Najveći originalni rizici iz runtime/data-integrity/security faza više nisu dominantni problem. Tenant granice, admin mutacije, kvote, analytics ingest, geo/shield korektnost, custom-domain lifecycle, auth hardening i DB query support su značajno ojačani.
 
-Trenutni glavni dug više nije "da li sistem može da sačuva podatke bez race-a", već:
+Na ovoj grani su dodatno implementirani:
 
-1. **public renderer arhitektura** — core javna stranica je i dalje veliki client component;
-2. **CSP/dynamic rendering kompromis** — root `connection()` drži ceo tree dinamičkim zbog per-request nonce strategije;
-3. **JSON domain debt** — deo Page/Card domena i dalje živi u `__` ključevima umesto u relacijama;
-4. **UI/A11y sistematizacija** — prethodni contrast/dialog nalazi nisu još ponovo kompletno auditovani posle UI izmena;
-5. **release validation debt** — novi Phase 3.10 branch batch namerno nije testiran pojedinačno; plan je završni mass validation.
+- **Phase 3.10:** observability completion + centralizovan API request-session resolution;
+- **Phase 3.11:** javni Landing Page renderer dobija server-rendered shell i male client runtime islands umesto hidracije kompletnog javnog profila;
+- **Phase 3.12:** Page/PageCard media i runtime konfiguracija izlaze iz skrivenih `__*` JSON wrapper ključeva, a gallery asset liveness dobija relacijsku tabelu i FK.
+
+Glavni preostali tehnički dug posle ovog batch-a je:
+
+1. root `connection()` / CSP nonce strategija;
+2. preostali širi JSON domain modeli koji su legitimno dokument-style podaci, ali treba proceniti gde se isplati dalja normalizacija;
+3. fresh UI/accessibility pass posle nedavnih UI izmena;
+4. production-mode smoke E2E, CI i tooling;
+5. finalna mass validacija cele grane.
 
 ---
 
-## 2. Potvrđeno zatvoreno od originalnog audita
+## 2. Potvrđeno zatvoreno pre ove grane
 
 ### Runtime / tenant / concurrency
 
-- **RT-005** — Prisma client/pool problem zatvoren.
-- **RT-002** — custom-domain host/path gating postoji u `src/proxy.ts` i `host-routing` sloju.
-- **RT-003** — SmartLink geo više nije zaobilazan preko outbound resolvera.
-- **RACE-001** — SmartLink kvote su zaštićene server-side i concurrency putanja je testirana na prethodnom integracionom batch-u.
+- **RT-005** — Prisma client/pool lifecycle hardenovan.
+- **RT-002** — custom-domain host/path gating postoji u `src/proxy.ts` i host-routing sloju.
+- **RT-003** — public outbound putanja poštuje geo/runtime odluke.
+- **RACE-001** — SmartLink kvote imaju server-side concurrency zaštitu.
 - **INT-001 / RACE-005** — admin account/subscription mutacije koriste transakcije + per-user lock.
-- **INT-105** — jedan loš customer zapis više ne ruši ceo admin read path; last landing-page invariant je zaštićen.
+- **INT-105** — admin read i last-Landing-Page invariant su hardenovani.
 
 ### API / validation
 
-- **API-002** — profile validator više ne vraća originalni attacker-controlled objekat. `profile-validation.ts` završava kroz `parseValidatedProfilePayload`, a parser eksplicitno pick-uje dozvoljena polja, uključujući nested objekte.
-- **API-003/004** — analytics ingest ima rate limit pre obrade i byte-limited JSON reader.
-- **API-005 / OBS-002** — admin/custom-domain rute imaju typed known errors i safe generic 500 za neočekivane greške.
+- **API-002** — profile persistence koristi allowlist parser umesto vraćanja attacker-controlled objekta.
+- **API-003/004** — analytics ingest ima rate limit pre obrade i bounded body parsing.
+- **API-005 / OBS-002** — typed known errors + safe generic 500 za kritične admin/domain rute.
 
-### Analytics / performance / DB
+### Analytics / DB / performance
 
-- **AN-001 / PERF-001/002** — analytics dashboard više ne učitava lifetime event stream u Node radi glavne agregacije. `PrismaAnalyticsRepository.getDashboardData()` koristi `queryAnalyticsPeriodSummaries()` i summary builder.
-- **SUB-002 ostatak** — analytics repository koristi centralni `getSubscriptionAccess`.
-- **DB-001** — dodati su relevantni kompozitni analytics indeksi.
-- **INT-102** — baza ima `CustomDomain_active_requires_verification` CHECK.
-- **PERF-003** — PageCard/Social/Stat update više nije per-row upsert petlja; postoje batch update-i preko `jsonb_to_recordset` + `createMany`.
+- **AN-001 / PERF-001/002** — analytics dashboard koristi SQL period summaries umesto lifetime raw-event agregacije u Node-u.
+- **SUB-002** — analytics access koristi centralni subscription access model.
+- **DB-001** — dodati query-support kompozitni indeksi.
+- **INT-102** — DB CHECK: ACTIVE custom domain zahteva `verifiedAt`.
+- **PERF-003** — PageCard/Social/Stat writes su batch-ovani.
 
-### Custom domains
+### Auth / domains / assets / Shield
 
-- **DOM-001** — re-verification ACTIVE domena više ga ne demotuje.
-- **DOM-002/003** — uvedeni su PENDING claim TTL, reclaim flow i verification freshness.
-- ACTIVE routing zahteva svežu verifikaciju; istekla verifikacija prestaje da bude routable.
-- postoji admin release flow i audit akcije za reclaim/release.
-
-### Assets
-
-- **AST-002** — postoji orphan sweeper i admin endpoint za sweep.
-- uvedena je per-customer storage kvota (`ASSET_STORAGE_QUOTA_BYTES`).
-- production storage adapter je hardenovan u odnosu na raniji audit.
-
-### Auth
-
-- **AUTH-005** — unknown-account login koristi realan dummy scrypt hash radi timing izjednačavanja.
-- **AUTH-001** — novi hash policy je podignut na scrypt `N=32768, r=8, p=3`, uz `needsRehash` za stare hash-eve.
-- **ARCH-006 (novi cleanup)** — request-cookie/session resolution je centralizovan u `server/auth/request-session.ts`; SmartLink, Page, Duplicate, Custom Domain i Asset API rute više ne kopiraju isti token-resolution kod.
-
-### Traffic Shield
-
-- `STANDARD` i `STRICT` više nisu mrtvo-dupli modovi: UNKNOWN UA je PREVIEW u STANDARD, BLOCK u STRICT.
-- poznati social/search crawleri i dalje dobijaju preview umesto distribucionog 404-a.
+- custom-domain PENDING TTL, reclaim i verification freshness su implementirani;
+- admin domain release + audit flow postoji;
+- asset quota i orphan sweeper postoje;
+- scrypt policy je podignut i postoji `needsRehash`;
+- unknown-account login koristi dummy real-policy hash;
+- Traffic Shield STANDARD/STRICT imaju različitu semantiku;
+- known social/search crawler-i dobijaju preview po policy-ju.
 
 ---
 
-## 3. OBS-001 — korigovan status
+## 3. Phase 3.10 — Observability completion
 
-### Završeno na infrastrukturi
+**Status:** ✅ IMPLEMENTIRANO / ⏳ ČEKA MASS VALIDATION
 
-- strukturirani JSON logger (`server-logger.ts`);
-- `info/warn/error` nivoi;
-- redaction credential/token/cookie/session polja;
-- request correlation ID (`x-request-id` / `x-vercel-id`);
-- Next `instrumentation.ts` `onRequestError` hook za uncaught request greške.
+### Implementirano
 
-### Pravilo usvajanja
+- typed `InvalidImageError` odvaja user validation od storage/infrastructure failure-a;
+- unexpected asset storage failure → structured log + safe 500;
+- asset persistence failure → cleanup + structured log + safe 500;
+- rejected storage cleanup više se ne guta kroz `Promise.allSettled`;
+- request correlation ID propagira se u custom-domain lokalne error putanje;
+- centralizovan request session helper uklanja copy/paste cookie resolution iz API ruta;
+- AST contract test sprečava obrazac `catch -> status:500` bez `logServerError` ili rethrow-a.
 
-Nije korektno zahtevati `logServerError` u svakom `catch` bloku. Parse/validation/authorization catch-evi su očekivani 4xx i ne treba da zatrpavaju error log.
+### Observability invariant
 
-Pravi invariant je:
-
-> **Svaki neočekivani exception koji route lokalno pretvara u 5xx mora biti logovan sa kontekstom ili ponovo bačen tako da ga `onRequestError` vidi.**
-
-Na baznom commit-u konkretan gap je bio `POST /api/assets/images`: storage/persistence failure mogao je biti pretvoren u response bez punog observability traga; cleanup preko `Promise.allSettled` je takođe mogao tiho da proguta neuspešno brisanje objekta.
-
-### Phase 3.10 fix na ovoj grani
-
-- typed `InvalidImageError` odvaja očekivanu image-validaciju od storage/infrastructure grešaka;
-- neočekivani storage failure: structured log + safe 500;
-- neočekivani asset persistence failure: cleanup + structured log + safe 500;
-- storage cleanup rejection više nije tih;
-- custom-domain lokalni error path nosi request correlation ID;
-- dodat je AST-based contract test `tests/api-observability-contract.test.ts` koji failuje ako `catch` direktno vraća `status: 500` bez `logServerError()` ili `throw`.
-
-**Status:** 🟢 Phase 3.10 implementiran na branch-u, ali još nije izvršen mass test.
+Expected parse/validation/auth 4xx nije error-log događaj. Neočekivani exception koji route lokalno pretvara u 5xx mora biti logovan sa kontekstom ili rethrow-ovan ka Next `onRequestError` hook-u.
 
 ---
 
-## 4. Otvorene velike stavke
+## 4. Phase 3.11 — Public renderer decomposition
 
-### ARCH-001 / NEXT-001 — public renderer je i dalje client-heavy
+**Status:** ✅ IMPLEMENTIRANO ARHITEKTONSKI / ⏳ ČEKA MASS VALIDATION I BUNDLE MERENJE
 
-`src/components/public/public-profile.tsx` i dalje počinje sa `"use client"` i hidrira kompletan profile renderer. Pozitivno: React `ElementType` više nije deo osnovnog profile domain tipa, pa je najgora serialization prepreka uklonjena. Sledeći korak je server-rendered shell + mali client islands za share, countdown, sensitive-content gate i tracking.
+### Pre
 
-**Prioritet:** HIGH zbog javne money-page putanje i bundle/hydration troška.
+`public-profile.tsx` je bio `"use client"` boundary oko kompletnog javnog profila. Time su static identity, background, socials, stats, hero, footer i ostatak shell-a ulazili u hydration putanju zajedno sa stvarno interaktivnim delovima.
 
-### NEXT-002 — root `connection()` i CSP nonce
+### Sada
 
-`src/app/layout.tsx` i dalje zove `await connection()`, pa ceo route tree ostaje request-dynamic.
+Public runtime koristi novi server component:
 
-Bitna korekcija starog roadmap-a: ovo nije bezbedan "obriši jednu liniju" fix. `src/proxy.ts` generiše per-request CSP nonce i prosleđuje CSP request header Next-u. Next-ov nonce model i statički HTML nisu nešto što treba naslepo razdvojiti. Potrebna je svesna odluka:
+- `src/components/public/public-profile-server.tsx`
 
-- zadržati nonce i prihvatiti dynamic shell; ili
-- preći na CSP strategiju kompatibilnu sa statičkim/ISR output-om, pa tek onda ukloniti `connection()`.
+Server renderuje:
 
-**Prioritet:** HIGH, ali tek uz CSP regression testove.
+- page shell i background;
+- classic identity;
+- visual hero/identity shell;
+- avatar/name/bio/location;
+- socials;
+- profile stats;
+- visitor messaging;
+- footer.
 
-### ARCH-007 / AST-003 — JSON domain debt
+Client islands su izdvojeni po odgovornosti:
 
-`page-children-writer.ts` i dalje skladišti domenske podatke kroz `__imageUrl`, `__availability`, `__sensitiveContent`, `__geo`, `__engagement` i slične JSON ključeve. To je funkcionalno, ali slabo za FK/index/query/invariant nivo.
+- `public-profile-share.tsx` — Web Share / clipboard fallback;
+- `public-social-tracking.tsx` — external GA/Meta social-click event delegation;
+- `public-profile-link-runtime.tsx` — scheduling/focus/highlight i card interaction;
+- `public-profile-content-runtime.tsx` — countdown/scheduled blocks/email-capture runtime;
+- `public-visual-sticky-header.tsx` — IntersectionObserver + sticky share UI.
 
-Gallery asset reference lifecycle je ojačan sweeperom/kvotom, ali pravi završetak je normalizovana tabela za gallery/media i uklanjanje literal-key JSON walker zavisnosti.
+`public-runtime.tsx` sada renderuje `PublicProfileServer` umesto starog full-client `PublicProfile` boundary-ja.
 
-**Prioritet:** MEDIUM-HIGH.
+### Napomena
 
-### UI / A11y
+Ovo je arhitektonski split, ali finalnu bundle/hydration uštedu ne proglašavamo dok se ne izmeri production build. Postojeći editor/preview rendereri ostaju client-heavy jer je to opravdan interaktivni workspace, a ne public money-page.
 
-Originalni audit je imao sistemske contrast i modal-focus nalaze. Od tada je UI dosta menjan, zato stare brojke ne treba nekritički prepisivati kao aktuelne. Potreban je novi ciljano pokrenut UI/A11y pass nakon arhitektonskog hardening-a.
+---
 
-**Prioritet:** MEDIUM-HIGH pre javnog launch-a.
+## 5. Phase 3.12 — Persistence model cleanup
 
-### Tooling
+**Status:** ✅ IMPLEMENTIRANO MIGRACIONO / ⏳ ČEKA PRISMA GENERATE + MIGRATION/E2E VALIDATION
 
-- Prettier i dalje nije deo toolchain-a.
-- E2E server i dalje pokreće dev server (`scripts/start-e2e-server.ts` → `scripts/dev-server.mjs`), ne production `next start` artifact.
+### Uklonjeni skriveni Page JSON wrapper-i
+
+Ranije je `Page.appearance` nosio:
+
+- `__media.avatarUrl`;
+- `__media.coverImageUrl`;
+- `__engagement`.
+
+Sada postoje eksplicitna polja:
+
+- `Page.avatarUrl`;
+- `Page.coverImageUrl`;
+- `Page.engagement`.
+
+Migracija backfill-uje postojeće podatke i uklanja te ključeve iz `appearance` JSON-a.
+
+### Uklonjeni PageCard wrapper-i
+
+Ranije je `PageCard.customStyle` bio transportni kontejner:
+
+- `value`;
+- `__imageUrl`;
+- `__imageAlt`;
+- `__availability`;
+- `__sensitiveContent`;
+- `__geo`.
+
+Sada PageCard direktno ima:
+
+- `imageUrl`;
+- `imageAlt`;
+- `availability`;
+- `sensitiveContent`;
+- `geoConfig`;
+- `customStyle` sadrži samo stvarni custom-style domain payload.
+
+Migracija podržava i wrapper-format i starije direct-customStyle redove pri backfill-u.
+
+### Gallery/media asset relacija
+
+Dodata je relacijska tabela:
+
+`PageContentAssetReference(pageId, blockId, itemId, assetId, sortOrder)`
+
+sa FK vezama ka `Page` i `Asset`.
+
+Efekti:
+
+- gallery asset više nije "živ" samo zato što literal-key JSON scanner pronađe `imageAssetId`;
+- asset cleanup/orphan detection koristi Prisma relacije (`contentFor: none`);
+- page save u istoj transakciji rebuild-uje gallery asset references;
+- migration backfill-uje reference iz postojećeg `contentBlocks` JSON-a uz ownership join na isti SmartLink;
+- asset delete/cleanup više ne zavisi od JSON walker-a za ovaj invariant.
+
+`contentBlocks` ostaje JSON dokument jer heterogeni block payload i dalje ima smisla kao document model. Asset ownership/liveness, međutim, više nije skriven samo u tom dokumentu.
+
+---
+
+## 6. Otvorene velike stavke
+
+### NEXT-002 — root `connection()` / CSP
+
+`src/app/layout.tsx` i dalje koristi `await connection()` zato što `src/proxy.ts` generiše per-request CSP nonce.
+
+Ovo nije bezbedan one-line delete. Sledeća faza mora zajedno da reši:
+
+- nonce strategiju;
+- dynamic/static granice;
+- third-party tracking CSP zahteve;
+- regression test za security headers.
+
+**Prioritet:** HIGH.
+
+### Persistence follow-up
+
+Phase 3.12 uklanja najproblematičniji `__*` transport debt i gallery asset JSON liveness. Preostali JSON (`appearance`, `contentBlocks`, SmartLink configs) treba normalizovati samo tamo gde postoji konkretna potreba za FK/index/query/constraint semantikom, ne zato što je JSON ideološki ružan.
+
+**Prioritet:** MEDIUM.
+
+### UI / Accessibility
+
+Stari audit brojke za contrast/modal fokus više se ne smeju tretirati kao aktuelne jer je UI značajno menjan. Potreban je fresh pass nad trenutnim interfejsom:
+
+- contrast;
+- reusable Dialog/focus trap/restore;
+- tabs/labels/live errors;
+- 320/360/390px edge cases;
+- keyboard + screen-reader smoke.
+
+**Prioritet:** MEDIUM-HIGH pre launch-a.
+
+### Tooling / release engineering
+
+- `tsconfig.tsbuildinfo` treba ignorisati;
+- Prettier/format check nije uveden;
+- production-mode E2E smoke još ne postoji;
+- GitHub CI gate treba dodati;
+- dev prewarm default treba ponovo proceniti.
 
 **Prioritet:** MEDIUM.
 
 ---
 
-## 5. Novi nalazi / korekcije prethodnih nalaza
+## 7. Sledeći roadmap
 
-### NEW-OBS-001 — asset storage error classification
+### Phase 4 — CSP / rendering performance
 
-Image signature validation i S3/local infrastructure failure su ranije oba izlazili kroz običan `Error`. Route je zbog toga mogao da vrati storage outage kao 400 i čak prosledi `error.message` browseru.
+1. definisati CSP nonce vs static/ISR strategiju;
+2. tek zatim ukloniti ili ograničiti root `connection()`;
+3. izmeriti public route JS payload/hydration posle Phase 3.11;
+4. profilisati public request query count.
 
-**Rešeno u Phase 3.10:** typed `InvalidImageError` ostaje 400; neočekivani storage failure postaje safe 500 + structured log.
+### Phase 5 — Persistence / domain follow-up
 
-### NEW-OBS-002 — cleanup failure je bio nevidljiv
+1. proveriti migration/backfill na realnoj dev kopiji;
+2. ukloniti preostale legacy read fallback-e tek kad nema starih redova;
+3. normalizovati samo domenske JSON delove kojima treba DB invariant/query support.
 
-Asset cleanup je koristio `Promise.allSettled` bez pregleda rejected rezultata. DB zapis može biti uklonjen, a object-storage delete da propadne bez traga.
+### Phase 6 — UI / A11y
 
-**Rešeno u Phase 3.10:** svaki rejected storage delete dobija structured error event sa request/user/SmartLink/asset kontekstom.
+1. fresh contrast audit;
+2. reusable Dialog primitive;
+3. keyboard/focus semantics;
+4. responsive edge pass.
 
-### NEW-NEXT-001 — NEXT-002 mora da se tretira zajedno sa CSP dizajnom
+### Phase 7 — Tooling / production readiness
 
-Stari audit je `connection()` tretirao kao isolated performance smell. Aktuelni kod eksplicitno generiše per-request CSP nonce u proxy sloju. Performance fix koji ignoriše ovu vezu može napraviti security/runtime regresiju.
+1. CI gate;
+2. production-mode smoke E2E;
+3. Prettier/format check;
+4. production env/storage/rate-limit/domain runbook.
 
-### NEW-ARCH-001 — session resolution je bio route-level duplikat
+### Phase 8 — Final mass validation
 
-Više API ruta je ručno čitalo isti session cookie i zvalo `resolveSessionToken`. Nije bio bezbednosni bug sam po sebi, ali je povećavao verovatnoću da budući auth option/cookie rename bude primenjen samo na deo ruta.
+Tek kada implementation batch bude završen:
 
-**Rešeno u Phase 3.10:** zajednički `getRequestSession` / `getCustomerRequestSession` helper za rute kojima ne treba specijalni auth mode.
+1. `npx prisma generate`;
+2. migracije na izolovanoj E2E bazi;
+3. `npm test`;
+4. `npm run typecheck`;
+5. `npm run lint`;
+6. production build;
+7. functional Playwright;
+8. visual regression / snapshot review;
+9. manual desktop/mobile smoke.
 
----
-
-## 6. Roadmap od ovog trenutka
-
-### Phase 3.10 — Observability + request-session hardening — IMPLEMENTED, UNTESTED
-
-1. Typed asset validation error. ✅
-2. Log unexpected storage/persistence failures. ✅
-3. Log storage cleanup failures umesto tihog `allSettled` gutanja. ✅
-4. Request correlation ID u custom-domain local error path. ✅
-5. AST contract guard za locally-caught 5xx. ✅
-6. Centralizovan standard API request-session resolution. ✅
-
-### Phase 3.11 — Public renderer decomposition — NEXT
-
-1. Zadržati serializable persisted profile model.
-2. Prebaciti statične delove renderera na server components.
-3. Client islands samo za stvarnu interakciju.
-4. Merenje bundle-a i hydration-a pre/posle.
-
-### Phase 3.12 — Persistence model cleanup
-
-1. Gallery/media relacije umesto JSON walker-a.
-2. Postepeno ukloniti `__*` domenske ključeve.
-3. Migracija sa backfill-om, pa dual-read kratko, pa uklanjanje legacy mirror-a.
-
-### Phase 4 — Rendering/performance
-
-1. Doneti eksplicitnu CSP nonce vs static/ISR odluku.
-2. Tek zatim rešiti root `connection()`.
-3. Profilisati public request query count i JS payload nakon server-renderer rada.
-
-### Phase 6 — UI/A11y pass
-
-1. Contrast audit nad aktuelnim UI-jem.
-2. Jedan reusable Dialog shell sa focus trap/restore/escape semantics.
-3. Responsive + keyboard + screen-reader regression suite.
-
-### Final mass validation
-
-Kada se gore navedeni batch-evi spoje: `npm test` → `npm run typecheck` → `npm run lint` → production build → functional E2E → visual E2E. Do tada branch-evi se tretiraju kao implementation work, ne kao release candidate.
+Do tada ovaj PR ostaje draft i nijedna nova faza se ne proglašava release-ready samo zato što je kod upisan u Git. Git, nažalost, nije QA inženjer.
