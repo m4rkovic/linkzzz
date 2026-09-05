@@ -26,6 +26,27 @@ test("application hosts and their platform namespace stay reserved", () => {
   assert.equal(isReservedPlatformHostname("example.com", env), false);
 });
 
+test("concrete Vercel deployment hosts are application hosts without wildcarding vercel.app", () => {
+  const env = {
+    LINKZZZ_APP_HOSTS: "linkzzz.com,www.linkzzz.com",
+    VERCEL_URL: "linkzzz-a1b2c3.vercel.app",
+    VERCEL_BRANCH_URL: "linkzzz-git-dev-example.vercel.app",
+    VERCEL_PROJECT_PRODUCTION_URL: "linkzzz.vercel.app",
+  } as unknown as NodeJS.ProcessEnv;
+
+  assert.deepEqual(getConfiguredApplicationHosts(env), [
+    "linkzzz.com",
+    "www.linkzzz.com",
+    "linkzzz-a1b2c3.vercel.app",
+    "linkzzz-git-dev-example.vercel.app",
+    "linkzzz.vercel.app",
+  ]);
+  assert.equal(isApplicationHostname("linkzzz-a1b2c3.vercel.app", env), true);
+  assert.equal(isApplicationHostname("linkzzz-git-dev-example.vercel.app", env), true);
+  assert.equal(isApplicationHostname("linkzzz.vercel.app", env), true);
+  assert.equal(isApplicationHostname("another-project.vercel.app", env), false);
+});
+
 test("forwarded host is ignored unless explicitly trusted", () => {
   const headers = new Headers({ host: "linkzzz.com", "x-forwarded-host": "customer.example" });
   assert.equal(
