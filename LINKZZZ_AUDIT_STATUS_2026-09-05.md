@@ -3,9 +3,10 @@
 **Datum:** 2026-09-05  
 **Bazni commit:** `bd955a2d62efab825334dc2ca7a80e432d5e260b` (`main` i `dev` su bili poravnati na ovom commit-u)  
 **Radna grana:** `audit/phase3-hardening-20260905`  
+**Aktuelni branch commit:** `9ba3f20c01c411eb9fcf2f011d6baaeac35b840f`  
 **Osnova:** originalni `LINKZZZ_CODEBASE_AUDIT_REPORT(1).md` + follow-up od 2026-09-04 + direktna provera aktuelnog koda.
 
-> Ovaj dokument je status ledger, ne novi šest-agent full audit od nule. Stavke označene kao zatvorene proverene su u aktuelnom kodu ili u integrisanom hardening batch-u. Novi branch nije masovno testiran u trenutku pisanja; poslednji integracioni commit navodi 172/172 unit testa, typecheck, lint, production build i 46 aktivnih Playwright testova kao prolazne.
+> Ovaj dokument je status ledger, ne novi šest-agent full audit od nule. Stavke označene kao zatvorene proverene su u aktuelnom kodu ili u integrisanom hardening batch-u. Novi branch nije masovno testiran u trenutku pisanja; poslednji integracioni commit pre ove grane navodi 172/172 unit testa, typecheck, lint, production build i 46 aktivnih Playwright testova kao prolazne.
 
 ---
 
@@ -19,7 +20,7 @@ Trenutni glavni dug više nije "da li sistem može da sačuva podatke bez race-a
 2. **CSP/dynamic rendering kompromis** — root `connection()` drži ceo tree dinamičkim zbog per-request nonce strategije;
 3. **JSON domain debt** — deo Page/Card domena i dalje živi u `__` ključevima umesto u relacijama;
 4. **UI/A11y sistematizacija** — prethodni contrast/dialog nalazi nisu još ponovo kompletno auditovani posle UI izmena;
-5. **observability adoption** — logger postoji i radi, ali svaki lokalno uhvaćen neočekivani 5xx mora ili da se loguje ili rethrow-uje.
+5. **release validation debt** — novi Phase 3.10 branch batch namerno nije testiran pojedinačno; plan je završni mass validation.
 
 ---
 
@@ -30,7 +31,7 @@ Trenutni glavni dug više nije "da li sistem može da sačuva podatke bez race-a
 - **RT-005** — Prisma client/pool problem zatvoren.
 - **RT-002** — custom-domain host/path gating postoji u `src/proxy.ts` i `host-routing` sloju.
 - **RT-003** — SmartLink geo više nije zaobilazan preko outbound resolvera.
-- **RACE-001** — SmartLink kvote su zaštićene server-side i concurrency putanja je testirana.
+- **RACE-001** — SmartLink kvote su zaštićene server-side i concurrency putanja je testirana na prethodnom integracionom batch-u.
 - **INT-001 / RACE-005** — admin account/subscription mutacije koriste transakcije + per-user lock.
 - **INT-105** — jedan loš customer zapis više ne ruši ceo admin read path; last landing-page invariant je zaštićen.
 
@@ -65,6 +66,7 @@ Trenutni glavni dug više nije "da li sistem može da sačuva podatke bez race-a
 
 - **AUTH-005** — unknown-account login koristi realan dummy scrypt hash radi timing izjednačavanja.
 - **AUTH-001** — novi hash policy je podignut na scrypt `N=32768, r=8, p=3`, uz `needsRehash` za stare hash-eve.
+- **ARCH-006 (novi cleanup)** — request-cookie/session resolution je centralizovan u `server/auth/request-session.ts`; SmartLink, Page, Duplicate, Custom Domain i Asset API rute više ne kopiraju isti token-resolution kod.
 
 ### Traffic Shield
 
@@ -75,7 +77,7 @@ Trenutni glavni dug više nije "da li sistem može da sačuva podatke bez race-a
 
 ## 3. OBS-001 — korigovan status
 
-### Završeno
+### Završeno na infrastrukturi
 
 - strukturirani JSON logger (`server-logger.ts`);
 - `info/warn/error` nivoi;
@@ -83,17 +85,26 @@ Trenutni glavni dug više nije "da li sistem može da sačuva podatke bez race-a
 - request correlation ID (`x-request-id` / `x-vercel-id`);
 - Next `instrumentation.ts` `onRequestError` hook za uncaught request greške.
 
-### Preostali problem
+### Pravilo usvajanja
 
 Nije korektno zahtevati `logServerError` u svakom `catch` bloku. Parse/validation/authorization catch-evi su očekivani 4xx i ne treba da zatrpavaju error log.
 
-Pravi invariant treba da bude:
+Pravi invariant je:
 
 > **Svaki neočekivani exception koji route lokalno pretvara u 5xx mora biti logovan sa kontekstom ili ponovo bačen tako da ga `onRequestError` vidi.**
 
-Na baznom commit-u konkretan gap je `POST /api/assets/images`: storage/persistence failure mogao je biti pretvoren u response bez punog observability traga; cleanup preko `Promise.allSettled` je takođe mogao tiho da proguta neuspešno brisanje objekta.
+Na baznom commit-u konkretan gap je bio `POST /api/assets/images`: storage/persistence failure mogao je biti pretvoren u response bez punog observability traga; cleanup preko `Promise.allSettled` je takođe mogao tiho da proguta neuspešno brisanje objekta.
 
-**Status:** 🟡 infrastruktura završena, adoption se dovršava u ovoj grani.
+### Phase 3.10 fix na ovoj grani
+
+- typed `InvalidImageError` odvaja očekivanu image-validaciju od storage/infrastructure grešaka;
+- neočekivani storage failure: structured log + safe 500;
+- neočekivani asset persistence failure: cleanup + structured log + safe 500;
+- storage cleanup rejection više nije tih;
+- custom-domain lokalni error path nosi request correlation ID;
+- dodat je AST-based contract test `tests/api-observability-contract.test.ts` koji failuje ako `catch` direktno vraća `status: 500` bez `logServerError()` ili `throw`.
+
+**Status:** 🟢 Phase 3.10 implementiran na branch-u, ali još nije izvršen mass test.
 
 ---
 
@@ -145,31 +156,38 @@ Originalni audit je imao sistemske contrast i modal-focus nalaze. Od tada je UI 
 
 Image signature validation i S3/local infrastructure failure su ranije oba izlazili kroz običan `Error`. Route je zbog toga mogao da vrati storage outage kao 400 i čak prosledi `error.message` browseru.
 
-**Fix u ovoj grani:** typed `InvalidImageError` ostaje 400; neočekivani storage failure postaje safe 500 + structured log.
+**Rešeno u Phase 3.10:** typed `InvalidImageError` ostaje 400; neočekivani storage failure postaje safe 500 + structured log.
 
 ### NEW-OBS-002 — cleanup failure je bio nevidljiv
 
 Asset cleanup je koristio `Promise.allSettled` bez pregleda rejected rezultata. DB zapis može biti uklonjen, a object-storage delete da propadne bez traga.
 
-**Fix u ovoj grani:** svaki rejected storage delete dobija structured error event sa request/user/SmartLink/asset kontekstom.
+**Rešeno u Phase 3.10:** svaki rejected storage delete dobija structured error event sa request/user/SmartLink/asset kontekstom.
 
 ### NEW-NEXT-001 — NEXT-002 mora da se tretira zajedno sa CSP dizajnom
 
 Stari audit je `connection()` tretirao kao isolated performance smell. Aktuelni kod eksplicitno generiše per-request CSP nonce u proxy sloju. Performance fix koji ignoriše ovu vezu može napraviti security/runtime regresiju.
 
+### NEW-ARCH-001 — session resolution je bio route-level duplikat
+
+Više API ruta je ručno čitalo isti session cookie i zvalo `resolveSessionToken`. Nije bio bezbednosni bug sam po sebi, ali je povećavao verovatnoću da budući auth option/cookie rename bude primenjen samo na deo ruta.
+
+**Rešeno u Phase 3.10:** zajednički `getRequestSession` / `getCustomerRequestSession` helper za rute kojima ne treba specijalni auth mode.
+
 ---
 
 ## 6. Roadmap od ovog trenutka
 
-### Phase 3.10 — Observability completion — IN PROGRESS
+### Phase 3.10 — Observability + request-session hardening — IMPLEMENTED, UNTESTED
 
-1. Typed asset validation error.
-2. Log unexpected storage/persistence failures.
-3. Log storage cleanup failures umesto tihog `allSettled` gutanja.
-4. Dodati request correlation ID u custom-domain local error path.
-5. Kasnije dodati static/contract guard da caught 5xx ne može da ostane bez log/rethrow obrasca.
+1. Typed asset validation error. ✅
+2. Log unexpected storage/persistence failures. ✅
+3. Log storage cleanup failures umesto tihog `allSettled` gutanja. ✅
+4. Request correlation ID u custom-domain local error path. ✅
+5. AST contract guard za locally-caught 5xx. ✅
+6. Centralizovan standard API request-session resolution. ✅
 
-### Phase 3.11 — Public renderer decomposition
+### Phase 3.11 — Public renderer decomposition — NEXT
 
 1. Zadržati serializable persisted profile model.
 2. Prebaciti statične delove renderera na server components.
