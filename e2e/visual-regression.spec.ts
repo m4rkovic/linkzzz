@@ -1,4 +1,4 @@
-import { loginAsCustomer, openAppearanceEditor } from "./helpers";
+import { loginAsCustomer, openAppearanceEditor, openCardsEditor } from "./helpers";
 import { expect, test } from "./test";
 
 async function stabilize(page: Parameters<typeof loginAsCustomer>[0]) {
@@ -70,5 +70,14 @@ test.describe("R1.4 visual regression matrix", () => {
     await openAppearanceEditor(page);
     await stabilize(page);
     await expect(page).toHaveScreenshot("appearance-editor.png", { fullPage: true });
+  });
+
+  test("cards editor create form", async ({ page }) => {
+    await loginAsCustomer(page, "/dashboard/links");
+    await openCardsEditor(page);
+    await page.getByRole("button", { name: "Add link", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Create link", exact: true })).toBeVisible();
+    await stabilize(page);
+    await expect(page).toHaveScreenshot("cards-editor-create.png", { fullPage: true });
   });
 });
