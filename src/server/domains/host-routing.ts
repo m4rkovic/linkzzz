@@ -3,9 +3,6 @@ import { domainToASCII } from "node:url";
 
 const DEFAULT_APP_HOSTS = ["linkzzz.com", "www.linkzzz.com"];
 
-export const CUSTOM_DOMAIN_RUNTIME_HOST_HEADER =
-  "x-linkzzz-custom-domain-runtime-host";
-
 const CUSTOM_DOMAIN_OUTBOUND_PATH =
   /^\/[a-z0-9_-]+\/out\/(?:card|social|block)\/[^/]+\/?$/;
 const CUSTOM_DOMAIN_LEAD_PATH =
