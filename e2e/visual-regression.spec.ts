@@ -47,23 +47,21 @@ test.describe("R1.4 visual regression matrix", () => {
   });
 
   test("dashboard", async ({ page }) => {
-    await loginAsCustomer(page);
-    await page.goto("/dashboard");
+    await loginAsCustomer(page, "/dashboard");
     await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
     await stabilize(page);
     await expect(page).toHaveScreenshot("dashboard.png", { fullPage: true });
   });
 
   test("smart links list", async ({ page }) => {
-    await loginAsCustomer(page);
-    await page.goto("/dashboard/links");
+    await loginAsCustomer(page, "/dashboard/links");
     await expect(page.getByRole("heading", { name: "Smart Links", exact: true })).toBeVisible();
     await stabilize(page);
     await expect(page).toHaveScreenshot("smart-links.png", { fullPage: true });
   });
 
   test("appearance editor", async ({ page }) => {
-    await loginAsCustomer(page);
+    await loginAsCustomer(page, "/dashboard/links");
     await openAppearanceEditor(page);
     await stabilize(page);
     await expect(page).toHaveScreenshot("appearance-editor.png", { fullPage: true });
