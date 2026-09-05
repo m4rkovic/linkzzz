@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { resolveSessionToken } from "@/server/auth/auth-service";
+import { getRequestSession } from "@/server/auth/request-session";
 import {
   getVersionedPageForSmartLink,
   updateOwnSmartLinkPage,
 } from "@/server/profile/profile-service";
 import { isValidProfileRevision } from "@/server/profile/profile-revision";
 import { hasValidRequestOrigin } from "@/server/security/request";
-import { getSessionCookieName } from "@/server/security/session-cookie";
 
 const MAX_PAGE_BODY_BYTES = 512_000;
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: NextRequest, context: RouteContext) {
-  const session = await getSession(request);
+  const session = await getRequestSession(request);
   if (!session) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
@@ -39,7 +38,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Page payload is too large." }, { status: 413 });
   }
 
-  const session = await getSession(request);
+  const session = await getRequestSession(request);
   if (!session) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
@@ -84,9 +83,4 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     profile: result.profile,
     revision: result.revision,
   });
-}
-
-async function getSession(request: NextRequest) {
-  const token = request.cookies.get(getSessionCookieName())?.value;
-  return resolveSessionToken(token);
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { resolveSessionToken } from "@/server/auth/auth-service";
+import { getCustomerRequestSession } from "@/server/auth/request-session";
 import {
   customDomainErrorStatus,
   isCustomDomainError,
@@ -18,14 +18,13 @@ import {
   logServerError,
 } from "@/server/observability/server-logger";
 import { getRequestIp, hasValidRequestOrigin } from "@/server/security/request";
-import { getSessionCookieName } from "@/server/security/session-cookie";
 import {
   checkRateLimit,
   CUSTOM_DOMAIN_RATE_LIMIT,
 } from "@/server/security/rate-limit";
 
 export async function GET(request: NextRequest) {
-  const session = await customerSession(request);
+  const session = await getCustomerRequestSession(request);
   if (!session) {
     return NextResponse.json(
       { error: "Authentication required.", code: "AUTHENTICATION_REQUIRED" },
@@ -163,7 +162,7 @@ async function prepareWrite(request: NextRequest) {
     );
   }
 
-  const session = await customerSession(request);
+  const session = await getCustomerRequestSession(request);
   if (!session) {
     return NextResponse.json(
       { error: "Authentication required.", code: "AUTHENTICATION_REQUIRED" },
@@ -220,13 +219,6 @@ async function prepareWrite(request: NextRequest) {
     domain: body.domain,
     action: body.action,
   };
-}
-
-async function customerSession(request: NextRequest) {
-  const session = await resolveSessionToken(
-    request.cookies.get(getSessionCookieName())?.value,
-  );
-  return session?.user.role === "CUSTOMER" ? session : null;
 }
 
 function customDomainFailure(

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { resolveSessionToken } from "@/server/auth/auth-service";
+import { getCustomerRequestSession } from "@/server/auth/request-session";
 import { getSmartLinkLimit } from "@/server/business/plans";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import {
@@ -12,13 +12,12 @@ import {
   listOwnSmartLinks,
 } from "@/server/smart-links/smart-link-service";
 import { hasValidRequestOrigin } from "@/server/security/request";
-import { getSessionCookieName } from "@/server/security/session-cookie";
 import type { CreateSmartLinkInput } from "@/server/smart-links/smart-link-service";
 
 const MAX_BODY_BYTES = 16_384;
 
 export async function GET(request: NextRequest) {
-  const session = await getCustomerSession(request);
+  const session = await getCustomerRequestSession(request);
   if (!session) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
@@ -46,7 +45,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "SmartLink payload is too large." }, { status: 413 });
   }
 
-  const session = await getCustomerSession(request);
+  const session = await getCustomerRequestSession(request);
   if (!session) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
@@ -132,10 +131,4 @@ function isUniqueConstraintError(error: unknown) {
     "code" in error &&
     (error as { code?: unknown }).code === "P2002"
   );
-}
-
-async function getCustomerSession(request: NextRequest) {
-  const token = request.cookies.get(getSessionCookieName())?.value;
-  const session = await resolveSessionToken(token);
-  return session?.user.role === "CUSTOMER" ? session : null;
 }

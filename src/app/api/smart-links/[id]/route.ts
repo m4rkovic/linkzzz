@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { resolveSessionToken } from "@/server/auth/auth-service";
+import { getRequestSession } from "@/server/auth/request-session";
 import { deleteOwnSmartLink } from "@/server/smart-links/smart-link-deletion-service";
 import {
   getOwnSmartLink,
   updateOwnSmartLink,
 } from "@/server/smart-links/smart-link-service";
-import { getSessionCookieName } from "@/server/security/session-cookie";
 import { getRequestIp, hasValidRequestOrigin } from "@/server/security/request";
 import { checkRateLimit, SENSITIVE_ACTION_RATE_LIMIT } from "@/server/security/rate-limit";
 
@@ -15,7 +14,7 @@ const MAX_SMART_LINK_BODY_BYTES = 128_000;
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: NextRequest, context: RouteContext) {
-  const session = await getSession(request);
+  const session = await getRequestSession(request);
   if (!session) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
@@ -41,7 +40,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "SmartLink payload is too large." }, { status: 413 });
   }
 
-  const session = await getSession(request);
+  const session = await getRequestSession(request);
   if (!session) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
@@ -103,7 +102,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   }
 
-  const session = await getSession(request);
+  const session = await getRequestSession(request);
   if (!session) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
@@ -151,9 +150,4 @@ function isPrismaUniqueConstraintError(error: unknown) {
     "code" in error &&
     (error as { code?: unknown }).code === "P2002",
   );
-}
-
-async function getSession(request: NextRequest) {
-  const token = request.cookies.get(getSessionCookieName())?.value;
-  return resolveSessionToken(token);
 }

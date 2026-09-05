@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveSessionToken } from "@/server/auth/auth-service";
+import { getRequestSession } from "@/server/auth/request-session";
 import { getAssetStorage } from "@/server/assets/storage-factory";
 import { InvalidImageError, type AssetStorage, type StoredAsset } from "@/server/assets/asset-storage";
 import { AssetStorageQuotaError } from "@/server/business/asset-quota";
 import { getRequestCorrelationId, logServerError, logServerWarning } from "@/server/observability/server-logger";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import { getRequestIp, hasValidRequestOrigin } from "@/server/security/request";
-import { getSessionCookieName } from "@/server/security/session-cookie";
 import { checkRateLimit, IMAGE_UPLOAD_RATE_LIMIT } from "@/server/security/rate-limit";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -14,7 +13,7 @@ const TYPES = new Set(["AVATAR", "COVER", "LINK_IMAGE"]);
 
 export async function POST(request: NextRequest) {
   if (!hasValidRequestOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
-  const session = await resolveSessionToken(request.cookies.get(getSessionCookieName())?.value);
+  const session = await getRequestSession(request);
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   if (session.user.role !== "CUSTOMER") return NextResponse.json({ error: "Customer account required." }, { status: 403 });
   const requestId = getRequestCorrelationId(request.headers);
@@ -108,9 +107,7 @@ export async function DELETE(request: NextRequest) {
   if (!hasValidRequestOrigin(request)) {
     return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   }
-  const session = await resolveSessionToken(
-    request.cookies.get(getSessionCookieName())?.value,
-  );
+  const session = await getRequestSession(request);
   if (!session) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
