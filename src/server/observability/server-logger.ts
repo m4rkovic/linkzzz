@@ -59,10 +59,9 @@ export function getRequestCorrelationId(
     | { get(name: string): string | null }
     | Record<string, string | string[] | undefined>,
 ) {
-  const getHeader = (headers as { get?: unknown }).get;
-  const raw = typeof getHeader === "function"
-    ? (getHeader as (name: string) => string | null)("x-request-id") ??
-      (getHeader as (name: string) => string | null)("x-vercel-id")
+  const headerBag = headers as { get?: (name: string) => string | null };
+  const raw = typeof headerBag.get === "function"
+    ? headerBag.get("x-request-id") ?? headerBag.get("x-vercel-id")
     : firstHeader(
         (headers as Record<string, string | string[] | undefined>)["x-request-id"] ??
           (headers as Record<string, string | string[] | undefined>)["x-vercel-id"],
