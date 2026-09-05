@@ -43,9 +43,9 @@ in the background after startup. `npm run dev:raw` bypasses the wrapper entirely
 
 On Windows, keep the project outside OneDrive or another actively synchronized
 folder (for example `C:\dev\linkzzz`). File synchronization and real-time virus
-scanning multiply the filesystem work performed by the development compiler.
-This affects `next dev`; it is not representative of `next build` plus
-`next start` production performance.
+scanning multiply the filesystem work performed by the development compiler and
+can also interfere with Git object cleanup. This affects local development; it
+is not representative of `next build` plus `next start` production performance.
 
 For a deliberately disposable development database that needs to be rebuilt from scratch, use `npx.cmd prisma migrate reset --force` instead of `migrate deploy`.
 
@@ -73,7 +73,9 @@ npm.cmd run validate:full
 production build. `validate:full` adds the functional Playwright suite with one
 worker after the core gate.
 
-The Playwright suite uses Chromium for desktop tests and WebKit for the mobile iPhone profile, so install both browsers once per Playwright version:
+The Playwright desktop and mobile projects currently run through Chromium with
+different device/viewport profiles. Install the supported local browser set once
+per Playwright version with:
 
 ```powershell
 npm.cmd run test:e2e:install
@@ -110,6 +112,28 @@ Do not preserve screenshot baselines captured while CSS failed to load. After a
 style-system recovery, generate the matrix once, inspect the new PNGs, and then
 run the visual suite as the actual regression check.
 
+### GitHub Actions
+
+`.github/workflows/quality-gate.yml` is the permanent repository CI gate. It
+runs two independent jobs:
+
+- core validation: Prisma generate, unit tests, typecheck, ESLint and production build;
+- functional E2E: Chromium against a disposable PostgreSQL 17 service with one worker.
+
+The CI E2E job does not use the Neon production database or Vercel production
+secrets. Playwright artifacts are uploaded only when a browser job fails.
+
+## Public root and custom domains
+
+The root `/` route is host-aware:
+
+- Linkzzz application hosts render the marketing Landing Page;
+- an ACTIVE customer custom domain resolves directly to the same Smart Link runtime used by its platform slug.
+
+Custom-domain root rendering deliberately does not depend on an internal Next
+rewrite. Correct custom-domain behavior is treated as a stronger requirement
+than statically prerendering the marketing homepage.
+
 ## Deployed production smoke
 
 A small read-only smoke suite can target an already deployed Vercel Preview or
@@ -123,8 +147,8 @@ npm.cmd run test:e2e:production-smoke
 ```
 
 External-server mode does not require `E2E_DATABASE_URL`. The smoke checks the
-static marketing/CSP boundary, native navigation into the nonce-protected login
-surface, internal custom-domain route isolation, and optionally one published
+marketing/CSP boundary, native navigation into the nonce-protected login
+surface, internal `__linkzzz` route isolation, and optionally one published
 Smart Link.
 
 ## Test artifacts
