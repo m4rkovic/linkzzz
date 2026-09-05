@@ -9,6 +9,7 @@ on:
     branches:
       - dev
       - main
+      - audit/phase3-hardening-20260905
 
 concurrency:
   group: quality-${{ github.workflow }}-${{ github.ref }}
