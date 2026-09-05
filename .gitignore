@@ -7,6 +7,9 @@
 /playwright-report/
 /test-results/
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # local environment files
 .env*
 !.env.example
