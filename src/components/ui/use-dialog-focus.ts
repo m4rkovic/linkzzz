@@ -11,6 +11,9 @@ const FOCUSABLE_SELECTOR = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
+let activeBodyLocks = 0;
+let bodyOverflowBeforeDialogs = "";
+
 export function useDialogFocus<T extends HTMLElement>({
   open,
   onClose,
@@ -28,34 +31,67 @@ export function useDialogFocus<T extends HTMLElement>({
     if (!open) return;
 
     const previous = document.activeElement as HTMLElement | null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (activeBodyLocks === 0) {
+      bodyOverflowBeforeDialogs = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
+    activeBodyLocks += 1;
+
+    const getFocusables = () =>
+      Array.from(
+        containerRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [],
+      ).filter(
+        (element) =>
+          !element.hasAttribute("disabled") &&
+          element.getAttribute("aria-hidden") !== "true" &&
+          element.tabIndex !== -1,
+      );
 
     const timer = window.setTimeout(() => {
-      const target = initialFocusRef?.current
-        ?? containerRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      const focusables = getFocusables();
+      const target = initialFocusRef?.current ?? focusables[0] ?? containerRef.current;
       target?.focus();
     }, 0);
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && closeOnEscape && onClose) {
-        event.preventDefault();
-        onClose();
+      const container = containerRef.current;
+      if (!container) return;
+
+      // Only the dialog currently containing focus may consume Escape. This
+      // prevents nested dialogs from closing multiple layers at once.
+      if (event.key === "Escape") {
+        if (
+          closeOnEscape &&
+          onClose &&
+          container.contains(document.activeElement)
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          onClose();
+        }
         return;
       }
+
       if (event.key !== "Tab") return;
 
-      const focusables = Array.from(
-        containerRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [],
-      ).filter((element) => !element.hasAttribute("disabled") && element.tabIndex !== -1);
-      if (!focusables.length) return;
+      const focusables = getFocusables();
+      if (!focusables.length) {
+        event.preventDefault();
+        container.focus();
+        return;
+      }
 
       const first = focusables[0]!;
       const last = focusables[focusables.length - 1]!;
-      if (event.shiftKey && document.activeElement === first) {
+      const activeElement = document.activeElement;
+
+      if (!container.contains(activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && activeElement === first) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && activeElement === last) {
         event.preventDefault();
         first.focus();
       }
@@ -65,8 +101,11 @@ export function useDialogFocus<T extends HTMLElement>({
     return () => {
       window.clearTimeout(timer);
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-      previous?.focus?.();
+      activeBodyLocks = Math.max(0, activeBodyLocks - 1);
+      if (activeBodyLocks === 0) {
+        document.body.style.overflow = bodyOverflowBeforeDialogs;
+      }
+      if (previous?.isConnected) previous.focus?.();
     };
   }, [closeOnEscape, initialFocusRef, onClose, open]);
 

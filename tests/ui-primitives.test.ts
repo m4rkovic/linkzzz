@@ -63,3 +63,27 @@ test("mobile navigation and filter controls do not rely on horizontal scrolling"
     assert.doesNotMatch(source, /overflow-x-(?:auto|scroll)|min-w-max/, path);
   }
 });
+
+test("modal surfaces use the shared accessible dialog boundary", () => {
+  const dialogSource = readFileSync(
+    new URL("../src/components/ui/dialog.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dialogSource, /useDialogFocus/);
+  assert.match(dialogSource, /aria-modal="true"/);
+  assert.match(dialogSource, /createPortal/);
+
+  const modalFiles = [
+    "../src/components/ui/confirm-dialog.tsx",
+    "../src/components/admin/ui/admin-confirm-dialog.tsx",
+    "../src/components/account/change-password-modal.tsx",
+    "../src/components/admin/user/reset-password-modal.tsx",
+    "../src/components/admin/user/suspend-user-modal.tsx",
+    "../src/components/destinations/destination-picker.tsx",
+  ];
+
+  for (const path of modalFiles) {
+    const source = readFileSync(new URL(path, import.meta.url), "utf8");
+    assert.match(source, /DialogShell|ConfirmDialog/, path);
+  }
+});
