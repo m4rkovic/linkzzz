@@ -323,7 +323,26 @@ export class PrismaProfileRepository implements ProfileRepository {
         return { ok: false as const, reason: "REVISION_CONFLICT" as const };
       }
 
-      await writePageChildren(tx, existingPage.id, legacyCompatibleData);
+      const cardIdMap = await writePageChildren(
+        tx,
+        existingPage.id,
+        legacyCompatibleData,
+      );
+      const persistedData = remapEngagementLinkIds(data, cardIdMap);
+      const persistedLegacyCompatibleData = withLegacyPersistenceEnvelope(
+        persistedData,
+      );
+
+      // New PageCard IDs are server-owned. Any Page-level engagement reference
+      // that pointed at a client-supplied card ID must be rewritten inside the
+      // same transaction after child persistence has assigned the real ID.
+      await tx.page.update({
+        where: { id: existingPage.id },
+        data: {
+          appearance: toJson(persistedLegacyCompatibleData.appearance),
+          engagement: toJson(persistedData.engagement ?? {}),
+        },
+      });
 
       const saved = await tx.page.findUniqueOrThrow({
         where: { id: existingPage.id },
@@ -336,6 +355,30 @@ export class PrismaProfileRepository implements ProfileRepository {
       };
     });
   }
+}
+
+function remapEngagementLinkIds(
+  data: PersistedProfileData,
+  cardIdMap: Map<string, string>,
+): PersistedProfileData {
+  if (!data.engagement) return data;
+
+  const remap = (id: string | undefined) =>
+    id ? cardIdMap.get(id) ?? id : undefined;
+
+  return {
+    ...data,
+    engagement: {
+      ...data.engagement,
+      featuredLinkId: remap(data.engagement.featuredLinkId),
+      campaign: data.engagement.campaign
+        ? {
+            ...data.engagement.campaign,
+            primaryLinkId: remap(data.engagement.campaign.primaryLinkId),
+          }
+        : undefined,
+    },
+  };
 }
 
 function withLegacyPersistenceEnvelope(
