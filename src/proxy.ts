@@ -13,8 +13,6 @@ import {
   buildStaticMarketingContentSecurityPolicy,
 } from "@/server/security/content-security-policy";
 
-const INTERNAL_CUSTOM_DOMAIN_PATH = "/__linkzzz/custom-domain";
-
 export function proxy(request: NextRequest) {
   const hostname = getRequestHostname(request.headers);
   const isApplicationHost = hostname ? isApplicationHostname(hostname) : false;
@@ -34,9 +32,9 @@ export function proxy(request: NextRequest) {
     return notFoundResponse();
   }
 
-  // Keep the trusted marketing homepage prerenderable. It contains no customer
-  // content and all links into authenticated surfaces perform full navigations,
-  // so the static bootstrap policy cannot bleed into the application.
+  // The application-host homepage is still intentionally JavaScript-free in
+  // production. Host dispatch now happens in the root server page instead of
+  // rewriting custom-domain traffic through an internal route.
   if (isApplicationHost && pathname === "/") {
     const response = NextResponse.next();
     response.headers.set(
@@ -59,24 +57,9 @@ export function proxy(request: NextRequest) {
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
 
-  const isCustomDomainRoot =
-    Boolean(hostname) && !isApplicationHost && pathname === "/";
-
-  // Carry the normalized original custom host in the internal route itself.
-  // Next preserves rewrite path params reliably even when the rewritten request
-  // observes the application server Host value.
-  const response =
-    isCustomDomainRoot && hostname
-      ? NextResponse.rewrite(
-          new URL(
-            `${INTERNAL_CUSTOM_DOMAIN_PATH}/${encodeURIComponent(hostname)}`,
-            request.url,
-          ),
-          { request: { headers: requestHeaders } },
-        )
-      : NextResponse.next({
-          request: { headers: requestHeaders },
-        });
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 
   response.headers.set("Content-Security-Policy", contentSecurityPolicy);
   applyTransportSecurity(response, request);
