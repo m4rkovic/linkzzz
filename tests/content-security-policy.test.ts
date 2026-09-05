@@ -11,22 +11,26 @@ test("dynamic CSP keeps nonce-based script execution", () => {
     nonce: "nonce-value",
     isDevelopment: false,
   });
+  const scriptSrc = directive(policy, "script-src");
 
-  assert.match(policy, /script-src 'self' 'nonce-nonce-value' 'strict-dynamic'/);
-  assert.match(policy, /https:\/\/www\.googletagmanager\.com/);
-  assert.match(policy, /https:\/\/connect\.facebook\.net/);
-  assert.doesNotMatch(policy, /'unsafe-inline'/);
+  assert.match(scriptSrc, /script-src 'self' 'nonce-nonce-value' 'strict-dynamic'/);
+  assert.match(scriptSrc, /https:\/\/www\.googletagmanager\.com/);
+  assert.match(scriptSrc, /https:\/\/connect\.facebook\.net/);
+  assert.doesNotMatch(scriptSrc, /'unsafe-inline'/);
+  assert.match(directive(policy, "style-src"), /'unsafe-inline'/);
 });
 
 test("production marketing CSP disables JavaScript instead of weakening script-src", () => {
   const policy = buildStaticMarketingContentSecurityPolicy({
     isDevelopment: false,
   });
+  const scriptSrc = directive(policy, "script-src");
 
-  assert.match(policy, /script-src 'none'/);
-  assert.doesNotMatch(policy, /nonce-/);
-  assert.doesNotMatch(policy, /'unsafe-inline'/);
-  assert.doesNotMatch(policy, /'unsafe-eval'/);
+  assert.equal(scriptSrc, "script-src 'none'");
+  assert.doesNotMatch(scriptSrc, /nonce-/);
+  assert.doesNotMatch(scriptSrc, /'unsafe-inline'/);
+  assert.doesNotMatch(scriptSrc, /'unsafe-eval'/);
+  assert.match(directive(policy, "style-src"), /'unsafe-inline'/);
 });
 
 test("development marketing CSP keeps the Next dev runtime available", () => {
@@ -34,6 +38,18 @@ test("development marketing CSP keeps the Next dev runtime available", () => {
     isDevelopment: true,
   });
 
-  assert.match(policy, /script-src 'self' 'unsafe-inline' 'unsafe-eval'/);
-  assert.match(policy, /connect-src 'self' ws: wss:/);
+  assert.match(
+    directive(policy, "script-src"),
+    /script-src 'self' 'unsafe-inline' 'unsafe-eval'/,
+  );
+  assert.match(directive(policy, "connect-src"), /connect-src 'self' ws: wss:/);
 });
+
+function directive(policy: string, name: string) {
+  return (
+    policy
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${name} `)) ?? ""
+  );
+}
