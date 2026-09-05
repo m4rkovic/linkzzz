@@ -105,3 +105,19 @@ test("editor subtabs expose keyboard-accessible tab semantics", () => {
   assert.match(source, /Home/);
   assert.match(source, /End/);
 });
+
+test("shared editor controls expose labels, switch descriptions and radio semantics", () => {
+  const source = readFileSync(
+    new URL("../src/components/ui/editor-controls.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /role="switch"/);
+  assert.match(source, /aria-describedby/);
+  assert.match(source, /htmlFor=/);
+  assert.match(source, /role="radiogroup"/);
+  assert.match(source, /role="radio"/);
+  assert.match(source, /aria-checked/);
+  assert.match(source, /ArrowDown/);
+  assert.match(source, /ArrowUp/);
+});
