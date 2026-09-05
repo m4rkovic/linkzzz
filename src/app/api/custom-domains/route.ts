@@ -13,13 +13,16 @@ import {
   setCustomDomainActive,
   verifyCustomDomain,
 } from "@/server/domains/custom-domain-service";
+import {
+  getRequestCorrelationId,
+  logServerError,
+} from "@/server/observability/server-logger";
 import { getRequestIp, hasValidRequestOrigin } from "@/server/security/request";
 import { getSessionCookieName } from "@/server/security/session-cookie";
 import {
   checkRateLimit,
   CUSTOM_DOMAIN_RATE_LIMIT,
 } from "@/server/security/rate-limit";
-import { logServerError } from "@/server/observability/server-logger";
 
 export async function GET(request: NextRequest) {
   const session = await customerSession(request);
@@ -69,6 +72,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     return customDomainFailure(error, {
+      requestId: getRequestCorrelationId(request.headers),
       operation: "list",
       userId: session.user.id,
       smartLinkId,
@@ -210,6 +214,7 @@ async function prepareWrite(request: NextRequest) {
   }
 
   return {
+    requestId: getRequestCorrelationId(request.headers),
     userId: session.user.id,
     smartLinkId: body.smartLinkId.trim(),
     domain: body.domain,

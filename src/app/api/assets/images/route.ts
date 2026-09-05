@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSessionToken } from "@/server/auth/auth-service";
 import { getAssetStorage } from "@/server/assets/storage-factory";
+import { InvalidImageError, type AssetStorage, type StoredAsset } from "@/server/assets/asset-storage";
 import { AssetStorageQuotaError } from "@/server/business/asset-quota";
-import type { StoredAsset } from "@/server/assets/asset-storage";
+import { getRequestCorrelationId, logServerError, logServerWarning } from "@/server/observability/server-logger";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import { getRequestIp, hasValidRequestOrigin } from "@/server/security/request";
 import { getSessionCookieName } from "@/server/security/session-cookie";
@@ -16,6 +17,7 @@ export async function POST(request: NextRequest) {
   const session = await resolveSessionToken(request.cookies.get(getSessionCookieName())?.value);
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   if (session.user.role !== "CUSTOMER") return NextResponse.json({ error: "Customer account required." }, { status: 403 });
+  const requestId = getRequestCorrelationId(request.headers);
   const rateLimit = await checkRateLimit(`${getRequestIp(request)}:${session.user.id}`, IMAGE_UPLOAD_RATE_LIMIT);
   if (!rateLimit.available) return NextResponse.json({ error: "Upload protection is temporarily unavailable." }, { status: 503 });
   if (!rateLimit.allowed) return NextResponse.json({ error: "Too many uploads. Try again later.", retryAfterMs: rateLimit.retryAfterMs }, { status: 429 });
@@ -32,13 +34,33 @@ export async function POST(request: NextRequest) {
   ) return NextResponse.json({ error: "Invalid upload." }, { status: 400 });
   if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) return NextResponse.json({ error: "Image must be smaller than 8 MB." }, { status: 413 });
 
+  const logContext = {
+    requestId,
+    actorUserId: session.user.id,
+    smartLinkId,
+    assetType: type,
+    mimeType: file.type,
+    sizeBytes: file.size,
+  };
+
   const bytes = new Uint8Array(await file.arrayBuffer());
   let stored: StoredAsset;
   const storage = await getAssetStorage();
   try {
     stored = await storage.storeImage(session.user.id, bytes, file.type);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Upload failed." }, { status: 400 });
+    if (error instanceof InvalidImageError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: 400 },
+      );
+    }
+
+    logServerError("asset.upload.storage_failed", error, logContext);
+    return NextResponse.json(
+      { error: "Upload failed.", code: "ASSET_UPLOAD_FAILED" },
+      { status: 500 },
+    );
   }
 
   try {
@@ -56,7 +78,11 @@ export async function POST(request: NextRequest) {
     const asset = await repositories.assets.createForSmartLink(session.user.id, smartLinkId, assetInput);
     return NextResponse.json({ assetId: asset.id, url: stored.publicUrl });
   } catch (error) {
-    await storage.remove(stored.storageKey);
+    await removeStoredAssetSafely(storage, stored.storageKey, {
+      ...logContext,
+      reason: "persistence_failed",
+    });
+
     if (error instanceof AssetStorageQuotaError) {
       return NextResponse.json(
         {
@@ -69,7 +95,12 @@ export async function POST(request: NextRequest) {
         { status: 413 },
       );
     }
-    return NextResponse.json({ error: "Could not save uploaded image." }, { status: 500 });
+
+    logServerError("asset.upload.persistence_failed", error, logContext);
+    return NextResponse.json(
+      { error: "Could not save uploaded image.", code: "ASSET_PERSISTENCE_FAILED" },
+      { status: 500 },
+    );
   }
 }
 
@@ -87,6 +118,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Customer account required." }, { status: 403 });
   }
 
+  const requestId = getRequestCorrelationId(request.headers);
   const body = await request.json().catch(() => null) as {
     assetIds?: unknown;
     smartLinkId?: unknown;
@@ -103,6 +135,10 @@ export async function DELETE(request: NextRequest) {
 
   const repositories = await getServerDependencies();
   if (!repositories.assets) {
+    logServerWarning("asset.cleanup.persistence_unavailable", {
+      requestId,
+      actorUserId: session.user.id,
+    });
     return NextResponse.json({ error: "Asset persistence is unavailable." }, { status: 503 });
   }
   if (typeof body.smartLinkId !== "string" || body.smartLinkId.length < 1 || body.smartLinkId.length > 100) {
@@ -115,8 +151,29 @@ export async function DELETE(request: NextRequest) {
     assetIds,
   );
   const storage = await getAssetStorage();
-  await Promise.allSettled(
+  const cleanupResults = await Promise.allSettled(
     removed.map((asset) => storage.remove(asset.storageKey)),
   );
+  cleanupResults.forEach((result, index) => {
+    if (result.status !== "rejected") return;
+    logServerError("asset.cleanup.storage_remove_failed", result.reason, {
+      requestId,
+      actorUserId: session.user.id,
+      smartLinkId: body.smartLinkId,
+      assetId: removed[index]?.id,
+    });
+  });
   return new NextResponse(null, { status: 204 });
+}
+
+async function removeStoredAssetSafely(
+  storage: AssetStorage,
+  storageKey: string,
+  context: Record<string, unknown>,
+) {
+  try {
+    await storage.remove(storageKey);
+  } catch (error) {
+    logServerError("asset.cleanup.storage_remove_failed", error, context);
+  }
 }
