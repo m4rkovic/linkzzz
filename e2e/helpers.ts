@@ -186,15 +186,24 @@ export async function openSeedLandingPageEditor(page: Page) {
   await expect(page).toHaveURL(/\/dashboard\/links\/[^/]+$/);
 }
 
-export async function openAppearanceEditor(page: Page) {
+async function openLandingPageSection(page: Page, section: "Appearance" | "Cards") {
   await openSeedLandingPageEditor(page);
   const viewportWidth = page.viewportSize()?.width ?? 1440;
   const navigationKind = viewportWidth >= 1280 ? "sidebar" : "compact";
   const navigation = page.locator(`nav[data-editor-navigation="${navigationKind}"]`);
   await expect(navigation).toBeVisible();
   await navigation.getByRole("button", { name: "Page", exact: true }).click();
-  await page.getByRole("button", { name: "Appearance", exact: true }).click();
+  await page.getByRole("button", { name: section, exact: true }).click();
+}
+
+export async function openAppearanceEditor(page: Page) {
+  await openLandingPageSection(page, "Appearance");
   await expect(page.getByRole("navigation", { name: "Appearance settings" })).toBeVisible();
+}
+
+export async function openCardsEditor(page: Page) {
+  await openLandingPageSection(page, "Cards");
+  await expect(page.getByRole("heading", { name: "Links", exact: true })).toBeVisible();
 }
 
 function e2eOrigin() {

@@ -2,6 +2,11 @@ import { isIP } from "node:net";
 import { domainToASCII } from "node:url";
 
 const DEFAULT_APP_HOSTS = ["linkzzz.com", "www.linkzzz.com"];
+const VERCEL_APP_HOST_ENV_KEYS = [
+  "VERCEL_URL",
+  "VERCEL_BRANCH_URL",
+  "VERCEL_PROJECT_PRODUCTION_URL",
+] as const;
 
 const CUSTOM_DOMAIN_OUTBOUND_PATH =
   /^\/[a-z0-9_-]+\/out\/(?:card|social|block)\/[^/]+\/?$/;
@@ -32,8 +37,13 @@ export function normalizeRequestHostname(value: string | null | undefined) {
 }
 
 export function getConfiguredApplicationHosts(environment: NodeJS.ProcessEnv = process.env) {
-  const configured = (environment.LINKZZZ_APP_HOSTS ?? DEFAULT_APP_HOSTS.join(","))
-    .split(",")
+  const explicitHosts = (
+    environment.LINKZZZ_APP_HOSTS ?? DEFAULT_APP_HOSTS.join(",")
+  ).split(",");
+  const vercelDeploymentHosts = VERCEL_APP_HOST_ENV_KEYS.map(
+    (key) => environment[key] ?? "",
+  );
+  const configured = [...explicitHosts, ...vercelDeploymentHosts]
     .map((value) => normalizeRequestHostname(value))
     .filter((value): value is string => Boolean(value));
   return [...new Set(configured)];

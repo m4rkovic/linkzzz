@@ -88,7 +88,7 @@ export default function LoginForm({ notice }: { notice?: string }) {
 
         <div className="relative z-10">
           <LinkzzzBrand href="/" tone="light" />
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
             Profile platform
           </p>
         </div>
@@ -114,7 +114,7 @@ export default function LoginForm({ notice }: { notice?: string }) {
           </div>
         </div>
 
-        <p className="relative z-10 text-xs text-zinc-600">
+        <p className="relative z-10 text-xs text-zinc-400">
           Linkzzz administration platform
         </p>
       </section>
@@ -139,103 +139,112 @@ export default function LoginForm({ notice }: { notice?: string }) {
             {notice && (
               <div
                 role="status"
+                aria-live="polite"
                 className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-5 text-emerald-800"
               >
                 {notice}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-5" data-hydrated={hydrated ? "true" : "false"} aria-busy={loading}>
+            <form
+              onSubmit={handleSubmit}
+              className="mt-8 space-y-5"
+              data-hydrated={hydrated ? "true" : "false"}
+              aria-busy={loading}
+              aria-describedby={error ? "login-error" : undefined}
+            >
               <fieldset disabled={!hydrated || loading} className="contents">
-              <div>
-                <label htmlFor="identifier" className="text-sm font-medium text-zinc-900">
-                  Username or email
-                </label>
+                <div>
+                  <label htmlFor="identifier" className="text-sm font-medium text-zinc-900">
+                    Username or email
+                  </label>
 
-                <div className="relative mt-2">
-                  <UserRound
-                    size={17}
-                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
-                  />
+                  <div className="relative mt-2">
+                    <UserRound
+                      size={17}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                    />
 
-                  <Input
-                    id="identifier"
-                    type="text"
-                    value={identifier}
-                    onChange={(event) => setIdentifier(event.target.value)}
-                    autoComplete="username"
-                    placeholder="username"
-                    className="h-12 pl-10 pr-4"
-                  />
+                    <Input
+                      id="identifier"
+                      type="text"
+                      value={identifier}
+                      onChange={(event) => setIdentifier(event.target.value)}
+                      autoComplete="username"
+                      placeholder="username"
+                      className="h-12 pl-10 pr-4"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label htmlFor="password" className="text-sm font-medium text-zinc-900">
-                  Password
-                </label>
+                <div>
+                  <label htmlFor="password" className="text-sm font-medium text-zinc-900">
+                    Password
+                  </label>
 
-                <div className="relative mt-2">
-                  <LockKeyhole
-                    size={17}
-                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
-                  />
+                  <div className="relative mt-2">
+                    <LockKeyhole
+                      size={17}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                    />
 
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    autoComplete="current-password"
-                    placeholder="Enter your password"
-                    className="h-12 pl-10 pr-12"
-                  />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      autoComplete="current-password"
+                      placeholder="Enter your password"
+                      className="h-12 pl-10 pr-12"
+                    />
 
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((current) => !current)}
-                    className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700"
-                    aria-label={showPassword ? "Hide characters" : "Show characters"}
-                  >
-                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((current) => !current)}
+                      className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20"
+                      aria-label={showPassword ? "Hide characters" : "Show characters"}
+                    >
+                      {showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between gap-4">
-                <label className="flex cursor-pointer items-center gap-2.5">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(event) => setRememberMe(event.target.checked)}
-                    className="h-4 w-4 accent-brand-violet"
-                  />
-                  <span className="text-sm text-zinc-600">Remember me</span>
-                </label>
-              </div>
-
-              {error && (
-                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-5 text-red-700">
-                  {error}
+                <div className="flex items-center justify-between gap-4">
+                  <label className="flex cursor-pointer items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(event) => setRememberMe(event.target.checked)}
+                      className="h-4 w-4 accent-brand-violet focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20"
+                    />
+                    <span className="text-sm text-zinc-600">Remember me</span>
+                  </label>
                 </div>
-              )}
 
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                block
-                disabled={!hydrated || loading}
-                className="font-black"
-              >
-                {loading ? "Signing in..." : "Sign in"}
-                {!loading && <ArrowRight size={17} />}
-              </Button>
+                {error && (
+                  <div id="login-error" role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-5 text-red-700">
+                    {error}
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  block
+                  disabled={!hydrated || loading}
+                  className="font-black"
+                >
+                  {loading ? "Signing in..." : "Sign in"}
+                  {!loading && <ArrowRight size={17} aria-hidden="true" />}
+                </Button>
               </fieldset>
             </form>
 
             <div className="mt-8 border-t border-zinc-100 pt-6">
-              <p className="text-center text-xs leading-5 text-zinc-400">
+              <p className="text-center text-xs leading-5 text-zinc-500">
                 Can&apos;t access your account? Contact your Linkzzz administrator
                 to reset your credentials.
               </p>
@@ -251,7 +260,7 @@ function FeatureStat({ value, label }: { value: string; label: string }) {
   return (
     <div className="rounded-2xl border border-brand-violet/25 bg-zinc-900/60 p-4">
       <p className="text-xl font-bold text-white">{value}</p>
-      <p className="mt-1 text-xs text-zinc-500">{label}</p>
+      <p className="mt-1 text-xs text-zinc-400">{label}</p>
     </div>
   );
 }

@@ -9,6 +9,15 @@ export interface AssetStorage {
   remove(storageKey: string): Promise<void>;
 }
 
+export class InvalidImageError extends Error {
+  readonly code = "INVALID_IMAGE";
+
+  constructor(message = "Unsupported or invalid image file.") {
+    super(message);
+    this.name = "InvalidImageError";
+  }
+}
+
 const MIME_EXTENSIONS = new Map([
   ["image/jpeg", "jpg"],
   ["image/png", "png"],
@@ -18,7 +27,7 @@ const MIME_EXTENSIONS = new Map([
 export function validateImage(bytes: Uint8Array, mimeType: string) {
   const extension = MIME_EXTENSIONS.get(mimeType);
   if (!extension || !hasValidSignature(bytes, mimeType)) {
-    throw new Error("Unsupported or invalid image file.");
+    throw new InvalidImageError();
   }
   return extension;
 }

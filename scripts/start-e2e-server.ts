@@ -15,9 +15,14 @@ const require = createRequire(resolve("package.json"));
 async function main() {
   const e2eDatabaseUrl = requireIsolatedE2EDatabaseUrl();
   const environment = createE2EServerEnvironment();
+  const prismaCli = require.resolve("prisma/build/index.js");
+
+  // A fresh checkout does not contain src/generated/prisma. Generate the client
+  // before migrations/seed so dev:e2e is self-contained locally and in CI.
+  await run(process.execPath, [prismaCli, "generate"], environment);
 
   await run(process.execPath, [
-    require.resolve("prisma/build/index.js"),
+    prismaCli,
     "migrate",
     "deploy",
   ], environment);

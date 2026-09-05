@@ -8,22 +8,43 @@ import {
   isAllowedCustomDomainPath,
   isApplicationHostname,
 } from "@/server/domains/host-routing";
-import { buildContentSecurityPolicy } from "@/server/security/content-security-policy";
+import {
+  buildContentSecurityPolicy,
+  buildStaticMarketingContentSecurityPolicy,
+} from "@/server/security/content-security-policy";
 
 export function proxy(request: NextRequest) {
   const hostname = getRequestHostname(request.headers);
+  const isApplicationHost = hostname ? isApplicationHostname(hostname) : false;
+  const pathname = request.nextUrl.pathname;
+
   if (
     hostname &&
-    !isApplicationHostname(hostname) &&
-    !isAllowedCustomDomainPath(request.nextUrl.pathname)
+    !isApplicationHost &&
+    !isAllowedCustomDomainPath(pathname)
   ) {
-    return new NextResponse("Not Found", {
-      status: 404,
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-Robots-Tag": "noindex, nofollow",
-      },
-    });
+    return notFoundResponse();
+  }
+
+  // Internal runtime routes are implementation details and must never become a
+  // second public surface on a Linkzzz application host.
+  if (isApplicationHost && pathname.startsWith("/__linkzzz/")) {
+    return notFoundResponse();
+  }
+
+  // The application-host homepage is still intentionally JavaScript-free in
+  // production. Host dispatch now happens in the root server page instead of
+  // rewriting custom-domain traffic through an internal route.
+  if (isApplicationHost && pathname === "/") {
+    const response = NextResponse.next();
+    response.headers.set(
+      "Content-Security-Policy",
+      buildStaticMarketingContentSecurityPolicy({
+        isDevelopment: process.env.NODE_ENV === "development",
+      }),
+    );
+    applyTransportSecurity(response, request);
+    return response;
   }
 
   const nonce = randomBytes(16).toString("base64");
@@ -39,18 +60,40 @@ export function proxy(request: NextRequest) {
   const response = NextResponse.next({
     request: { headers: requestHeaders },
   });
-  response.headers.set("Content-Security-Policy", contentSecurityPolicy);
 
-  if (process.env.NODE_ENV === "production" && isConfiguredApplicationHost(request.nextUrl.hostname)) {
-    response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
-  }
+  response.headers.set("Content-Security-Policy", contentSecurityPolicy);
+  applyTransportSecurity(response, request);
 
   return response;
 }
 
+function notFoundResponse() {
+  return new NextResponse("Not Found", {
+    status: 404,
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "X-Robots-Tag": "noindex, nofollow",
+    },
+  });
+}
+
+function applyTransportSecurity(response: NextResponse, request: NextRequest) {
+  if (
+    process.env.NODE_ENV === "production" &&
+    isConfiguredApplicationHost(request.nextUrl.hostname)
+  ) {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload",
+    );
+  }
+}
+
 function isConfiguredApplicationHost(hostname: string) {
   const normalized = hostname.trim().toLowerCase().replace(/\.$/, "");
-  const configured = (process.env.LINKZZZ_APP_HOSTS ?? "linkzzz.com,www.linkzzz.com")
+  const configured = (
+    process.env.LINKZZZ_APP_HOSTS ?? "linkzzz.com,www.linkzzz.com"
+  )
     .split(",")
     .map((value) => value.trim().toLowerCase().replace(/\.$/, ""))
     .filter(Boolean);
@@ -62,6 +105,10 @@ export const config = {
     {
       source:
         "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
     },
   ],
 };

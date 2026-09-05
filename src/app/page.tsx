@@ -13,6 +13,8 @@ import {
   resolveCachedActiveCustomDomain,
 } from "@/server/smart-links/public-runtime";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
   const host = getRequestHostname(requestHeaders);
@@ -25,6 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Home() {
   const requestHeaders = await headers();
   const host = getRequestHostname(requestHeaders);
+
   if (host && !isApplicationHostname(host)) {
     const slug = await resolveCachedActiveCustomDomain(host);
     if (!slug) notFound();

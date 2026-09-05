@@ -38,7 +38,11 @@ export default function LinkzzzBrand({
   if (!href) return content;
 
   return (
-    <Link href={href} aria-label="Linkzzz home" className="inline-flex shrink-0">
+    <Link
+      href={href}
+      aria-label="Linkzzz home"
+      className="inline-flex shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20"
+    >
       {content}
     </Link>
   );

@@ -1,0 +1,60 @@
+name: Deployed Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Deployed Preview or Production URL"
+        required: true
+        type: string
+      public_smart_link_slug:
+        description: "Optional known published Smart Link slug"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Deployed production smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      NODE_VERSION: "22"
+      NEXT_TELEMETRY_DISABLED: "1"
+      E2E_EXTERNAL_SERVER: "1"
+      E2E_BASE_URL: ${{ inputs.base_url }}
+      E2E_PUBLIC_SMART_LINK_SLUG: ${{ inputs.public_smart_link_slug }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run deployed smoke
+        run: npm run test:e2e:production-smoke
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployed-smoke-report
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7

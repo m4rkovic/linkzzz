@@ -1,0 +1,128 @@
+name: Quality Gate
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  core:
+    name: Core validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres?schema=public
+      RATE_LIMIT_BACKEND: memory
+      ASSET_STORAGE_ADAPTER: local
+      LINKZZZ_APP_HOSTS: linkzzz.com,www.linkzzz.com
+      LINKZZZ_TRUST_PROXY_HEADERS: "0"
+      LINKZZZ_GEO_HEADER: x-vercel-ip-country
+      LINKZZZ_ANALYTICS_HASH_SALT: github-actions-core-validation-salt
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npm run prisma:generate
+
+      - name: Unit tests
+        run: npm test
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Production build
+        run: npm run build
+
+  functional-e2e:
+    name: Functional E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: linkzzz_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d linkzzz_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres?schema=public
+      E2E_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/linkzzz_e2e?schema=public
+      E2E_BASE_URL: http://127.0.0.1:3100
+      E2E_ADMIN_USERNAME: admin
+      RATE_LIMIT_BACKEND: memory
+      ASSET_STORAGE_ADAPTER: local
+      LINKZZZ_APP_HOSTS: linkzzz.com,www.linkzzz.com
+      LINKZZZ_TRUST_PROXY_HEADERS: "1"
+      LINKZZZ_GEO_HEADER: x-vercel-ip-country
+      LINKZZZ_ANALYTICS_HASH_SALT: github-actions-e2e-validation-salt
+      LINKZZZ_DEV_PREWARM: "0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Functional Playwright
+        run: npm run test:e2e:functional -- --workers=1
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7

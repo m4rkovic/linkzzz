@@ -38,7 +38,9 @@ server.on("error", (error) => {
 });
 
 async function prewarmCoreRoutes() {
-  if (process.env.LINKZZZ_DEV_PREWARM === "0") return;
+  // Prewarming is intentionally opt-in. Compiling a dozen protected routes on
+  // every startup made ordinary local navigation feel slower, not faster.
+  if (process.env.LINKZZZ_DEV_PREWARM !== "1") return;
 
   const origin = resolveOrigin(forwardedArguments);
   const publicRoutes = [

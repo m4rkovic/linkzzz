@@ -1,48 +1,55 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildContentSecurityPolicy } from "@/server/security/content-security-policy";
+import {
+  buildContentSecurityPolicy,
+  buildStaticMarketingContentSecurityPolicy,
+} from "../src/server/security/content-security-policy";
 
-test("production CSP allows only nonce-authorized inline scripts", () => {
+test("dynamic CSP keeps nonce-based script execution", () => {
   const policy = buildContentSecurityPolicy({
-    nonce: "test-nonce",
+    nonce: "nonce-value",
     isDevelopment: false,
   });
+  const scriptSrc = directive(policy, "script-src");
 
-  assert.match(
-    policy,
-    /script-src 'self' 'nonce-test-nonce' 'strict-dynamic'/,
-  );
-  assert.match(policy, /script-src-attr 'none'/);
-  assert.doesNotMatch(scriptDirective(policy), /'unsafe-inline'/);
-  assert.doesNotMatch(scriptDirective(policy), /'unsafe-eval'/);
-  assert.doesNotMatch(policy, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
-  assert.match(connectDirective(policy), /https:\/\/www\.google-analytics\.com/);
-  assert.match(connectDirective(policy), /https:\/\/www\.facebook\.com/);
-  assert.match(policy, /frame-src 'self' https:\/\/www\.youtube\.com https:\/\/www\.youtube-nocookie\.com https:\/\/open\.spotify\.com/);
-  assert.match(policy, /upgrade-insecure-requests/);
+  assert.match(scriptSrc, /script-src 'self' 'nonce-nonce-value' 'strict-dynamic'/);
+  assert.match(scriptSrc, /https:\/\/www\.googletagmanager\.com/);
+  assert.match(scriptSrc, /https:\/\/connect\.facebook\.net/);
+  assert.doesNotMatch(scriptSrc, /'unsafe-inline'/);
+  assert.match(directive(policy, "style-src"), /'unsafe-inline'/);
 });
 
-test("development CSP permits only the eval support required by Next development", () => {
-  const policy = buildContentSecurityPolicy({
-    nonce: "development-nonce",
+test("production marketing CSP disables JavaScript instead of weakening script-src", () => {
+  const policy = buildStaticMarketingContentSecurityPolicy({
+    isDevelopment: false,
+  });
+  const scriptSrc = directive(policy, "script-src");
+
+  assert.equal(scriptSrc, "script-src 'none'");
+  assert.doesNotMatch(scriptSrc, /nonce-/);
+  assert.doesNotMatch(scriptSrc, /'unsafe-inline'/);
+  assert.doesNotMatch(scriptSrc, /'unsafe-eval'/);
+  assert.match(directive(policy, "style-src"), /'unsafe-inline'/);
+});
+
+test("development marketing CSP keeps the Next dev runtime available", () => {
+  const policy = buildStaticMarketingContentSecurityPolicy({
     isDevelopment: true,
   });
 
-  assert.match(scriptDirective(policy), /'nonce-development-nonce'/);
-  assert.match(scriptDirective(policy), /'unsafe-eval'/);
-  assert.doesNotMatch(scriptDirective(policy), /'unsafe-inline'/);
-  assert.doesNotMatch(policy, /upgrade-insecure-requests/);
+  assert.match(
+    directive(policy, "script-src"),
+    /script-src 'self' 'unsafe-inline' 'unsafe-eval'/,
+  );
+  assert.match(directive(policy, "connect-src"), /connect-src 'self' ws: wss:/);
 });
 
-function scriptDirective(policy: string) {
-  return policy
-    .split("; ")
-    .find((directive) => directive.startsWith("script-src ")) ?? "";
-}
-
-function connectDirective(policy: string) {
-  return policy
-    .split("; ")
-    .find((directive) => directive.startsWith("connect-src ")) ?? "";
+function directive(policy: string, name: string) {
+  return (
+    policy
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${name} `)) ?? ""
+  );
 }

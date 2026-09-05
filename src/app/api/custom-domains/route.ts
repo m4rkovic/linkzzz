@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { resolveSessionToken } from "@/server/auth/auth-service";
+import { getCustomerRequestSession } from "@/server/auth/request-session";
 import {
   customDomainErrorStatus,
   isCustomDomainError,
@@ -13,16 +13,18 @@ import {
   setCustomDomainActive,
   verifyCustomDomain,
 } from "@/server/domains/custom-domain-service";
+import {
+  getRequestCorrelationId,
+  logServerError,
+} from "@/server/observability/server-logger";
 import { getRequestIp, hasValidRequestOrigin } from "@/server/security/request";
-import { getSessionCookieName } from "@/server/security/session-cookie";
 import {
   checkRateLimit,
   CUSTOM_DOMAIN_RATE_LIMIT,
 } from "@/server/security/rate-limit";
-import { logServerError } from "@/server/observability/server-logger";
 
 export async function GET(request: NextRequest) {
-  const session = await customerSession(request);
+  const session = await getCustomerRequestSession(request);
   if (!session) {
     return NextResponse.json(
       { error: "Authentication required.", code: "AUTHENTICATION_REQUIRED" },
@@ -69,6 +71,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     return customDomainFailure(error, {
+      requestId: getRequestCorrelationId(request.headers),
       operation: "list",
       userId: session.user.id,
       smartLinkId,
@@ -159,7 +162,7 @@ async function prepareWrite(request: NextRequest) {
     );
   }
 
-  const session = await customerSession(request);
+  const session = await getCustomerRequestSession(request);
   if (!session) {
     return NextResponse.json(
       { error: "Authentication required.", code: "AUTHENTICATION_REQUIRED" },
@@ -210,18 +213,12 @@ async function prepareWrite(request: NextRequest) {
   }
 
   return {
+    requestId: getRequestCorrelationId(request.headers),
     userId: session.user.id,
     smartLinkId: body.smartLinkId.trim(),
     domain: body.domain,
     action: body.action,
   };
-}
-
-async function customerSession(request: NextRequest) {
-  const session = await resolveSessionToken(
-    request.cookies.get(getSessionCookieName())?.value,
-  );
-  return session?.user.role === "CUSTOMER" ? session : null;
 }
 
 function customDomainFailure(

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { resolveSessionToken } from "@/server/auth/auth-service";
+import { getCustomerRequestSession } from "@/server/auth/request-session";
 import { PageCardDuplicateLimitError } from "@/server/business/quota-errors";
 import { checkRateLimit, SENSITIVE_ACTION_RATE_LIMIT } from "@/server/security/rate-limit";
 import { getRequestIp, hasValidRequestOrigin } from "@/server/security/request";
-import { getSessionCookieName } from "@/server/security/session-cookie";
 import { duplicateOwnSmartLink } from "@/server/smart-links/smart-link-service";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -14,7 +13,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   }
 
-  const session = await customerSession(request);
+  const session = await getCustomerRequestSession(request);
   if (!session) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
@@ -59,11 +58,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     throw error;
   }
-}
-
-async function customerSession(request: NextRequest) {
-  const session = await resolveSessionToken(request.cookies.get(getSessionCookieName())?.value);
-  return session?.user.role === "CUSTOMER" ? session : null;
 }
 
 function isUniqueConstraintError(error: unknown) {

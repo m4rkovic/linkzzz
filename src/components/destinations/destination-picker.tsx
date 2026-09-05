@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
 
 import { ProviderIcon } from "@/components/destinations/provider-icon";
+import { DialogShell } from "@/components/ui/dialog";
 import {
   DESTINATION_PROVIDER_CATEGORIES,
   DESTINATION_PROVIDERS,
@@ -173,7 +174,13 @@ export function DestinationPicker({
         <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-black text-zinc-500">{provider.category}</span>
       </div>
 
-      {pickerOpen && <ProviderLibraryModal selected={providerId} onSelect={selectProvider} onClose={() => setPickerOpen(false)} />}
+      {pickerOpen && (
+        <ProviderLibraryModal
+          selected={providerId}
+          onSelect={selectProvider}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -189,6 +196,7 @@ function ProviderLibraryModal({
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<DestinationProviderCategory>("Popular");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const providers = useMemo(() => {
     const base = query.trim() ? DESTINATION_PROVIDERS : listDestinationProviders(category);
@@ -200,78 +208,86 @@ function ProviderLibraryModal({
   }, [category, query]);
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 p-0 backdrop-blur-sm sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-label="Choose destination provider">
-      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close provider picker" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
-        <div className="flex items-start justify-between gap-4 border-b border-zinc-100 p-5 sm:p-6">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">Destination library</p>
-            <h3 className="mt-1 text-xl font-black text-zinc-950">Choose a provider</h3>
-            <p className="mt-1 text-sm text-zinc-500">Pick the service. Linkzzz handles the boring URL syntax.</p>
-          </div>
-          <button type="button" onClick={onClose} className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800" aria-label="Close">
-            <X size={20} />
-          </button>
+    <DialogShell
+      open
+      onClose={onClose}
+      initialFocusRef={searchRef}
+      ariaLabelledby="destination-provider-title"
+      ariaDescribedby="destination-provider-description"
+      overlayClassName="z-[80]"
+      panelClassName="flex max-h-[88vh] max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-zinc-100 p-5 sm:p-6">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">Destination library</p>
+          <h3 id="destination-provider-title" className="mt-1 text-xl font-black text-zinc-950">Choose a provider</h3>
+          <p id="destination-provider-description" className="mt-1 text-sm text-zinc-500">Pick the service. Linkzzz handles the boring URL syntax.</p>
         </div>
-
-        <div className="border-b border-zinc-100 p-4 sm:p-5">
-          <div className="relative">
-            <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search Instagram, Spotify, email…"
-              className="min-h-11 w-full rounded-xl border border-zinc-200 pl-10 pr-3 text-sm outline-none focus:border-zinc-950"
-              autoFocus
-            />
-          </div>
-          {!query.trim() && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {DESTINATION_PROVIDER_CATEGORIES.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setCategory(item)}
-                  className={`min-h-9 rounded-xl px-3 text-xs font-black transition ${category === item ? "bg-zinc-950 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"}`}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-          {providers.length ? (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {providers.map((provider) => {
-                const active = provider.id === selected;
-                return (
-                  <button
-                    key={provider.id}
-                    type="button"
-                    onClick={() => onSelect(provider.id)}
-                    className={`flex min-h-[92px] items-start gap-3 rounded-2xl border p-3 text-left transition ${active ? "border-zinc-950 bg-zinc-950 text-white" : "border-zinc-200 bg-white text-zinc-950 hover:border-zinc-400 hover:bg-zinc-50"}`}
-                  >
-                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${active ? "bg-white/10" : "bg-zinc-100"}`}>
-                      <ProviderIcon provider={provider.id} size={18} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5 text-sm font-black">
-                        {provider.name} {active && <Check size={14} />}
-                      </span>
-                      <span className={`mt-1 block text-xs leading-4 ${active ? "text-zinc-300" : "text-zinc-500"}`}>{provider.description}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-zinc-200 p-10 text-center text-sm text-zinc-500">No provider matches that search.</div>
-          )}
-        </div>
+        <button type="button" onClick={onClose} className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800" aria-label="Close provider picker">
+          <X size={20} />
+        </button>
       </div>
-    </div>
+
+      <div className="border-b border-zinc-100 p-4 sm:p-5">
+        <div className="relative">
+          <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <input
+            ref={searchRef}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search Instagram, Spotify, email…"
+            aria-label="Search destination providers"
+            className="min-h-11 w-full rounded-xl border border-zinc-200 pl-10 pr-3 text-sm outline-none focus:border-zinc-950"
+          />
+        </div>
+        {!query.trim() && (
+          <div className="mt-3 flex flex-wrap gap-2" aria-label="Destination provider categories">
+            {DESTINATION_PROVIDER_CATEGORIES.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setCategory(item)}
+                aria-pressed={category === item}
+                className={`min-h-9 rounded-xl px-3 text-xs font-black transition ${category === item ? "bg-zinc-950 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"}`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+        {providers.length ? (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {providers.map((provider) => {
+              const active = provider.id === selected;
+              return (
+                <button
+                  key={provider.id}
+                  type="button"
+                  onClick={() => onSelect(provider.id)}
+                  aria-pressed={active}
+                  className={`flex min-h-[92px] items-start gap-3 rounded-2xl border p-3 text-left transition ${active ? "border-zinc-950 bg-zinc-950 text-white" : "border-zinc-200 bg-white text-zinc-950 hover:border-zinc-400 hover:bg-zinc-50"}`}
+                >
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${active ? "bg-white/10" : "bg-zinc-100"}`}>
+                    <ProviderIcon provider={provider.id} size={18} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 text-sm font-black">
+                      {provider.name} {active && <Check size={14} />}
+                    </span>
+                    <span className={`mt-1 block text-xs leading-4 ${active ? "text-zinc-300" : "text-zinc-500"}`}>{provider.description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-zinc-200 p-10 text-center text-sm text-zinc-500">No provider matches that search.</div>
+        )}
+      </div>
+    </DialogShell>
   );
 }
 

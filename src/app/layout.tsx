@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import localFont from "next/font/local";
-import { connection } from "next/server";
 import "./globals.css";
 
 // Next already ships these Geist assets with the pinned framework version.
@@ -36,13 +35,9 @@ export const metadata: Metadata = {
   ],
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  // A fresh CSP nonce exists only at request time, so the whole route tree must
-  // render dynamically instead of reusing build-time HTML.
-  await connection();
-
   return (
     <html
       lang="en"

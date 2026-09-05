@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import DeeplinkHelper from "@/components/public/deeplink-helper";
-import PublicProfile from "@/components/public/public-profile";
+import PublicProfileServer from "@/components/public/public-profile-server";
 import TrafficShieldPreview from "@/components/public/traffic-shield-preview";
 import {
   scheduleSmartLinkRuntimeEvent,
@@ -141,7 +141,7 @@ export async function renderSmartLinkRuntime(
   const routedProfile = resolvePublicProfileGeoRouting(profile, countryCode);
 
   return (
-    <PublicProfile
+    <PublicProfileServer
       initialProfile={withSmartLinkOutboundRoutes(routedProfile, smartLink.slug)}
       tracking={smartLink.tracking}
       initialNowMs={getServerRenderTimestamp()}

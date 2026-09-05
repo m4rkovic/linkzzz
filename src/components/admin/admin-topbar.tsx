@@ -15,10 +15,10 @@ export default function AdminTopbar({ onMenuClick }: AdminTopbarProps) {
         <button
           type="button"
           onClick={onMenuClick}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-700 transition hover:bg-zinc-50 xl:hidden"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-700 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 xl:hidden"
           aria-label="Open admin navigation"
         >
-          <Menu size={20} />
+          <Menu size={20} aria-hidden="true" />
         </button>
 
         <div className="xl:hidden">
@@ -34,9 +34,9 @@ export default function AdminTopbar({ onMenuClick }: AdminTopbarProps) {
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <Link
           href="/admin/users/new"
-          className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-3 text-sm font-semibold text-white transition hover:bg-zinc-800 sm:px-4"
+          className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-3 text-sm font-semibold text-white transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/25 sm:px-4"
         >
-          <Plus size={17} />
+          <Plus size={17} aria-hidden="true" />
           <span className="hidden sm:inline">Create user</span>
         </Link>
       </div>

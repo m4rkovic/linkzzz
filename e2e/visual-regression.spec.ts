@@ -1,7 +1,12 @@
-import { loginAsCustomer, openAppearanceEditor } from "./helpers";
+import { loginAsCustomer, openAppearanceEditor, openCardsEditor } from "./helpers";
 import { expect, test } from "./test";
 
 async function stabilize(page: Parameters<typeof loginAsCustomer>[0]) {
+  // Screenshot helpers may temporarily mutate caret/animation styles. Wait for
+  // client hydration to finish first so React never hydrates over a DOM that
+  // Playwright has already modified for deterministic screenshots.
+  await expect(page.locator('[data-hydrated="false"]')).toHaveCount(0);
+
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.addStyleTag({
     content: `
@@ -65,5 +70,14 @@ test.describe("R1.4 visual regression matrix", () => {
     await openAppearanceEditor(page);
     await stabilize(page);
     await expect(page).toHaveScreenshot("appearance-editor.png", { fullPage: true });
+  });
+
+  test("cards editor create form", async ({ page }) => {
+    await loginAsCustomer(page, "/dashboard/links");
+    await openCardsEditor(page);
+    await page.getByRole("button", { name: "Add link", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Create link", exact: true })).toBeVisible();
+    await stabilize(page);
+    await expect(page).toHaveScreenshot("cards-editor-create.png", { fullPage: true });
   });
 });

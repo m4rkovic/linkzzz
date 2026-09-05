@@ -22,10 +22,10 @@ export default function Topbar({ onMenuClick, username }: TopbarProps) {
         <button
           type="button"
           onClick={onMenuClick}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-700 transition hover:bg-zinc-50 xl:hidden"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-700 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/20 xl:hidden"
           aria-label="Open navigation"
         >
-          <Menu size={20} />
+          <Menu size={20} aria-hidden="true" />
         </button>
 
         <div className="xl:hidden">
@@ -43,7 +43,7 @@ export default function Topbar({ onMenuClick, username }: TopbarProps) {
           <p className="truncate text-sm font-semibold text-zinc-900">@{username}</p>
           <p className="truncate text-xs text-zinc-500">Linkzzz workspace</p>
         </div>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-sm font-bold text-white ring-2 ring-brand-lime/40">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-sm font-bold text-white ring-2 ring-brand-lime/40" aria-label={`Signed in as ${username}`}>
           {initials}
         </div>
       </div>
