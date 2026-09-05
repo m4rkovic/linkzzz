@@ -16,7 +16,25 @@ type PageGraph = Prisma.PageGetPayload<{
   };
 }>;
 
+type LegacyAppearanceEnvelope = PersistedProfileData["appearance"] & {
+  __media?: {
+    avatarUrl?: string | null;
+    coverImageUrl?: string | null;
+  } | null;
+  __engagement?: PersistedProfileData["engagement"] | null;
+};
+
 function profileData(row: PageGraph): PersistedProfileData {
+  const storedAppearance = structuredClone(
+    row.appearance as LegacyAppearanceEnvelope,
+  );
+  const { __media, __engagement, ...appearance } = storedAppearance;
+  const legacyMedia = recordFromUnknown(__media);
+  const hasLegacyEngagement = Object.prototype.hasOwnProperty.call(
+    storedAppearance,
+    "__engagement",
+  );
+
   return {
     slug: row.smartLink.slug,
     displayName: row.displayName,
@@ -24,14 +42,23 @@ function profileData(row: PageGraph): PersistedProfileData {
     bio: row.bio,
     locationLabel: row.locationLabel ?? undefined,
     status: row.smartLink.status,
-    appearance: structuredClone(
-      row.appearance as PersistedProfileData["appearance"],
-    ),
-    avatarUrl: row.avatarUrl ?? undefined,
+    appearance: appearance as PersistedProfileData["appearance"],
+    // During the expand/contract compatibility window the legacy envelope is
+    // authoritative when present. This keeps a rollback to the pre-3.12 app
+    // viable while the first-class columns are dual-written in parallel.
+    avatarUrl: legacyStringField(legacyMedia, "avatarUrl", row.avatarUrl),
     avatarAssetId: row.avatarAssetId ?? undefined,
-    coverImageUrl: row.coverImageUrl ?? undefined,
+    coverImageUrl: legacyStringField(
+      legacyMedia,
+      "coverImageUrl",
+      row.coverImageUrl,
+    ),
     coverAssetId: row.coverAssetId ?? undefined,
-    engagement: jsonObject<PersistedProfileData["engagement"]>(row.engagement),
+    engagement: hasLegacyEngagement
+      ? jsonObject<PersistedProfileData["engagement"]>(
+          (__engagement ?? null) as Prisma.JsonValue | null,
+        )
+      : jsonObject<PersistedProfileData["engagement"]>(row.engagement),
     stats: row.stats
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map(({ id, value, label, visible }) => ({ id, value, label, visible })),
@@ -52,6 +79,7 @@ function profileData(row: PageGraph): PersistedProfileData {
     links: row.cards
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((link) => {
+        const legacyStyle = legacyCardEnvelope(link.customStyle);
         const geoDestinations = link.geoDestinations.map(
           ({ id, countryCode, countryName, url }) => ({
             id,
@@ -59,6 +87,25 @@ function profileData(row: PageGraph): PersistedProfileData {
             countryName,
             url,
           }),
+        );
+
+        const customStyleValue = legacyStyle
+          ? legacyJsonField(legacyStyle, "value", null)
+          : link.customStyle;
+        const availabilityValue = legacyJsonField(
+          legacyStyle,
+          "__availability",
+          link.availability,
+        );
+        const sensitiveContentValue = legacyJsonField(
+          legacyStyle,
+          "__sensitiveContent",
+          link.sensitiveContent,
+        );
+        const geoValue = legacyJsonField(
+          legacyStyle,
+          "__geo",
+          link.geoConfig,
         );
 
         return {
@@ -70,9 +117,9 @@ function profileData(row: PageGraph): PersistedProfileData {
           platform: (link.platform ?? undefined) as never,
           layout: (link.layout ?? undefined) as never,
           aspectRatio: (link.aspectRatio ?? undefined) as never,
-          imageUrl: link.imageUrl ?? undefined,
+          imageUrl: legacyStringField(legacyStyle, "__imageUrl", link.imageUrl),
           imageAssetId: link.imageAssetId ?? undefined,
-          imageAlt: link.imageAlt ?? undefined,
+          imageAlt: legacyStringField(legacyStyle, "__imageAlt", link.imageAlt),
           imageFit: (link.imageFit ?? undefined) as never,
           imagePosition: (link.imagePosition ?? undefined) as never,
           titlePosition: (link.titlePosition ?? undefined) as never,
@@ -81,10 +128,10 @@ function profileData(row: PageGraph): PersistedProfileData {
           showDescription: link.showDescription,
           overlayEnabled: link.overlayEnabled,
           overlayOpacity: link.overlayOpacity ?? undefined,
-          customStyle: jsonObject(link.customStyle) as never,
-          availability: availabilityFromJson(link.availability),
-          sensitiveContent: sensitiveContentFromJson(link.sensitiveContent),
-          geo: geoFromJson(link.geoConfig, geoDestinations),
+          customStyle: jsonObject(customStyleValue) as never,
+          availability: availabilityFromJson(availabilityValue),
+          sensitiveContent: sensitiveContentFromJson(sensitiveContentValue),
+          geo: geoFromJson(geoValue, geoDestinations),
           geoDestinations,
         };
       }),
@@ -168,6 +215,50 @@ function recordFromJson(value: Prisma.JsonValue | null) {
     : undefined;
 }
 
+function recordFromUnknown(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function legacyCardEnvelope(value: Prisma.JsonValue | null) {
+  const record = recordFromJson(value);
+  if (!record) return undefined;
+  const legacyKeys = [
+    "value",
+    "__imageUrl",
+    "__imageAlt",
+    "__availability",
+    "__sensitiveContent",
+    "__geo",
+  ];
+  return legacyKeys.some((key) => Object.prototype.hasOwnProperty.call(record, key))
+    ? record
+    : undefined;
+}
+
+function legacyJsonField(
+  record: Record<string, unknown> | undefined,
+  key: string,
+  fallback: Prisma.JsonValue | null,
+): Prisma.JsonValue | null {
+  if (!record || !Object.prototype.hasOwnProperty.call(record, key)) {
+    return fallback;
+  }
+  return (record[key] ?? null) as Prisma.JsonValue | null;
+}
+
+function legacyStringField(
+  record: Record<string, unknown> | undefined,
+  key: string,
+  fallback: string | null,
+) {
+  if (!record || !Object.prototype.hasOwnProperty.call(record, key)) {
+    return fallback ?? undefined;
+  }
+  return typeof record[key] === "string" ? record[key] : undefined;
+}
+
 const pageInclude = {
   smartLink: true,
   cards: { include: { geoDestinations: true } },
@@ -195,6 +286,8 @@ export class PrismaProfileRepository implements ProfileRepository {
     data: PersistedProfileData,
     expectedRevision: number,
   ) {
+    const legacyCompatibleData = withLegacyPersistenceEnvelope(data);
+
     return this.db.$transaction(async (tx) => {
       await lockUserMutation(tx, userId);
 
@@ -220,7 +313,7 @@ export class PrismaProfileRepository implements ProfileRepository {
           avatarAssetId: data.avatarAssetId ?? null,
           coverImageUrl: data.coverImageUrl ?? null,
           coverAssetId: data.coverAssetId ?? null,
-          appearance: toJson(data.appearance),
+          appearance: toJson(legacyCompatibleData.appearance),
           engagement: toJson(data.engagement ?? {}),
           contentBlocks: toJson(data.contentBlocks),
           revision: { increment: 1 },
@@ -230,7 +323,7 @@ export class PrismaProfileRepository implements ProfileRepository {
         return { ok: false as const, reason: "REVISION_CONFLICT" as const };
       }
 
-      await writePageChildren(tx, existingPage.id, data);
+      await writePageChildren(tx, existingPage.id, legacyCompatibleData);
 
       const saved = await tx.page.findUniqueOrThrow({
         where: { id: existingPage.id },
@@ -243,4 +336,31 @@ export class PrismaProfileRepository implements ProfileRepository {
       };
     });
   }
+}
+
+function withLegacyPersistenceEnvelope(
+  data: PersistedProfileData,
+): PersistedProfileData {
+  return {
+    ...data,
+    appearance: {
+      ...data.appearance,
+      __media: {
+        avatarUrl: data.avatarUrl ?? null,
+        coverImageUrl: data.coverImageUrl ?? null,
+      },
+      __engagement: data.engagement ?? null,
+    } as PersistedProfileData["appearance"],
+    links: data.links.map((link) => ({
+      ...link,
+      customStyle: {
+        value: link.customStyle ?? null,
+        __imageUrl: link.imageUrl ?? null,
+        __imageAlt: link.imageAlt ?? null,
+        __availability: link.availability ?? null,
+        __sensitiveContent: link.sensitiveContent ?? null,
+        __geo: link.geo ?? null,
+      } as never,
+    })),
+  };
 }

@@ -1,5 +1,10 @@
--- Phase 3.12: move page/media runtime fields out of hidden JSON wrapper keys
--- and add relational gallery asset references.
+-- Phase 3.12 expand step: add first-class page/media fields and relational
+-- gallery asset references without deleting the legacy JSON transport yet.
+--
+-- The legacy wrappers intentionally remain populated for one compatibility
+-- window so an application rollback to the pre-3.12 code can still read the
+-- same profile state. A later contract migration may remove them after the new
+-- persistence model has been validated in production.
 
 ALTER TABLE "Page"
   ADD COLUMN "avatarUrl" TEXT,
@@ -33,7 +38,8 @@ CREATE INDEX "PageContentAssetReference_assetId_idx"
 CREATE INDEX "PageContentAssetReference_pageId_blockId_sortOrder_idx"
   ON "PageContentAssetReference"("pageId", "blockId", "sortOrder");
 
--- Backfill page-level fields previously hidden in appearance.__media/__engagement.
+-- Backfill first-class page fields while preserving appearance.__media and
+-- appearance.__engagement for rollback compatibility.
 UPDATE "Page"
 SET
   "avatarUrl" = CASE
@@ -50,11 +56,11 @@ SET
     WHEN jsonb_typeof("appearance"->'__engagement') = 'object'
       THEN "appearance"->'__engagement'
     ELSE NULL
-  END,
-  "appearance" = "appearance" - '__media' - '__engagement';
+  END;
 
--- Backfill PageCard fields from the legacy customStyle wrapper. Existing rows
--- that predate the wrapper are preserved as direct customStyle JSON.
+-- Backfill first-class PageCard fields while preserving the legacy customStyle
+-- envelope. The new application dual-writes that envelope during this expand
+-- release so the previous application version remains a viable rollback.
 UPDATE "PageCard"
 SET
   "imageUrl" = CASE
@@ -81,21 +87,6 @@ SET
     WHEN jsonb_typeof("customStyle"->'__geo') = 'object'
       THEN "customStyle"->'__geo'
     ELSE NULL
-  END,
-  "customStyle" = CASE
-    WHEN "customStyle" IS NULL THEN NULL
-    WHEN "customStyle" ? 'value'
-      OR "customStyle" ? '__imageUrl'
-      OR "customStyle" ? '__imageAlt'
-      OR "customStyle" ? '__availability'
-      OR "customStyle" ? '__sensitiveContent'
-      OR "customStyle" ? '__geo'
-      THEN CASE
-        WHEN "customStyle"->'value' IS NULL OR "customStyle"->'value' = 'null'::jsonb
-          THEN NULL
-        ELSE "customStyle"->'value'
-      END
-    ELSE "customStyle"
   END;
 
 -- Backfill relational references for gallery images. The content block payload
