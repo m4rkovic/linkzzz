@@ -17,6 +17,8 @@ type PageCardWrite = {
   platform: string | null;
   layout: string | null;
   aspectRatio: string | null;
+  imageUrl: string | null;
+  imageAlt: string | null;
   imageFit: string | null;
   imagePosition: string | null;
   titlePosition: string | null;
@@ -27,6 +29,9 @@ type PageCardWrite = {
   overlayOpacity: number | null;
   imageAssetId: string | null;
   customStyle: Prisma.InputJsonValue;
+  availability: Prisma.InputJsonValue;
+  sensitiveContent: Prisma.InputJsonValue;
+  geoConfig: Prisma.InputJsonValue;
 };
 
 type SocialLinkWrite = {
@@ -88,6 +93,8 @@ export async function writePageChildren(
         platform: link.platform ?? null,
         layout: link.layout ?? null,
         aspectRatio: link.aspectRatio ?? null,
+        imageUrl: link.imageUrl ?? null,
+        imageAlt: link.imageAlt ?? null,
         imageFit: link.imageFit ?? null,
         imagePosition: link.imagePosition ?? null,
         titlePosition: link.titlePosition ?? null,
@@ -97,14 +104,10 @@ export async function writePageChildren(
         overlayEnabled: link.overlayEnabled ?? false,
         overlayOpacity: link.overlayOpacity ?? null,
         imageAssetId: link.imageAssetId ?? null,
-        customStyle: toJson({
-          value: link.customStyle ?? null,
-          __imageUrl: link.imageUrl ?? null,
-          __imageAlt: link.imageAlt ?? null,
-          __availability: link.availability ?? null,
-          __sensitiveContent: link.sensitiveContent ?? null,
-          __geo: link.geo ?? null,
-        }),
+        customStyle: toJson(link.customStyle ?? {}),
+        availability: toJson(link.availability ?? {}),
+        sensitiveContent: toJson(link.sensitiveContent ?? {}),
+        geoConfig: toJson(link.geo ?? {}),
       } satisfies PageCardWrite,
     };
   });
@@ -153,9 +156,9 @@ export async function writePageChildren(
     await tx.pageCardGeoDestination.createMany({ data: geoDestinationWrites });
   }
 
-  await remapPageEngagement(tx, pageId, data.engagement, cardIdMap);
   await writeSocialLinks(tx, pageId, data);
   await writePageStats(tx, pageId, data);
+  await writePageContentAssetReferences(tx, pageId, data);
 }
 
 async function writeSocialLinks(
@@ -194,8 +197,12 @@ async function writeSocialLinks(
       } satisfies SocialLinkWrite,
     };
   });
-  const existingWrites = writes.filter((write) => write.owned).map((write) => write.data);
-  const newWrites = writes.filter((write) => !write.owned).map((write) => write.data);
+  const existingWrites = writes
+    .filter((write) => write.owned)
+    .map((write) => write.data);
+  const newWrites = writes
+    .filter((write) => !write.owned)
+    .map((write) => write.data);
 
   if (existingWrites.length) {
     const updatedIds = await updateSocialLinks(tx, pageId, existingWrites);
@@ -244,8 +251,12 @@ async function writePageStats(
       } satisfies PageStatWrite,
     };
   });
-  const existingWrites = writes.filter((write) => write.owned).map((write) => write.data);
-  const newWrites = writes.filter((write) => !write.owned).map((write) => write.data);
+  const existingWrites = writes
+    .filter((write) => write.owned)
+    .map((write) => write.data);
+  const newWrites = writes
+    .filter((write) => !write.owned)
+    .map((write) => write.data);
 
   if (existingWrites.length) {
     const updatedIds = await updatePageStats(tx, pageId, existingWrites);
@@ -255,6 +266,47 @@ async function writePageStats(
   }
   if (newWrites.length) {
     await tx.pageStat.createMany({ data: newWrites });
+  }
+}
+
+async function writePageContentAssetReferences(
+  tx: Prisma.TransactionClient,
+  pageId: string,
+  data: PersistedProfileData,
+) {
+  await tx.pageContentAssetReference.deleteMany({ where: { pageId } });
+
+  const unique = new Map<
+    string,
+    {
+      pageId: string;
+      blockId: string;
+      itemId: string;
+      assetId: string;
+      sortOrder: number;
+    }
+  >();
+
+  for (const block of data.contentBlocks) {
+    if (block.type !== "GALLERY") continue;
+    block.images.forEach((image, sortOrder) => {
+      if (!image.imageAssetId) return;
+      const key = `${block.id}\u0000${image.id}`;
+      if (unique.has(key)) return;
+      unique.set(key, {
+        pageId,
+        blockId: block.id,
+        itemId: image.id,
+        assetId: image.imageAssetId,
+        sortOrder,
+      });
+    });
+  }
+
+  if (unique.size) {
+    await tx.pageContentAssetReference.createMany({
+      data: [...unique.values()],
+    });
   }
 }
 
@@ -274,6 +326,8 @@ async function updatePageCards(
       "platform" = incoming."platform",
       "layout" = incoming."layout",
       "aspectRatio" = incoming."aspectRatio",
+      "imageUrl" = incoming."imageUrl",
+      "imageAlt" = incoming."imageAlt",
       "imageFit" = incoming."imageFit",
       "imagePosition" = incoming."imagePosition",
       "titlePosition" = incoming."titlePosition",
@@ -284,6 +338,9 @@ async function updatePageCards(
       "overlayOpacity" = incoming."overlayOpacity",
       "imageAssetId" = incoming."imageAssetId",
       "customStyle" = incoming."customStyle",
+      "availability" = incoming."availability",
+      "sensitiveContent" = incoming."sensitiveContent",
+      "geoConfig" = incoming."geoConfig",
       "updatedAt" = CURRENT_TIMESTAMP
     FROM jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) AS incoming(
       "id" text,
@@ -296,6 +353,8 @@ async function updatePageCards(
       "platform" text,
       "layout" text,
       "aspectRatio" text,
+      "imageUrl" text,
+      "imageAlt" text,
       "imageFit" text,
       "imagePosition" text,
       "titlePosition" text,
@@ -305,7 +364,10 @@ async function updatePageCards(
       "overlayEnabled" boolean,
       "overlayOpacity" double precision,
       "imageAssetId" text,
-      "customStyle" jsonb
+      "customStyle" jsonb,
+      "availability" jsonb,
+      "sensitiveContent" jsonb,
+      "geoConfig" jsonb
     )
     WHERE card."id" = incoming."id"
       AND card."pageId" = ${pageId}
@@ -370,49 +432,4 @@ async function updatePageStats(
       AND incoming."pageId" = ${pageId}
     RETURNING stat."id"
   `);
-}
-
-async function remapPageEngagement(
-  tx: Prisma.TransactionClient,
-  pageId: string,
-  engagement: PersistedProfileData["engagement"],
-  cardIdMap: Map<string, string>,
-) {
-  const page = await tx.page.findUnique({
-    where: { id: pageId },
-    select: { appearance: true },
-  });
-  if (!page) throw new Error("Landing page disappeared while it was being saved.");
-
-  const appearance =
-    page.appearance &&
-    typeof page.appearance === "object" &&
-    !Array.isArray(page.appearance)
-      ? { ...(page.appearance as Record<string, unknown>) }
-      : {};
-
-  appearance.__engagement = engagement
-    ? remapEngagementCardIds(engagement, cardIdMap)
-    : null;
-
-  await tx.page.update({
-    where: { id: pageId },
-    data: { appearance: toJson(appearance) },
-  });
-}
-
-function remapEngagementCardIds(
-  engagement: NonNullable<PersistedProfileData["engagement"]>,
-  cardIdMap: Map<string, string>,
-): NonNullable<PersistedProfileData["engagement"]> {
-  const next = structuredClone(engagement);
-
-  if (next.featuredLinkId) {
-    next.featuredLinkId = cardIdMap.get(next.featuredLinkId);
-  }
-  if (next.campaign?.primaryLinkId) {
-    next.campaign.primaryLinkId = cardIdMap.get(next.campaign.primaryLinkId);
-  }
-
-  return next;
 }

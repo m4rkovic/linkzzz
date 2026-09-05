@@ -7,67 +7,137 @@ import { lockUserMutation } from "@/server/persistence/prisma/user-mutation-lock
 import type { ProfileRepository } from "@/server/services/contracts";
 import type { PersistedProfileData } from "@/types/persisted-profile";
 
-type PageGraph = Prisma.PageGetPayload<{ include: { smartLink: true; cards: { include: { geoDestinations: true } }; socials: true; stats: true } }>;
-function profileData(row: PageGraph): PersistedProfileData {
-  const storedAppearance = row.appearance as PersistedProfileData["appearance"] & {
-    __media?: { avatarUrl?: string | null; coverImageUrl?: string | null };
-    __engagement?: PersistedProfileData["engagement"];
+type PageGraph = Prisma.PageGetPayload<{
+  include: {
+    smartLink: true;
+    cards: { include: { geoDestinations: true } };
+    socials: true;
+    stats: true;
   };
-  const { __media, __engagement, ...appearance } = storedAppearance;
+}>;
+
+function profileData(row: PageGraph): PersistedProfileData {
   return {
-    slug: row.smartLink.slug, displayName: row.displayName, username: row.username ?? undefined, bio: row.bio,
-    locationLabel: row.locationLabel ?? undefined, status: row.smartLink.status,
-    appearance: appearance as PersistedProfileData["appearance"],
-    avatarUrl: __media?.avatarUrl ?? undefined,
+    slug: row.smartLink.slug,
+    displayName: row.displayName,
+    username: row.username ?? undefined,
+    bio: row.bio,
+    locationLabel: row.locationLabel ?? undefined,
+    status: row.smartLink.status,
+    appearance: structuredClone(
+      row.appearance as PersistedProfileData["appearance"],
+    ),
+    avatarUrl: row.avatarUrl ?? undefined,
     avatarAssetId: row.avatarAssetId ?? undefined,
-    coverImageUrl: __media?.coverImageUrl ?? undefined,
+    coverImageUrl: row.coverImageUrl ?? undefined,
     coverAssetId: row.coverAssetId ?? undefined,
-    stats: row.stats.sort((a, b) => a.sortOrder - b.sortOrder).map(({ id, value, label, visible }) => ({ id, value, label, visible })),
-    socials: row.socials.sort((a, b) => a.sortOrder - b.sortOrder).map(({ id, name, url, visible, platform }) => ({ id, name, url, visible, platform: (platform ?? undefined) as never })),
+    engagement: jsonObject<PersistedProfileData["engagement"]>(row.engagement),
+    stats: row.stats
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(({ id, value, label, visible }) => ({ id, value, label, visible })),
+    socials: row.socials
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(({ id, name, url, visible, platform }) => ({
+        id,
+        name,
+        url,
+        visible,
+        platform: (platform ?? undefined) as never,
+      })),
     contentBlocks: Array.isArray(row.contentBlocks)
-      ? structuredClone(row.contentBlocks as PersistedProfileData["contentBlocks"])
+      ? structuredClone(
+          row.contentBlocks as PersistedProfileData["contentBlocks"],
+        )
       : [],
-    engagement: __engagement ? structuredClone(__engagement) : undefined,
-    links: row.cards.sort((a, b) => a.sortOrder - b.sortOrder).map((link) => {
-      const style = (link.customStyle ?? {}) as Record<string, unknown>;
-      const geoDestinations = link.geoDestinations.map(({ id, countryCode, countryName, url }) => ({ id, countryCode, countryName, url }));
-      return { id: link.id, title: link.title, description: link.description ?? undefined, url: link.url, visible: link.visible, platform: (link.platform ?? undefined) as never, layout: (link.layout ?? undefined) as never, aspectRatio: (link.aspectRatio ?? undefined) as never, imageFit: (link.imageFit ?? undefined) as never, imagePosition: (link.imagePosition ?? undefined) as never, titlePosition: (link.titlePosition ?? undefined) as never, showPlatformIcon: link.showPlatformIcon, showTitle: link.showTitle, showDescription: link.showDescription, overlayEnabled: link.overlayEnabled, overlayOpacity: link.overlayOpacity ?? undefined, imageUrl: typeof style.__imageUrl === "string" ? style.__imageUrl : undefined, imageAssetId: link.imageAssetId ?? undefined, imageAlt: typeof style.__imageAlt === "string" ? style.__imageAlt : undefined, customStyle: (style.value ?? undefined) as never, availability: availabilityFromStyle(style), sensitiveContent: sensitiveContentFromStyle(style), geo: geoFromStyle(style, geoDestinations), geoDestinations };
-    }),
+    links: row.cards
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((link) => {
+        const geoDestinations = link.geoDestinations.map(
+          ({ id, countryCode, countryName, url }) => ({
+            id,
+            countryCode,
+            countryName,
+            url,
+          }),
+        );
+
+        return {
+          id: link.id,
+          title: link.title,
+          description: link.description ?? undefined,
+          url: link.url,
+          visible: link.visible,
+          platform: (link.platform ?? undefined) as never,
+          layout: (link.layout ?? undefined) as never,
+          aspectRatio: (link.aspectRatio ?? undefined) as never,
+          imageUrl: link.imageUrl ?? undefined,
+          imageAssetId: link.imageAssetId ?? undefined,
+          imageAlt: link.imageAlt ?? undefined,
+          imageFit: (link.imageFit ?? undefined) as never,
+          imagePosition: (link.imagePosition ?? undefined) as never,
+          titlePosition: (link.titlePosition ?? undefined) as never,
+          showPlatformIcon: link.showPlatformIcon,
+          showTitle: link.showTitle,
+          showDescription: link.showDescription,
+          overlayEnabled: link.overlayEnabled,
+          overlayOpacity: link.overlayOpacity ?? undefined,
+          customStyle: jsonObject(link.customStyle) as never,
+          availability: availabilityFromJson(link.availability),
+          sensitiveContent: sensitiveContentFromJson(link.sensitiveContent),
+          geo: geoFromJson(link.geoConfig, geoDestinations),
+          geoDestinations,
+        };
+      }),
   };
 }
 
-function availabilityFromStyle(style: Record<string, unknown>): PersistedProfileData["links"][number]["availability"] {
-  const raw = style.__availability;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-  const availability = raw as Record<string, unknown>;
+function availabilityFromJson(
+  value: Prisma.JsonValue | null,
+): PersistedProfileData["links"][number]["availability"] {
+  const availability = recordFromJson(value);
+  if (!availability) return undefined;
+
   return {
-    visibleFrom: typeof availability.visibleFrom === "string" ? availability.visibleFrom : undefined,
-    visibleUntil: typeof availability.visibleUntil === "string" ? availability.visibleUntil : undefined,
+    visibleFrom:
+      typeof availability.visibleFrom === "string"
+        ? availability.visibleFrom
+        : undefined,
+    visibleUntil:
+      typeof availability.visibleUntil === "string"
+        ? availability.visibleUntil
+        : undefined,
     expiryAction: availability.expiryAction === "DISABLE" ? "DISABLE" : "HIDE",
   };
 }
 
-function sensitiveContentFromStyle(style: Record<string, unknown>): PersistedProfileData["links"][number]["sensitiveContent"] {
-  const raw = style.__sensitiveContent;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-  const warning = raw as Record<string, unknown>;
-  if (warning.enabled !== true) return undefined;
+function sensitiveContentFromJson(
+  value: Prisma.JsonValue | null,
+): PersistedProfileData["links"][number]["sensitiveContent"] {
+  const warning = recordFromJson(value);
+  if (!warning || warning.enabled !== true) return undefined;
+
   return {
     enabled: true,
     title: typeof warning.title === "string" ? warning.title : undefined,
     message: typeof warning.message === "string" ? warning.message : undefined,
-    continueLabel: typeof warning.continueLabel === "string" ? warning.continueLabel : undefined,
+    continueLabel:
+      typeof warning.continueLabel === "string"
+        ? warning.continueLabel
+        : undefined,
   };
 }
 
-function geoFromStyle(
-  style: Record<string, unknown>,
+function geoFromJson(
+  value: Prisma.JsonValue | null,
   legacyDestinations: PersistedProfileData["links"][number]["geoDestinations"],
 ): PersistedProfileData["links"][number]["geo"] {
-  const raw = style.__geo;
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-    return structuredClone(raw as NonNullable<PersistedProfileData["links"][number]["geo"]>);
+  const geo = recordFromJson(value);
+  if (geo && Object.keys(geo).length > 0) {
+    return structuredClone(
+      geo as NonNullable<PersistedProfileData["links"][number]["geo"]>,
+    );
   }
+
   if (!legacyDestinations.length) return undefined;
   return {
     enabled: true,
@@ -86,7 +156,25 @@ function geoFromStyle(
   };
 }
 
-const pageInclude = { smartLink: true, cards: { include: { geoDestinations: true } }, socials: true, stats: true } as const;
+function jsonObject<T>(value: Prisma.JsonValue | null): T | undefined {
+  const record = recordFromJson(value);
+  if (!record || Object.keys(record).length === 0) return undefined;
+  return structuredClone(record) as T;
+}
+
+function recordFromJson(value: Prisma.JsonValue | null) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+const pageInclude = {
+  smartLink: true,
+  cards: { include: { geoDestinations: true } },
+  socials: true,
+  stats: true,
+} as const;
+
 export class PrismaProfileRepository implements ProfileRepository {
   constructor(private readonly db: PrismaClient) {}
 
@@ -107,8 +195,6 @@ export class PrismaProfileRepository implements ProfileRepository {
     data: PersistedProfileData,
     expectedRevision: number,
   ) {
-    const appearance = persistedAppearance(data);
-
     return this.db.$transaction(async (tx) => {
       await lockUserMutation(tx, userId);
 
@@ -130,9 +216,12 @@ export class PrismaProfileRepository implements ProfileRepository {
           username: data.username ?? null,
           bio: data.bio,
           locationLabel: data.locationLabel ?? null,
+          avatarUrl: data.avatarUrl ?? null,
           avatarAssetId: data.avatarAssetId ?? null,
+          coverImageUrl: data.coverImageUrl ?? null,
           coverAssetId: data.coverAssetId ?? null,
-          appearance: toJson(appearance),
+          appearance: toJson(data.appearance),
+          engagement: toJson(data.engagement ?? {}),
           contentBlocks: toJson(data.contentBlocks),
           revision: { increment: 1 },
         },
@@ -154,15 +243,4 @@ export class PrismaProfileRepository implements ProfileRepository {
       };
     });
   }
-}
-
-function persistedAppearance(data: PersistedProfileData) {
-  return {
-    ...data.appearance,
-    __media: {
-      avatarUrl: data.avatarUrl ?? null,
-      coverImageUrl: data.coverImageUrl ?? null,
-    },
-    __engagement: data.engagement ?? null,
-  };
 }

@@ -190,6 +190,8 @@ model Page {
   bio           String  @default("")
   locationLabel String?
 
+  avatarUrl    String?
+  coverImageUrl String?
   avatarAssetId String?
   coverAssetId  String?
 
@@ -197,6 +199,7 @@ model Page {
   coverAsset  Asset? @relation("PageCover", fields: [coverAssetId], references: [id], onDelete: SetNull)
 
   appearance    Json
+  engagement    Json?
   contentBlocks Json @default("[]")
   revision      Int  @default(1)
 
@@ -205,9 +208,10 @@ model Page {
 
   smartLink SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
 
-  cards   PageCard[]
-  socials SocialLink[]
-  stats   PageStat[]
+  cards                  PageCard[]
+  socials                SocialLink[]
+  stats                  PageStat[]
+  contentAssetReferences PageContentAssetReference[]
 
   @@index([avatarAssetId])
   @@index([coverAssetId])
@@ -226,6 +230,8 @@ model PageCard {
   platform      String?
   layout        String?
   aspectRatio   String?
+  imageUrl      String?
+  imageAlt      String?
   imageFit      String?
   imagePosition String?
   titlePosition String?
@@ -237,7 +243,10 @@ model PageCard {
   overlayEnabled Boolean @default(false)
   overlayOpacity Float?
 
-  customStyle Json?
+  customStyle      Json?
+  availability     Json?
+  sensitiveContent Json?
+  geoConfig         Json?
 
   imageAssetId String?
   imageAsset   Asset?  @relation("PageCardImage", fields: [imageAssetId], references: [id], onDelete: SetNull)
@@ -267,6 +276,24 @@ model PageCardGeoDestination {
 
   @@index([pageCardId])
   @@index([countryCode])
+}
+
+model PageContentAssetReference {
+  pageId    String
+  blockId   String
+  itemId    String
+  assetId   String
+  sortOrder Int @default(0)
+
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
+
+  page  Page  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  asset Asset @relation("PageContentAsset", fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@id([pageId, blockId, itemId])
+  @@index([assetId])
+  @@index([pageId, blockId, sortOrder])
 }
 
 model SocialLink {
@@ -321,10 +348,11 @@ model Asset {
   createdAt DateTime @db.Timestamptz(3) @default(now())
   updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
-  smartLink SmartLink  @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
-  avatarFor Page[]     @relation("PageAvatar")
-  coverFor  Page[]     @relation("PageCover")
-  imageFor  PageCard[] @relation("PageCardImage")
+  smartLink  SmartLink                   @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
+  avatarFor  Page[]                      @relation("PageAvatar")
+  coverFor   Page[]                      @relation("PageCover")
+  imageFor   PageCard[]                  @relation("PageCardImage")
+  contentFor PageContentAssetReference[] @relation("PageContentAsset")
 
   @@index([smartLinkId])
 }
