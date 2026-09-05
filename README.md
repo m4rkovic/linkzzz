@@ -73,9 +73,9 @@ npm.cmd run validate:full
 production build. `validate:full` adds the functional Playwright suite with one
 worker after the core gate.
 
-The Playwright desktop and mobile projects currently run through Chromium with
-different device/viewport profiles. Install the supported local browser set once
-per Playwright version with:
+The Playwright desktop project runs through Chromium and `mobile-390` runs
+through WebKit with a mobile device/viewport profile. Install the supported local
+browser set once per Playwright version with:
 
 ```powershell
 npm.cmd run test:e2e:install
@@ -118,7 +118,7 @@ run the visual suite as the actual regression check.
 runs two independent jobs:
 
 - core validation: Prisma generate, unit tests, typecheck, ESLint and production build;
-- functional E2E: Chromium against a disposable PostgreSQL 17 service with one worker.
+- functional E2E: Chromium desktop + WebKit mobile against a disposable PostgreSQL 17 service with one worker.
 
 The CI E2E job does not use the Neon production database or Vercel production
 secrets. Playwright artifacts are uploaded only when a browser job fails.
