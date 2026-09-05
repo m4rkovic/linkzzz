@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 type ColorPickerProps = {
   label: string;
@@ -10,6 +10,7 @@ type ColorPickerProps = {
 
 export default function ColorPicker({ label, value, onChange }: ColorPickerProps) {
   const [draft, setDraft] = useState<string | null>(null);
+  const textInputId = useId();
 
   const displayedValue = draft ?? value;
   const safeColor = normalizeHexColor(value) ?? "#000000";
@@ -43,11 +44,12 @@ export default function ColorPicker({ label, value, onChange }: ColorPickerProps
 
   return (
     <div>
-      <label className="text-xs font-semibold text-zinc-600">{label}</label>
+      <label htmlFor={textInputId} className="text-xs font-semibold text-zinc-600">{label}</label>
 
-      <div className="mt-2 flex min-h-11 overflow-hidden rounded-xl border border-zinc-200 bg-white transition focus-within:border-zinc-400">
+      <div className="mt-2 flex min-h-11 overflow-hidden rounded-xl border border-zinc-200 bg-white transition hover:border-zinc-300 focus-within:border-brand-violet focus-within:ring-4 focus-within:ring-brand-violet/10">
         <label className="relative flex w-14 shrink-0 cursor-pointer items-center justify-center border-r border-zinc-200">
           <span
+            aria-hidden="true"
             className="h-7 w-7 rounded-lg border border-black/10 shadow-sm"
             style={{ backgroundColor: safeColor }}
           />
@@ -62,6 +64,7 @@ export default function ColorPicker({ label, value, onChange }: ColorPickerProps
         </label>
 
         <input
+          id={textInputId}
           type="text"
           value={displayedValue}
           onFocus={() => setDraft(value)}
