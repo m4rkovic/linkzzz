@@ -47,8 +47,7 @@ test.describe("R1.4 keyboard and focus checks", () => {
 
   test("create-link dialog receives keyboard focus and closes with Escape", async ({ page }, testInfo) => {
     skipMobileKeyboard(testInfo);
-    await loginAsCustomer(page);
-    await page.goto("/dashboard/links");
+    await loginAsCustomer(page, "/dashboard/links");
 
     const newLink = page.getByRole("button", { name: "New Smart Link" });
     await newLink.focus();
@@ -64,7 +63,7 @@ test.describe("R1.4 keyboard and focus checks", () => {
 
   test("appearance categories work by keyboard and expose selection", async ({ page }, testInfo) => {
     skipMobileKeyboard(testInfo);
-    await loginAsCustomer(page);
+    await loginAsCustomer(page, "/dashboard/links");
     await openAppearanceEditor(page);
 
     const background = page.getByRole("button", { name: "Background", exact: true });
@@ -84,7 +83,7 @@ test.describe("R1.4 keyboard and focus checks", () => {
 
   test("focus-visible fallback is present on editor controls", async ({ page }, testInfo) => {
     skipMobileKeyboard(testInfo);
-    await loginAsCustomer(page);
+    await loginAsCustomer(page, "/dashboard/links");
     await openAppearanceEditor(page);
 
     // Focus the Page-level Appearance tab, then advance with a real keyboard Tab.
@@ -115,8 +114,7 @@ test.describe("R1.4 keyboard and focus checks", () => {
 
 test("analytics period tabs expose keyboard selection", async ({ page }, testInfo) => {
   skipMobileKeyboard(testInfo);
-  await loginAsCustomer(page);
-  await page.goto("/dashboard/analytics");
+  await loginAsCustomer(page, "/dashboard/analytics");
 
   const sevenDays = page.getByRole("tab", { name: "7 days" });
   await sevenDays.focus();
@@ -128,7 +126,7 @@ test("analytics period tabs expose keyboard selection", async ({ page }, testInf
 
 test("appearance reset uses an accessible confirmation dialog", async ({ page }, testInfo) => {
   skipMobileKeyboard(testInfo);
-  await loginAsCustomer(page);
+  await loginAsCustomer(page, "/dashboard/links");
   await openAppearanceEditor(page);
 
   await page.getByRole("button", { name: "Reset", exact: true }).click();
@@ -142,7 +140,7 @@ test("appearance reset uses an accessible confirmation dialog", async ({ page },
 
 test("mobile Landing Page editor switches between edit and preview", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-390", "Mobile-only interaction");
-  await loginAsCustomer(page);
+  await loginAsCustomer(page, "/dashboard/links");
   await openAppearanceEditor(page);
 
   for (const navigation of [
