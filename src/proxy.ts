@@ -4,7 +4,6 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import {
-  CUSTOM_DOMAIN_RUNTIME_HOST_HEADER,
   getRequestHostname,
   isAllowedCustomDomainPath,
   isApplicationHostname,
@@ -29,15 +28,15 @@ export function proxy(request: NextRequest) {
     return notFoundResponse();
   }
 
-  // The rewrite target is an implementation detail and must never become a
-  // second public route on the Linkzzz application host.
+  // Internal runtime routes are implementation details and must never become a
+  // second public surface on a Linkzzz application host.
   if (isApplicationHost && pathname.startsWith("/__linkzzz/")) {
     return notFoundResponse();
   }
 
   // Keep the trusted marketing homepage prerenderable. It contains no customer
   // content and all links into authenticated surfaces perform full navigations,
-  // so the weaker static bootstrap policy cannot bleed into the application.
+  // so the static bootstrap policy cannot bleed into the application.
   if (isApplicationHost && pathname === "/") {
     const response = NextResponse.next();
     response.headers.set(
@@ -63,23 +62,21 @@ export function proxy(request: NextRequest) {
   const isCustomDomainRoot =
     Boolean(hostname) && !isApplicationHost && pathname === "/";
 
-  // Next's internal rewrite target may observe the application server host
-  // rather than the original Host header. Preserve the normalized customer
-  // hostname explicitly so the dynamic runtime resolves the intended domain.
-  if (isCustomDomainRoot && hostname) {
-    requestHeaders.set(CUSTOM_DOMAIN_RUNTIME_HOST_HEADER, hostname);
-  } else {
-    requestHeaders.delete(CUSTOM_DOMAIN_RUNTIME_HOST_HEADER);
-  }
-
-  const response = isCustomDomainRoot
-    ? NextResponse.rewrite(
-        new URL(INTERNAL_CUSTOM_DOMAIN_PATH, request.url),
-        { request: { headers: requestHeaders } },
-      )
-    : NextResponse.next({
-        request: { headers: requestHeaders },
-      });
+  // Carry the normalized original custom host in the internal route itself.
+  // Next preserves rewrite path params reliably even when the rewritten request
+  // observes the application server Host value.
+  const response =
+    isCustomDomainRoot && hostname
+      ? NextResponse.rewrite(
+          new URL(
+            `${INTERNAL_CUSTOM_DOMAIN_PATH}/${encodeURIComponent(hostname)}`,
+            request.url,
+          ),
+          { request: { headers: requestHeaders } },
+        )
+      : NextResponse.next({
+          request: { headers: requestHeaders },
+        });
 
   response.headers.set("Content-Security-Policy", contentSecurityPolicy);
   applyTransportSecurity(response, request);
