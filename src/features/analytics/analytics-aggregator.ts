@@ -1,4 +1,9 @@
 import { LINK_GEO_COUNTRIES } from "@/features/links/link-geo";
+import {
+  ANALYTICS_PERIOD_VALUES,
+  getAnalyticsPeriodRange,
+  startOfUtcDay,
+} from "@/features/analytics/analytics-period-ranges";
 import type {
   AnalyticsBreakdownItem,
   AnalyticsDashboardData,
@@ -17,7 +22,6 @@ import type {
   AnalyticsSmartLinkRecord,
 } from "@/server/services/contracts";
 
-const PERIODS: AnalyticsPeriod[] = ["today", "7d", "30d", "90d", "all"];
 const DAY_MS = 86_400_000;
 const COUNTRY_NAMES = new Map<string, string>(LINK_GEO_COUNTRIES.map((country) => [country.code, country.name]));
 
@@ -40,7 +44,10 @@ export function buildAnalyticsDashboardData(input: {
   const scopedLinks = scope ? [scope] : input.smartLinks;
 
   const snapshots = Object.fromEntries(
-    PERIODS.map((period) => [period, buildSnapshot(period, scopedEvents, scopedLinks, now)]),
+    ANALYTICS_PERIOD_VALUES.map((period) => [
+      period,
+      buildSnapshot(period, scopedEvents, scopedLinks, now),
+    ]),
   ) as Record<AnalyticsPeriod, AnalyticsSnapshot>;
 
   return {
@@ -63,7 +70,7 @@ function buildSnapshot(
   smartLinks: AnalyticsSmartLinkRecord[],
   now: Date,
 ): AnalyticsSnapshot {
-  const range = periodRange(period, now);
+  const range = getAnalyticsPeriodRange(period, now);
   const events = filterRange(allEvents, range.start, range.end);
   const previousEvents = range.previousStart
     ? filterRange(allEvents, range.previousStart, range.previousEnd)
@@ -100,30 +107,6 @@ function buildSnapshot(
     runtime: runtimeHealth(events),
     engagement: engagement(humanEvents),
   };
-}
-
-function periodRange(period: AnalyticsPeriod, now: Date) {
-  if (period === "all") {
-    return { start: null, end: now, previousStart: null, previousEnd: null };
-  }
-
-  if (period === "today") {
-    const start = startOfDay(now);
-    const elapsed = now.getTime() - start.getTime();
-    const previousStart = new Date(start.getTime() - DAY_MS);
-    return {
-      start,
-      end: now,
-      previousStart,
-      previousEnd: new Date(previousStart.getTime() + elapsed),
-    };
-  }
-
-  const days = Number(period.slice(0, -1));
-  const start = startOfDay(new Date(now.getTime() - (days - 1) * DAY_MS));
-  const previousEnd = start;
-  const previousStart = new Date(start.getTime() - days * DAY_MS);
-  return { start, end: now, previousStart, previousEnd };
 }
 
 function filterRange(events: AnalyticsEventRecord[], start: Date | null, end: Date | null) {
@@ -352,7 +335,7 @@ function buildTraffic(
 }
 
 function hourlyTraffic(events: AnalyticsEventRecord[], now: Date): TrafficPoint[] {
-  const start = startOfDay(now);
+  const start = startOfUtcDay(now);
   const points: TrafficPoint[] = [];
   for (let hour = 0; hour <= now.getUTCHours(); hour += 1) {
     const bucketStart = new Date(start.getTime() + hour * 3_600_000);
@@ -364,8 +347,8 @@ function hourlyTraffic(events: AnalyticsEventRecord[], now: Date): TrafficPoint[
 
 function dailyTraffic(events: AnalyticsEventRecord[], start: Date, now: Date): TrafficPoint[] {
   const points: TrafficPoint[] = [];
-  const cursor = startOfDay(start);
-  const last = startOfDay(now);
+  const cursor = startOfUtcDay(start);
+  const last = startOfUtcDay(now);
   while (cursor <= last) {
     const bucketStart = new Date(cursor);
     const bucketEnd = new Date(cursor.getTime() + DAY_MS);
@@ -464,8 +447,4 @@ function hostname(url: string) {
 
 function formatNumber(value: number) {
   return value.toLocaleString("en-US");
-}
-
-function startOfDay(value: Date) {
-  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
 }

@@ -249,8 +249,7 @@ model PageCard {
   geoDestinations PageCardGeoDestination[]
   analyticsEvents AnalyticsEvent[]
 
-  @@index([pageId])
-  @@index([sortOrder])
+  @@index([pageId, sortOrder])
   @@index([imageAssetId])
 }
 
@@ -355,8 +354,9 @@ model AnalyticsEvent {
   smartLink SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
   pageCard  PageCard? @relation(fields: [pageCardId], references: [id], onDelete: SetNull)
 
-  @@index([smartLinkId])
-  @@index([pageCardId])
+  @@index([smartLinkId, createdAt])
+  @@index([smartLinkId, isBot, type, createdAt])
+  @@index([pageCardId, type, createdAt])
   @@index([createdAt])
   @@index([type])
 }

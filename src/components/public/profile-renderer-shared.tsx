@@ -9,6 +9,7 @@ import {
     getSocialRadius,
 } from "@/components/public/profile-renderer-utils";
 import UserContentImage from "@/components/ui/user-content-image";
+import { PlatformIcon } from "@/config/platforms";
 import { resolveResponseTimeLabel, resolveVisitorMessaging } from "@/features/engagement/visitor-messaging";
 import type { PublicProfileData, VisitorLocation } from "@/types/profile";
 
@@ -97,9 +98,6 @@ export function SocialLinks({
         >
             {visibleSocials.map(
                 (social) => {
-                    const Icon =
-                        social.icon;
-
                     return (
                         <a
                             key={
@@ -169,7 +167,8 @@ export function SocialLinks({
                                 color,
                             }}
                         >
-                            <Icon
+                            <PlatformIcon
+                                platform={social.platform ?? "custom"}
                                 size={
                                     isPreview
                                         ? Math.min(

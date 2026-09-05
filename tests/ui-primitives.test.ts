@@ -47,3 +47,19 @@ test("cards and controls share the expected interaction treatment", () => {
   assert.match(controlClassName(), /focus:border-brand-violet/);
   assert.match(controlClassName("pl-10"), /pl-10/);
 });
+
+test("mobile navigation and filter controls do not rely on horizontal scrolling", () => {
+  const responsiveControlFiles = [
+    "../src/components/smart-links/editor/editor-navigation.tsx",
+    "../src/components/smart-links/editor/page-workspace.tsx",
+    "../src/components/appearance/editor/appearance-editor-navigation.tsx",
+    "../src/components/links/editor/link-editor-form.tsx",
+    "../src/components/destinations/destination-picker.tsx",
+    "../src/components/analytics/analytics-period-tabs.tsx",
+  ];
+
+  for (const path of responsiveControlFiles) {
+    const source = readFileSync(new URL(path, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /overflow-x-(?:auto|scroll)|min-w-max/, path);
+  }
+});

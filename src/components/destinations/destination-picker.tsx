@@ -226,13 +226,13 @@ function ProviderLibraryModal({
             />
           </div>
           {!query.trim() && (
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            <div className="mt-3 flex flex-wrap gap-2">
               {DESTINATION_PROVIDER_CATEGORIES.map((item) => (
                 <button
                   key={item}
                   type="button"
                   onClick={() => setCategory(item)}
-                  className={`min-h-9 shrink-0 rounded-xl px-3 text-xs font-black transition ${category === item ? "bg-zinc-950 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"}`}
+                  className={`min-h-9 rounded-xl px-3 text-xs font-black transition ${category === item ? "bg-zinc-950 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"}`}
                 >
                   {item}
                 </button>

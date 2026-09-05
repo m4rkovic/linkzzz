@@ -1,6 +1,5 @@
 import "server-only";
 
-import { buildAnalyticsDashboardData } from "@/features/analytics/analytics-aggregator";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import type { AnalyticsDashboardData } from "@/types/analytics";
 
@@ -8,12 +7,9 @@ export async function getAnalyticsDashboard(userId: string): Promise<AnalyticsDa
   const repositories = await getServerDependencies();
   if (!repositories.analytics) throw new Error("Analytics persistence is unavailable.");
 
-  const [events, smartLinks] = await Promise.all([
-    repositories.analytics.listForUser(userId),
-    repositories.analytics.listSmartLinksForUser(userId),
-  ]);
-
-  return buildAnalyticsDashboardData({ events, smartLinks })!;
+  const dashboard = await repositories.analytics.getDashboardData(userId);
+  if (!dashboard) throw new Error("Analytics dashboard could not be built.");
+  return dashboard;
 }
 
 export async function getSmartLinkAnalyticsDashboard(
@@ -23,14 +19,5 @@ export async function getSmartLinkAnalyticsDashboard(
   const repositories = await getServerDependencies();
   if (!repositories.analytics) throw new Error("Analytics persistence is unavailable.");
 
-  const [events, smartLinks] = await Promise.all([
-    repositories.analytics.listForUser(userId),
-    repositories.analytics.listSmartLinksForUser(userId),
-  ]);
-
-  return buildAnalyticsDashboardData({
-    events,
-    smartLinks,
-    scopeSmartLinkId: smartLinkId,
-  });
+  return repositories.analytics.getDashboardData(userId, smartLinkId);
 }

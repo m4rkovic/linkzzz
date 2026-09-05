@@ -8,6 +8,10 @@ import {
 import { createAdminUser, listAdminUsers } from "@/server/admin/admin-service";
 import { getCurrentSession } from "@/server/auth/current-session";
 import { requireAdmin } from "@/server/auth/guards";
+import {
+  getRequestCorrelationId,
+  logServerError,
+} from "@/server/observability/server-logger";
 import { hasValidRequestOrigin } from "@/server/security/request";
 
 export async function GET() {
@@ -77,9 +81,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.error("Admin customer creation failed.", {
+    logServerError("admin.customer.create_failed", error, {
+      requestId: getRequestCorrelationId(request.headers),
+      actorUserId: session.user.id,
       username: body.username,
-      error,
     });
     return NextResponse.json(
       { error: "Unable to create customer.", code: "ADMIN_CREATE_CUSTOMER_FAILED" },

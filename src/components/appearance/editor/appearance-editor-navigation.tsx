@@ -75,9 +75,9 @@ export default function AppearanceEditorNavigation({
       aria-label="Appearance settings"
       className="rounded-2xl border border-zinc-200 bg-white p-2"
     >
-      <div className="flex gap-2 overflow-x-auto pb-1 lg:block lg:space-y-3 lg:overflow-visible lg:pb-0">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:block lg:space-y-3">
         {groups.map((group) => (
-          <div key={group} className="flex shrink-0 gap-1.5 lg:block lg:space-y-1">
+          <div key={group} className="contents lg:block lg:space-y-1">
             <p className="hidden px-2 pb-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400 lg:block">
               {group}
             </p>
@@ -94,14 +94,14 @@ export default function AppearanceEditorNavigation({
                     onClick={() => onSelect(panel.id)}
                     aria-current={selected ? "page" : undefined}
                     className={cx(
-                      "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/25 lg:flex lg:w-full lg:justify-start",
+                      "inline-flex min-h-10 min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 text-left text-xs font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-violet/25 sm:px-3 sm:text-sm lg:flex lg:w-full",
                       selected
                         ? "bg-brand-violet-strong text-white"
                         : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950",
                     )}
                   >
-                    <Icon size={15} aria-hidden="true" />
-                    {panel.label}
+                    <Icon size={15} aria-hidden="true" className="shrink-0" />
+                    <span className="min-w-0 truncate">{panel.label}</span>
                   </button>
                 );
               })}

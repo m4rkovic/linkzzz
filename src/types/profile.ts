@@ -1,4 +1,3 @@
-import type { ElementType } from "react";
 import type { DestinationConfig } from "@/types/smart-link";
 
 /*
@@ -337,14 +336,6 @@ export type PublicProfileLink = {
 
     platform?: PlatformId;
 
-    /*
-     * Frontend-only za sada.
-     *
-     * Kasnije u bazi čuvamo platform ID,
-     * ne React komponentu.
-     */
-    icon?: ElementType;
-
     layout?: LinkCardLayout;
 
     aspectRatio?: LinkCardAspectRatio;
@@ -417,7 +408,6 @@ export type PublicSocialLink = {
 
     platform?: PlatformId;
 
-    icon: ElementType;
 };
 
 /*

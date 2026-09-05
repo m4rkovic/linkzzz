@@ -5,6 +5,7 @@ export type CustomDomainErrorCode =
   | "DOMAIN_ALREADY_CONNECTED"
   | "DOMAIN_NOT_FOUND"
   | "DOMAIN_NOT_VERIFIED"
+  | "DOMAIN_CLAIM_EXPIRED"
   | "DNS_RECORD_NOT_FOUND"
   | "DNS_RECORD_MISMATCH"
   | "SMART_LINK_NOT_FOUND"
@@ -32,6 +33,7 @@ export function customDomainErrorStatus(code: CustomDomainErrorCode) {
       return 404;
     case "DOMAIN_ALREADY_CONNECTED":
     case "DOMAIN_NOT_VERIFIED":
+    case "DOMAIN_CLAIM_EXPIRED":
     case "DNS_RECORD_NOT_FOUND":
     case "DNS_RECORD_MISMATCH":
     case "SMART_LINK_DISABLED":

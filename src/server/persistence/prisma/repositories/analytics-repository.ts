@@ -1,6 +1,9 @@
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { buildAnalyticsDashboardFromSummaries } from "@/features/analytics/analytics-summary-builder";
+import { getSubscriptionAccess } from "@/server/business/subscriptions";
+import { queryAnalyticsPeriodSummaries } from "@/server/persistence/prisma/repositories/analytics-summary-query";
 import type {
   AnalyticsEventRecord,
   AnalyticsDashboardSummary,
@@ -40,7 +43,12 @@ export class PrismaAnalyticsRepository implements AnalyticsRepository {
     if (!smartLink || smartLink.status !== "PUBLISHED") return false;
     if (smartLink.user.accountStatus !== "ACTIVE") return false;
     const subscription = smartLink.user.subscription;
-    if (!subscription || !["ACTIVE", "CANCEL_AT_PERIOD_END"].includes(subscription.status) || subscription.endsAt.getTime() <= Date.now()) return false;
+    if (
+      !subscription ||
+      !getSubscriptionAccess(subscription.status, subscription.endsAt).hasAccess
+    ) {
+      return false;
+    }
 
     const tracking = smartLink.trackingConfig as { internalAnalytics?: unknown } | null;
     if (tracking?.internalAnalytics === false) return false;
@@ -55,13 +63,6 @@ export class PrismaAnalyticsRepository implements AnalyticsRepository {
 
     await this.create({ ...event, smartLinkId: smartLink.id });
     return true;
-  }
-
-  async listForUser(userId: string) {
-    return this.db.analyticsEvent.findMany({
-      where: { smartLink: { userId } },
-      orderBy: { createdAt: "asc" },
-    });
   }
 
   async summarizeDashboard(userId: string): Promise<AnalyticsDashboardSummary> {
@@ -104,17 +105,33 @@ export class PrismaAnalyticsRepository implements AnalyticsRepository {
     };
   }
 
-  async listForSmartLink(smartLinkId: string, from?: Date) {
-    return this.db.analyticsEvent.findMany({
-      where: {
-        smartLinkId,
-        createdAt: from ? { gte: from } : undefined,
-      },
-      orderBy: { createdAt: "desc" },
+  async getDashboardData(userId: string, scopeSmartLinkId?: string) {
+    const smartLinks = await this.listSmartLinksForUser(userId);
+    if (
+      scopeSmartLinkId &&
+      !smartLinks.some((smartLink) => smartLink.id === scopeSmartLinkId)
+    ) {
+      return null;
+    }
+
+    const now = new Date();
+    const summaries = await queryAnalyticsPeriodSummaries(
+      this.db,
+      userId,
+      scopeSmartLinkId,
+      now,
+    );
+    return buildAnalyticsDashboardFromSummaries({
+      summaries,
+      smartLinks,
+      scopeSmartLinkId,
+      now,
     });
   }
 
-  async listSmartLinksForUser(userId: string): Promise<AnalyticsSmartLinkRecord[]> {
+  private async listSmartLinksForUser(
+    userId: string,
+  ): Promise<AnalyticsSmartLinkRecord[]> {
     const smartLinks = await this.db.smartLink.findMany({
       where: { userId },
       orderBy: { createdAt: "asc" },

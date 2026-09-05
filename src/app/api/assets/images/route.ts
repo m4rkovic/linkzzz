@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSessionToken } from "@/server/auth/auth-service";
 import { getAssetStorage } from "@/server/assets/storage-factory";
+import { AssetStorageQuotaError } from "@/server/business/asset-quota";
 import type { StoredAsset } from "@/server/assets/asset-storage";
 import { getServerDependencies } from "@/server/persistence/dependencies";
 import { getRequestIp, hasValidRequestOrigin } from "@/server/security/request";
@@ -54,8 +55,20 @@ export async function POST(request: NextRequest) {
     };
     const asset = await repositories.assets.createForSmartLink(session.user.id, smartLinkId, assetInput);
     return NextResponse.json({ assetId: asset.id, url: stored.publicUrl });
-  } catch {
+  } catch (error) {
     await storage.remove(stored.storageKey);
+    if (error instanceof AssetStorageQuotaError) {
+      return NextResponse.json(
+        {
+          error: "Your account asset storage quota has been reached.",
+          code: error.code,
+          limitBytes: error.limitBytes,
+          usedBytes: error.usedBytes,
+          requestedBytes: error.requestedBytes,
+        },
+        { status: 413 },
+      );
+    }
     return NextResponse.json({ error: "Could not save uploaded image." }, { status: 500 });
   }
 }

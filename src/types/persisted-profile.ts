@@ -4,8 +4,8 @@ import type {
   PublicSocialLink,
 } from "@/types/profile";
 
-export type PersistedProfileLink = Omit<PublicProfileLink, "icon">;
-export type PersistedSocialLink = Omit<PublicSocialLink, "icon">;
+export type PersistedProfileLink = PublicProfileLink;
+export type PersistedSocialLink = PublicSocialLink;
 
 export type PersistedProfileData = Omit<
   PublicProfileData,

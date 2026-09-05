@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import ProfileRenderer from "@/components/public/profile-renderer";
 import { createMockProfileBySlug } from "@/data/mock-profiles";
+import { serializeProfile } from "@/features/profile/profile-serialization";
 
 test("classic and visual profile facades both render the existing profile", () => {
   const profile = createMockProfileBySlug("skyhook");
@@ -34,4 +35,15 @@ test("classic and visual profile facades both render the existing profile", () =
     assert.match(output, /Listen on Spotify/);
     assert.match(output, /LINKZZZ/);
   }
+});
+
+test("profile persistence keeps platform ids without React icon references", () => {
+  const profile = createMockProfileBySlug("skyhook");
+  assert.ok(profile);
+
+  const persisted = serializeProfile(profile);
+  assert.equal(persisted.links[0]?.platform, "spotify");
+  assert.equal(persisted.socials[0]?.platform, "instagram");
+  assert.equal("icon" in persisted.links[0], false);
+  assert.equal("icon" in persisted.socials[0], false);
 });

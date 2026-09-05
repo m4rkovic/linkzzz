@@ -17,6 +17,7 @@ export function validateProductionEnvironment(environment: Environment) {
   requireValue(environment, "S3_ACCESS_KEY_ID", errors);
   requireValue(environment, "S3_SECRET_ACCESS_KEY", errors);
   requireHttpsUrl(environment, "S3_PUBLIC_BASE_URL", errors);
+  validateAssetStorageQuota(environment.ASSET_STORAGE_QUOTA_BYTES, errors);
   requireValue(environment, "LINKZZZ_APP_HOSTS", errors);
   requireValue(environment, "LINKZZZ_CUSTOM_DOMAIN_TARGET", errors);
   requireValue(environment, "LINKZZZ_TRUST_PROXY_HEADERS", errors);
@@ -120,6 +121,17 @@ function validateRateLimitTimeout(
     errors.push(
       "RATE_LIMIT_REDIS_TIMEOUT_MS must be an integer between 250 and 10000.",
     );
+  }
+}
+
+function validateAssetStorageQuota(
+  value: string | undefined,
+  errors: string[],
+) {
+  if (!value?.trim()) return;
+  const quota = Number(value);
+  if (!Number.isSafeInteger(quota) || quota <= 0) {
+    errors.push("ASSET_STORAGE_QUOTA_BYTES must be a positive safe integer.");
   }
 }
 
