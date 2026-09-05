@@ -2,6 +2,11 @@ import { loginAsCustomer, openAppearanceEditor } from "./helpers";
 import { expect, test } from "./test";
 
 async function stabilize(page: Parameters<typeof loginAsCustomer>[0]) {
+  // Screenshot helpers may temporarily mutate caret/animation styles. Wait for
+  // client hydration to finish first so React never hydrates over a DOM that
+  // Playwright has already modified for deterministic screenshots.
+  await expect(page.locator('[data-hydrated="false"]')).toHaveCount(0);
+
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.addStyleTag({
     content: `
