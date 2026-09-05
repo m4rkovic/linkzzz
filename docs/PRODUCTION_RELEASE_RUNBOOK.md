@@ -1,13 +1,15 @@
 # Linkzzz production release runbook
 
-This runbook is the operational path from a validated `dev` commit to production. It is intentionally conservative around database migrations because application rollback and database rollback are not the same operation.
+This runbook is the operational path from a validated integration commit to production. It is intentionally conservative around database migrations because application rollback and database rollback are not the same operation.
 
 ## 1. Branch and environment model
 
-Expected mapping:
+Target mapping for the finished workflow:
 
 - `dev` -> Vercel Preview / staging environment
 - `main` -> Vercel Production
+
+**Do not assume this mapping is already active in Vercel.** The project has previously been configured with `dev` as the Production branch during setup. Verify the current Vercel Git branch mapping in the dashboard before using branch names as an environment guarantee.
 
 Preview and Production must not silently share stateful infrastructure unless that sharing is deliberate. In particular verify PostgreSQL, rate-limit storage and object storage scopes before release.
 
@@ -39,7 +41,15 @@ npm.cmd run build
 npm.cmd run test:e2e:functional -- --workers=1
 ```
 
+Or use the combined local runner:
+
+```powershell
+npm.cmd run validate:full
+```
+
 Visual snapshots are not updated automatically. Inspect intentional UI changes before accepting a new baseline.
+
+The repository also contains `.github/workflows/quality-gate.yml`, which runs core validation plus DB-backed functional E2E against a disposable PostgreSQL service. A local green run and a GitHub Actions green run are complementary signals; neither replaces deployed Preview validation.
 
 ## 4. Database migration safety
 
@@ -73,7 +83,9 @@ The later contract cleanup is a separate migration/release and should happen onl
 
 ## 5. Preview deployment
 
-Deploy the candidate from `dev` to Vercel Preview.
+Deploy the candidate to a Vercel Preview environment using the branch/environment mapping that is actually configured in the project.
+
+Do **not** merge into whichever branch Vercel currently treats as Production merely to obtain a Preview URL. If Production is still mapped to `dev`, first correct the Vercel branch model or use an explicit Preview deployment path.
 
 After the Preview URL is healthy, run the read-only deployed smoke:
 
@@ -88,11 +100,13 @@ npm.cmd run test:e2e:production-smoke
 
 The smoke verifies:
 
-- static marketing homepage response/CSP;
+- application-host marketing response/CSP;
 - native navigation from marketing into `/login`;
 - strict nonce CSP on application surfaces;
-- internal custom-domain runtime path isolation;
+- internal `__linkzzz` path isolation;
 - optionally, one known published public SmartLink.
+
+The application root is host-aware: application hosts render marketing while ACTIVE custom domains resolve directly to the public SmartLink runtime. Custom-domain root rendering no longer relies on an internal Next rewrite.
 
 ## 6. Manual Preview checks
 
@@ -108,7 +122,8 @@ At minimum check desktop and mobile:
 - analytics dashboard;
 - admin user detail/action surface;
 - image upload and replacement;
-- custom-domain UI status.
+- custom-domain UI status;
+- one real configured custom-domain root if the Preview environment supports it.
 
 Do not use visual snapshot approval as a substitute for these checks.
 
@@ -116,14 +131,16 @@ Do not use visual snapshot approval as a substitute for these checks.
 
 Only after Preview validation:
 
-1. make sure `dev` contains the exact validated commit;
-2. create `dev -> main` PR;
-3. confirm no unexpected commits landed on either branch;
-4. merge using the repository's normal protected path;
+1. identify the exact validated commit SHA;
+2. verify the actual Vercel Production branch mapping;
+3. ensure the validated commit reaches the intended production branch through a reviewed PR;
+4. confirm no unexpected commits landed on the integration or production branch;
 5. confirm Vercel Production deploy references the expected merge/head SHA;
 6. run `npm run env:check` against the production configuration where operationally available;
 7. apply only the production migrations that were reviewed for this release;
 8. wait for deployment health before changing DNS or domain routing behavior.
+
+For the desired long-term model this normally means a reviewed `dev -> main` PR, with `main` configured as Vercel Production.
 
 ## 8. Post-deploy verification
 
@@ -138,7 +155,7 @@ npm.cmd run test:e2e:production-smoke
 
 Then check monitoring/logs for:
 
-- new structured `server_error` events;
+- new structured server error events;
 - migration/database errors;
 - elevated 5xx rate;
 - object-storage failures;
@@ -165,11 +182,12 @@ For an incompatible schema/data failure:
 
 Never hand-edit Prisma migration history in production to make the dashboard look green.
 
-## 10. After the first green release
+## 10. After this audit batch
 
-Once this audit batch has passed the full mass gate and one Preview deployment:
+Once Preview and production validation are green:
 
-- enable a permanent GitHub CI quality gate for `typecheck`, `lint`, unit tests and build;
-- keep functional E2E as a DB-backed gate where secrets/infrastructure allow it;
+- keep the GitHub CI quality gate enabled for `dev`/`main` PRs and pushes;
+- keep functional E2E isolated on disposable PostgreSQL infrastructure;
 - keep visual baseline updates explicit;
-- schedule the Phase 3.12 contract cleanup only after its compatibility window.
+- move the local checkout outside OneDrive before the next large development cycle;
+- schedule the Phase 3.12 contract cleanup only after its production compatibility window.
